@@ -87,7 +87,8 @@ const feel = (type, data = {}) => {
     case 'crouch': haptics.pulse(0.22, 18); break;
     case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
     case 'push': haptics.pulse(0.3, 28); break;
-    case 'land': haptics.pulse(THREE.MathUtils.clamp(0.2 + data.impact * 0.09, 0.2, 1), Math.min(120, 30 + data.impact * 7)); break;
+    case 'pump': haptics.pulse(THREE.MathUtils.clamp(0.25 + data.gain * 0.6, 0.25, 0.7), 40); break;
+    case 'land': if (data.impact < 0.9) break; haptics.pulse(THREE.MathUtils.clamp(0.2 + data.impact * 0.09, 0.2, 1), Math.min(120, 30 + data.impact * 7)); break;
     case 'wall': haptics.pulse(THREE.MathUtils.clamp(0.3 + data.impact * 0.14, 0.3, 1), 70); break;
     case 'grindStart': haptics.pulse(0.85, 32); break;
     case 'grindEnd': if (data.reason !== 'bail' && data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
@@ -133,6 +134,9 @@ try {
       object.geometry.computeBoundingBox();
       object.geometry.computeBoundingSphere();
       if (object.geometry.index?.count > 900) {
+        // Mirrored ramps share one index buffer, and building a BVH reorders its index in place, which silently broke
+        // the earlier tree. Give every collider its own copy first.
+        object.geometry.setIndex(new THREE.BufferAttribute(object.geometry.index.array.slice(), 1));
         computeBoundsTree.call(object.geometry, { maxLeafTris: 12 });
         object.raycast = acceleratedRaycast;
       }
@@ -224,6 +228,7 @@ addEventListener('resize', () => {
 
 function frame(dt) {
   const command = input.poll(dt);
+  command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
   if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
     sim.faceOffset = -sim.faceOffset;
     hud.say(sim.faceOffset < 0 ? 'Regular' : 'Goofy', 1.0);

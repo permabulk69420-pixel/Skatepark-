@@ -16,8 +16,9 @@ export class FlatWorld {
   // Ray against the boxes (solid from the floor up to `top`); front faces only.
   cast(origin, dir, far, out) {
     let best = null;
-    for (const b of this.boxes) {
-      const lo = [b.min[0], 0, b.min[1]], hi = [b.max[0], b.top, b.max[1]];
+    const solids = [...this.boxes, { min: [-1e4, -1e4], max: [1e4, 1e4], top: 0, floor: true }];
+    for (const b of solids) {
+      const lo = [b.min[0], b.floor ? -5 : 0, b.min[1]], hi = [b.max[0], b.top, b.max[1]];
       const o = [origin.x, origin.y, origin.z], d = [dir.x, dir.y, dir.z];
       let tNear = -Infinity, tFar = Infinity, axis = -1, sign = 0;
       for (let i = 0; i < 3; i++) {

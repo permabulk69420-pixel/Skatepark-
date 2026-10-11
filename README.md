@@ -16,6 +16,9 @@ the skating itself is fun. Static files, no build step — `dist/` is what GitHu
 | Hold both grips | Re-centre: stand on the board where you are now |
 | Hold left **X** | Back to the entrance |
 
+The camera is bolted to the board: it goes where the board goes, turns when it turns and tilts with whatever the board is
+lying on, so ramps, walls and grind balance swing the whole world around you (no smoothing, on purpose).
+
 You stand on the board the way you would on a real one: side-on to travel, facing the board's right side (regular)
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.
@@ -27,6 +30,13 @@ square (boardslide) to it. It locks on, and the meter starts wherever your landi
 leans over and falls off, and it gets harder the longer you hold it — stick towards the way the marker is drifting
 to bring it back. Release the ollie button to pop off. Over-leaning, landing sideways at speed, or hitting a wall
 fast is a bail: the board tumbles, the view fades, and you are put back where you were last rolling.
+
+**Half pipes and transitions.** Ramps are ridden, not climbed: gravity does the work, so speed you carry in is the height
+you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
+you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
+square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
+back in fakie (it only catches when you come up from the pit, never when you drop in). In VR you **pump** with your real
+knees: squat, then stand as you go up a transition and you gain speed (squatting costs a little, so mashing doesn't pay).
 
 Haptics: roll rumble, push ticks, crouch tick, pop snap, landing thump scaled to the impact, grind rumble that gets
 harder as you near falling, wall hits and bails.
@@ -62,4 +72,6 @@ npm test
 ```
 
 Runs the simulation against a flat test floor: rolling, pushing, steering, ollie height, landing and wall bails,
-rail locking (50-50 and boardslide), balance, popping off, near-misses, respawn.
+rail locking (50-50 and boardslide), balance, popping off, near-misses, respawn. `tests/halfpipe.test.mjs` builds a real
+half-pipe mesh (round transitions, vertical, deck, coping) and checks wall riding, drop-ins, airs, pumping and axle stalls
+through the same collision code the game uses.
