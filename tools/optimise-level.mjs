@@ -6,7 +6,7 @@
 // Collision meshes and everything that is not a render mesh (grind paths, spawns, hints) pass through untouched.
 //
 //   node tools/optimise-level.mjs <in.glb> <out.glb> [tweaks.json]
-// An optional tweaks file corrects materials that were authored wrong, e.g. { "materials": [ { "match": "Asphalt",
+// An optional tweaks file (also `collisionError`: simplify the collision meshes within that many metres) corrects materials that were authored wrong, e.g. { "materials": [ { "match": "Asphalt",
 // "texturesFrom": "concrete", "baseColorFactor": [0.4, 0.4, 0.42, 1] } ] } points every material whose name matches at another
 // texture set (<name>_base / _normal / _orm) and tints it.
 import { Document, NodeIO } from '@gltf-transform/core';
@@ -47,8 +47,8 @@ const buffer = root.listBuffers()[0];
 doc.createExtension(KHRMeshQuantization).setRequired(true);
 
 // Material corrections from the optional tweaks file.
+const tweaks = tweaksPath ? JSON.parse(fs.readFileSync(tweaksPath, 'utf8')) : {};
 if (tweaksPath) {
-  const tweaks = JSON.parse(fs.readFileSync(tweaksPath, 'utf8'));
   const texture = (name) => root.listTextures().find((t) => t.getName() === name);
   for (const rule of tweaks.materials ?? []) {
     for (const material of root.listMaterials().filter((m) => new RegExp(rule.match, 'i').test(m.getName()))) {
@@ -356,8 +356,33 @@ for (const node of collisionNodes) {
   if (!collisionGroups.has(area)) collisionGroups.set(area, { material: node.getMesh().listPrimitives()[0].getMaterial(), parts: [] });
   for (const prim of node.getMesh().listPrimitives()) collisionGroups.get(area).parts.push(worldPrimitive(node, prim));
 }
+// Optional: collision modelled as dense as the render mesh (a smooth pool is 100k triangles) is simplified, within `collisionError` metres.
+const collisionError = tweaks.collisionError ?? 0;
+function simplifyCollision(m) {
+  // Vertices are split per normal/UV in the export; weld them by position first or the simplifier sees every triangle as isolated.
+  const key = (i) => `${Math.round(m.pos[i * 3] * 1e4)},${Math.round(m.pos[i * 3 + 1] * 1e4)},${Math.round(m.pos[i * 3 + 2] * 1e4)}`;
+  const welded = new Map(), remap = new Uint32Array(m.n), pos = [];
+  for (let i = 0; i < m.n; i++) {
+    const k = key(i);
+    let j = welded.get(k);
+    if (j === undefined) { j = pos.length / 3; welded.set(k, j); pos.push(m.pos[i * 3], m.pos[i * 3 + 1], m.pos[i * 3 + 2]); }
+    remap[i] = j;
+  }
+  const wpos = Float32Array.from(pos);
+  const idx = Uint32Array.from(m.idx, (v) => remap[v]);
+  const scale = MeshoptSimplifier.getScale(wpos, 3);
+  const [out] = MeshoptSimplifier.simplify(idx, wpos, 3, 0, collisionError / scale, []);
+  const used = new Map(), npos = [], nidx = new Uint32Array(out.length);
+  for (let i = 0; i < out.length; i++) {
+    let j = used.get(out[i]);
+    if (j === undefined) { j = npos.length / 3; used.set(out[i], j); npos.push(wpos[out[i] * 3], wpos[out[i] * 3 + 1], wpos[out[i] * 3 + 2]); }
+    nidx[i] = j;
+  }
+  return { n: npos.length / 3, idx: nidx, pos: Float32Array.from(npos) };
+}
 for (const [area, { material, parts }] of collisionGroups) {
-  const merged = mergePrimitives(parts.map((p) => ({ n: p.n, idx: p.idx, pos: p.pos })));
+  let merged = mergePrimitives(parts.map((p) => ({ n: p.n, idx: p.idx, pos: p.pos })));
+  if (collisionError > 0) { const before = merged.idx.length / 3; merged = simplifyCollision(merged); console.log(`collision ${area}: ${before} -> ${merged.idx.length / 3} triangles`); }
   const prim = doc.createPrimitive().setMaterial(material)
     .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(merged.pos).setBuffer(buffer))
     .setIndices(doc.createAccessor().setType('SCALAR').setArray(merged.n > 65535 ? merged.idx : Uint16Array.from(merged.idx)).setBuffer(buffer));
