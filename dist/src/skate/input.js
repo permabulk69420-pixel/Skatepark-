@@ -1,6 +1,6 @@
 // Turns Quest controllers (or a keyboard) into the five things the skater cares about.
 //   left stick  up = push, down = brake, sideways = steer / air spin / grind balance
-//   right A (or right trigger) = hold to crouch, release to ollie; right B = manual (also works in the air: land in it)
+//   right A (or right trigger) = hold to crouch, release to ollie
 //   left Y = switch stance, left X held = back to the entrance, both grips held = stand on the board where you are
 const DEADZONE = 0.15;
 const deadzone = (v) => (Math.abs(v) > DEADZONE ? (Math.abs(v) - DEADZONE) / (1 - DEADZONE) * Math.sign(v) : 0);
@@ -10,7 +10,7 @@ export function createInput(renderer) {
   const keys = new Set();
   const held = { recenter: 0, spawn: 0 };
   const edge = { stance: false, keyStance: false };
-  const out = { steer: 0, drive: 0, jump: false, manual: 0, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
+  const out = { steer: 0, drive: 0, jump: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
 
   addEventListener('keydown', (event) => {
@@ -21,12 +21,10 @@ export function createInput(renderer) {
   addEventListener('blur', () => keys.clear());
 
   function poll(dt) {
-    let steer = 0, drive = 0, jump = false, manual = 0, toggleStance = false, recenter = false, toSpawn = false;
+    let steer = 0, drive = 0, jump = false, toggleStance = false, recenter = false, toSpawn = false;
     steer += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
     drive += Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
     jump = keys.has('Space');
-    if (keys.has('KeyM')) manual = 1;
-    if (keys.has('KeyN')) manual = -1;
     const keyStance = keys.has('KeyZ');
     if (keyStance && !edge.keyStance) toggleStance = true;
     edge.keyStance = keyStance;
@@ -49,7 +47,6 @@ export function createInput(renderer) {
         } else if (source.handedness === 'right') {
           jump = jump || !!buttons[BUTTON.a]?.pressed || !!buttons[BUTTON.trigger]?.pressed;
           rightSqueeze = !!buttons[BUTTON.squeeze]?.pressed;
-          if (buttons[BUTTON.b]?.pressed) manual = 1;
         }
       }
       if (leftY && !edge.stance) toggleStance = true;
@@ -63,7 +60,6 @@ export function createInput(renderer) {
     out.steer = Math.max(-1, Math.min(1, steer));
     out.drive = Math.max(-1, Math.min(1, drive));
     out.jump = jump;
-    out.manual = manual;
     out.recenter = recenter;
     out.toSpawn = toSpawn;
     out.toggleStance = toggleStance;

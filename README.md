@@ -9,7 +9,7 @@ the skating itself is fun. Static files, no build step — `dist/` is what GitHu
 
 | Input | Does |
 | --- | --- |
-| Left stick up / down | Push (kicks repeat while held) / brake. A quick up-down (or down-up) flick is a manual |
+| Left stick up / down | Push (kicks repeat while held) / brake. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
 | Left stick sideways | Steer · spin in the air · **balance on a grind** |
 | Right **A** (or right trigger) | Hold to crouch, release to ollie. A longer hold pops higher |
 | Left **Y** | Switch regular / goofy (only when slow) |
@@ -20,10 +20,9 @@ The camera is bolted to the board: it goes where the board goes, turns when it t
 lying on, so walls and grind balance swing the whole world around you. Gentle slopes (a fun box, a bank edge) are eased
 so they don't snap the view; past about 50° (a half-pipe wall) it follows almost rigidly. Tune it in `RIDER` in `config.js`.
 
-**Manuals.** Easiest: press **right B** while rolling, and you're in one. It also works in the air: ollie, press B (or flick)
-while you're up, and you land in the manual. The stick way: flick the left stick forward then back (a loose flick is fine, about
-half a second end to end) while rolling (about 1.5 m/s or more): the nose
-comes up and the balance meter appears. Back then forward is a nose manual. Balance it with forward/back on the stick
+**Manuals.** Flick the left stick forward then back (a loose flick is fine, about half a second end to end) while rolling
+(about 1.5 m/s or more) for a manual: the nose comes up and the balance meter appears. Back then forward is a nose manual.
+Flick in the air after an ollie and you land in it. Balance it with forward/back on the stick
 (back leans a manual further over, forward brings it back; it gets harder the longer you hold it, and over-leaning is a
 bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
 out of speed. The camera tilts with the board. Tune it in the `manual*` and `flick*` values in `config.js`.

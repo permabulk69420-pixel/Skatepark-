@@ -1,5 +1,5 @@
 {
- "build": "d985d94",
+ "build": "b9dcd78",
  "files": {
   "src/main.js": "b5d5a4ac27",
   "src/skate/board-view.js": "77fa836db5",
@@ -7,10 +7,10 @@
   "src/skate/hands.js": "74e3b8c5cc",
   "src/skate/haptics.js": "764fa2faba",
   "src/skate/hud.js": "315e33c808",
-  "src/skate/input.js": "3349b38596",
+  "src/skate/input.js": "cc9b8cd958",
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "330baf123c",
-  "src/skate/sim.js": "45ad13838e",
+  "src/skate/sim.js": "e815478b8d",
   "src/skate/world.js": "5df651f790",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
   "vendor/addons/objects/Sky.js": "e7409db15c",

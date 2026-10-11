@@ -125,26 +125,6 @@ test('a flick made in the air that is too old by the time you land is forgotten'
   assert.deepEqual(starts(events), []);
 });
 
-test('the manual button (right B) starts one, and in the air it lands you in one', () => {
-  const grounded = [];
-  const a = rolling(4, grounded);
-  run(a, (t) => ({ manual: t > 0.3 && t < 0.4 ? 1 : 0 }), 1);
-  assert.deepEqual(starts(grounded), ['Manual']);
-
-  const airborne = [];
-  const b = rolling(4, airborne);
-  run(b, (t) => ({ jump: ollie(0.2)(t), manual: t > 0.45 && t < 0.55 ? 1 : 0 }), 2.2);
-  assert.deepEqual(starts(airborne), ['Manual']);
-  assert.ok(airborne.map((e) => e.type).indexOf('manualStart') > airborne.map((e) => e.type).lastIndexOf('pop'));
-});
-
-test('the button works even with the ollie button held (a deliberate press)', () => {
-  const events = [];
-  const s = rolling(4, events);
-  run(s, (t) => ({ jump: true, manual: t > 0.3 && t < 0.4 ? 1 : 0 }), 1);
-  assert.deepEqual(starts(events), ['Manual']);
-});
-
 test('a slower, sloppier flick still counts', () => {
   const events = [];
   const s = rolling(5, events);
