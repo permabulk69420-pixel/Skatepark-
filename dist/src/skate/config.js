@@ -93,6 +93,9 @@ export const TUNING = Object.freeze({
   catchMaxRise: 1.0,
   grindMinSpeed: 0.9,
   grindStallSpeed: 0.35,
+  copingSlideMinSpeed: 2.2,  // a coping boardslide needs this much speed along the lip to catch
+  copingSlideEnd: 1.2,       // …and ends (into the pit) if it slows below this
+  copingDropIn: 1.0,         // m/s into the pit when it ends
   grindCooldown: 0.3,
   grindFriction: Object.freeze({ rail: 0.5, coping: 0.7, ledge: 1.1 }),
   grindAlignRate: 14,
@@ -134,7 +137,7 @@ export const TUNING = Object.freeze({
   // hold, not a tap: it builds while you hold and drains fast when you let go) and enough speed carried to the lip to
   // clear it (the board remembers its energy at launch; a pop does not count). Otherwise the air is held over the pit and
   // comes back down into the transition.
-  passHold: 2,               // seconds of forward held before an air will pass over
+  passPopWindow: 0.45,       // an air passes over a lip only if it began with an ollie this recently; riding up and launching just comes back in
   passHoldMax: 4,
   passHoldDrain: 2,          // how many times faster letting go empties it than holding fills it
   lipPassFrom: 4.0,          // m/s carried to the lip needed to clear it…
