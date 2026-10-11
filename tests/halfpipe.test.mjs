@@ -162,3 +162,56 @@ test('an ollie off the wall goes up, not backwards into the pipe', () => {
     assert.ok(vxAfter < 0.3, `pop at y>${popAtY} threw the board backwards (vx ${vxAfter.toFixed(2)})`);
   }
 });
+
+// Furthest the board gets from the pipe's centre while above the lip, i.e. whether an air went out over the top.
+function airOverLip(s, input, seconds) {
+  let maxOut = 0, apex = 0, first = { air: -1, over: -1 };
+  run(s, input, seconds, 1 / 72, (t, sk) => {
+    apex = Math.max(apex, sk.pos.y);
+    if (sk.pos.y > PIPE.height + 0.2 && first.air < 0) first.air = t;
+    if (Math.abs(sk.pos.x) > PIPE.lip + 0.8 && sk.pos.y > PIPE.height - 0.3 && first.over < 0) first.over = t;
+    if (sk.pos.y > PIPE.height - 0.3) maxOut = Math.max(maxOut, Math.abs(sk.pos.x) - PIPE.lip);
+  });
+  return { maxOut, apex, ...first };
+}
+
+test('an air out of the lip with ordinary speed comes back down into the pipe, pop or no pop', () => {
+  for (const popAtY of [null, 1.0, 1.6]) {
+    const events = [];
+    const s = pipeSkater({ events, withCoping: true });
+    rollFrom(s, 0, 7.6, -1);
+    let t0 = -1;
+    const r = airOverLip(s, (t, sk) => {
+      if (popAtY !== null && t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat && sk.pos.y > popAtY && sk.vel.y > 0) t0 = t;
+      return { jump: t0 >= 0 && t - t0 < 0.05 };
+    }, 5);
+    assert.ok(r.maxOut < 0.2, `pop ${popAtY}: drifted ${r.maxOut.toFixed(2)} m out over the lip`);
+    assert.deepEqual(bails(events), [], `pop ${popAtY}: bailed coming back in`);
+    assert.ok(Math.abs(s.pos.x) < PIPE.lip + 0.2, 'ended up outside the pipe');
+  }
+});
+
+test('carrying real speed to the lip takes you out over the top, with or without a pop', () => {
+  for (const pop of [false, true]) {
+    const events = [];
+    const s = pipeSkater({ events, withCoping: true });
+    rollFrom(s, 0, 10.2, -1);
+    let t0 = -1;
+    const r = airOverLip(s, (t, sk) => {
+      if (pop && t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat + 1 && sk.pos.y > 1.0 && sk.vel.y > 0) t0 = t;
+      return { jump: t0 >= 0 && t - t0 < 0.05 };
+    }, 2.5);
+    assert.ok(r.maxOut > 1.2, `${pop ? 'pop' : 'no pop'}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
+    assert.deepEqual(bails(events), []);
+  }
+});
+
+test('holding forward: early airs stay in the pipe, and a decent while later you pass over', () => {
+  const s = pipeSkater({ withCoping: true });
+  rollFrom(s, 0, 4, -1);
+  const r = airOverLip(s, { drive: 1 }, 25);
+  assert.ok(r.air > 0 && r.over > 0, `air at ${r.air}, over at ${r.over}`);
+  assert.ok(r.air < r.over, 'passed over before ever airing in the pipe');
+  assert.ok(r.over > 6, `passed over after only ${r.over.toFixed(1)} s`);
+  assert.ok(r.over < 22, `still had not passed over after ${r.over.toFixed(1)} s`);
+});

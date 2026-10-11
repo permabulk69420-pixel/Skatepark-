@@ -64,7 +64,10 @@ export const TUNING = Object.freeze({
   wallEventSpeed: 0.7,       // below this a bump makes no noise
   landMaxAngle: 0.78,        // rad (45°) board-vs-travel misalignment that still lands
   landAngleMinSpeed: 3.0,
-  landBailImpact: 11,        // m/s into the ground
+  wallLandFrom: 0.9,         // surfaces steeper than this (normal y) are ridden when you land on them…
+  wallLandSpan: 0.5,         // …fully by this much steeper
+  wallLandKeep: 0.75,        // share of the speed that would have gone into the wall that carries on down it
+  landBailImpact: 13,        // m/s into the ground
   bounds: Object.freeze({ x: 54.6, z: 46.3 }),
   killY: -12,
 
@@ -96,7 +99,7 @@ export const TUNING = Object.freeze({
 
   // Pumping with the stick: holding forward on a curved surface (a transition, a bank) pumps it, the same way forward pushes
   // on the flat. This is how you build the speed to reach a lip and air out of it.
-  autoPump: 2.6,             // m/s² of speed at full curvature
+  autoPump: 3.4,             // m/s² of speed at full curvature
   autoPumpMaxSpeed: 10.5,    // no more pumping beyond this
 
   // Pumping: standing up out of a squat while on a curved surface adds speed (VR: your real knees do it)
@@ -107,9 +110,25 @@ export const TUNING = Object.freeze({
   pumpCurve: 0.22,           // 1 - surface normal y at which the pump is at full strength
   pumpEventSpeed: 0.18,      // speed gained in one stand-up worth a haptic tick
 
+  // Airs at a lip: stay in the pipe unless you carried real speed. At launch the board remembers its energy (a pop does not
+  // count). Compared with the height of the nearest coping that is the speed you had at the lip: below passFrom an air is
+  // held over the pit and comes back down into it, above passTo you are carried out over the top.
+  lipZone: 3.2,              // how far from a lip (horizontally) this applies
+  lipPassFrom: 5.4,          // m/s carried to the lip
+  lipPassTo: 6.6,
+  lipHoldDist: 0.28,         // an air that should stay is held this far inside the lip line, against the wall, so it rides back down the face
+  lipSpring: 60,
+  lipDamp: 15,
+  lipMaxAccel: 30,
+  lipOutwardAccel: 12,
+  lipOutwardSpeed: 2.6,      // an air that earned it is sent this fast out over the lip
+  lipOutwardZone: 2.5,       // …while it is within this of the lip line
+
   // Axle stall / rock to fakie: catching coping square-on while almost stopped
   stallLateral: 0.3,
   stallIntoPit: 0.6,         // heading over the coping this fast towards the drop is a drop-in, not a stall
+  stallCooldown: 1.4,        // after rocking out of a stall you cannot catch that same lip again for this long
+  stallMaxVertical: 1.4,     // no stall catch while moving this fast up or down
   stallBackSpeed: 1.9,       // pop off a stall and you roll back down the way you came, this fast
   stallPopScale: 0.55,
 

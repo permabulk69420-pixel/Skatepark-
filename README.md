@@ -36,7 +36,12 @@ fast is a bail: the board tumbles, the view fades, and you are put back where yo
 you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
 you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
 square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
-back in fakie (it only catches when you come up from the pit, never when you drop in). **Hold forward on a transition to pump it** (the same input that pushes on the flat):
+back in fakie (it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you earned the pass.** Ollie at the lip, or just fly out of it, and you are held over the
+pit and ride back down the wall. Carry enough speed to the lip and you are sent out over the top onto the deck instead; the
+pop does not count, only the speed you brought (see `lip*` in `config.js`). Holding forward builds that speed in a few
+passes (about 6 s from a 4 m/s start on the mini ramp).
+
+**Hold forward on a transition to pump it** (the same input that pushes on the flat):
 speed builds pass after pass until you can reach the lip and air out of it. An ollie on a wall pops you up, not backwards
 into the pipe. In VR you can also **pump** with your real
 knees: squat, then stand as you go up a transition and you gain speed (squatting costs a little, so mashing doesn't pay).
