@@ -2,7 +2,7 @@
 
 A Quest 3 WebXR skateboarding test bed: you ride a RIFT board around, to find out whether the skating itself is fun.
 There are two levels, picked with `?level=` (or the links in the info panel): **Breakwater** (a 104 × 88 m skatepark, the
-default) and **Eastbank school** (`?level=eastbank`, a 180 × 150 m school campus). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
+default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
 
 ## Playing
 
@@ -101,7 +101,8 @@ dist/assets/skateboard.glb game version of the board (2 MB)
 dist/assets/levels/        optimised level models (eastbank-school.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
-tools/optimise-level.mjs   raw level GLB -> chunked, LOD'd, compressed game GLB (see Levels)
+tools/export-blend.py      level .blend -> raw GLB, via Blender as a Python module (see Levels)
+tools/optimise-level.mjs   raw level GLB -> merged, chunked, LOD'd, compressed game GLB (see Levels)
 tools/measure-level.mjs    triangles / draw calls per view over a grid of ground positions, with and without LODs
 tools/check-level.mjs      drives the real skater on a level: spawns, ground grid, every grind path
 tools/shoot-level.mjs      screenshots a level from chosen spots
@@ -117,20 +118,24 @@ A level is a GLB with `ENV_*` render meshes, `COL_*` collision meshes (invisible
 `grind_path`) and a `Spawn_Entrance` node. Add it to `dist/src/skate/levels.js` with its play-area `bounds` (the skater is
 kept inside them) and the `?level=` id it answers to.
 
-Eastbank school comes from a raw 80 MB export (one huge mesh per material, 2048² textures: 1.6 M triangles and ~335 MB of
-texture memory). `node tools/optimise-level.mjs <raw.glb> dist/assets/levels/eastbank-school.glb` turns it into the game file
-(32 MB, ~60 MB of texture memory):
+Eastbank school is built by Codex in Blender. `tools/export-blend.py` turns the `.blend` into a raw GLB (it runs Blender as a
+Python module, so no Blender install is needed), and `node tools/optimise-level.mjs <raw.glb> dist/assets/levels/eastbank-school.glb`
+turns that into the game file. The first export came in at 80 MB with 1.6 M triangles and ~335 MB of texture memory; the
+current one is a 7.7 MB game file. The optimiser:
 
-- render meshes are cut into chunks with a quadtree (a square only splits while it holds too many triangles), so culling works
+- bakes every object's transform and merges everything that shares a material, so thousands of separate objects do not become
+  thousands of draw calls (collision pieces are merged by area, `COL_<Area>`, and otherwise left exactly as exported);
+- cuts the render meshes into chunks with a quadtree (a square only splits while it holds too many triangles), so culling works
   and sparse things such as rails stay a single draw call;
-- every chunk gets LOD1/LOD2 copies, swapped in by distance to the chunk's box (`lod.js`). Geometry is simplified with locked
+- gives every chunk LOD1/LOD2 copies, swapped in by distance to the chunk's box (`lod.js`). Geometry is simplified with locked
   borders so chunks do not crack apart; leaf cards are thinned (whole leaves dropped, the rest scaled up) instead;
-- positions, normals and colours are quantised, textures are resized (base/normal 1024², ORM 512²) and stored as WebP, buffers
-  are meshopt-compressed. Collision meshes are left exactly as exported.
+- quantises positions, normals and colours, resizes textures (base/normal 1024², ORM 512²) to WebP, and meshopt-compresses
+  the buffers.
 
-The raw export lives on the `level/eastbank-school` branch (`git show origin/level/eastbank-school:dist/assets/levels/eastbank-school.glb > raw.glb`).
-`node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw: about 420 k triangles and 93 draw calls on
-average, at worst ~760 k and ~220 (Breakwater: see `node tools/measure-level.mjs breakwater`).
+`node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
+without LODs); `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
+grind path); `node tools/shoot-level.mjs eastbank <dir> x,z,heading …` takes screenshots. The raw first export lives on the
+`level/eastbank-school` branch.
 
 ## Cache busting (so you always test the latest)
 

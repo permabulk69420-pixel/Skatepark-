@@ -1,5 +1,6 @@
 // The levels the game can load, picked with ?level=<id> (default: the first one). Each entry says where its model is and the few
-// things that differ per level: how far the static sun shadow has to reach, which meshes are left out of it, and the intro text.
+// things that differ per level: how far the static sun shadow has to reach (around `center`, default the origin), which meshes
+// are left out of it, and the intro text.
 export const LEVELS = {
   breakwater: {
     name: 'Breakwater',
@@ -13,9 +14,10 @@ export const LEVELS = {
   eastbank: {
     name: 'Eastbank school',
     file: 'assets/levels/eastbank-school.glb',
-    blurb: '180 × 150 metres · School campus: stairs, rails, ledges and a drainage basin · RIFT board',
-    bounds: { x: 87.5, z: 67, cz: 2.5 },
-    shadowHalf: 100,
+    blurb: '210 × 160 metres · School campus: seven linked sections, rails, ledges, a locker hall and a drainage basin · RIFT board',
+    bounds: { x: 103.5, z: 77.5, cx: 7, cz: -8 },
+    shadowHalf: 125,
+    center: { x: 7, z: -8 },
     // Ground slabs and terrain do not cast; trees, buildings and props do.
     noShadow: /Landscape_Landscape|Site_Concrete|Site_Asphalt|Asphalt/
   }

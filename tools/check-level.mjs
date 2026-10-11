@@ -37,7 +37,7 @@ try {
     }
 
     // 2. ground grid
-    for (let x = -88; x <= 88; x += 4) for (let z = -74; z <= 74; z += 4) {
+    for (let x = -96; x <= 110; x += 4) for (let z = -86; z <= 70; z += 4) {
       const g = world.ground(x, z, 30, out);
       if (!g || g.ny < 0.9) continue;
       result.grid.total++;
