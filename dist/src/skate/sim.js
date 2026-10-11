@@ -44,7 +44,7 @@ export class Skater {
 
     this.steer = 0; this.drive = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false;
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0;
     this.spinVel = 0; this.exitAlign = 0;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
@@ -272,6 +272,7 @@ export class Skater {
     this.airTime = 0;
     this.edgeGrace = T.edgeGrace;
     this.rolledOff = true;
+    this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
     this.groundedTime = 0;
     this.braking = false;
   }
@@ -281,6 +282,7 @@ export class Skater {
     // Straight off the surface on flat ground, but leaning towards straight up as it steepens: popping off a wall along
     // its normal would throw you backwards into the pit.
     const n = this.groundNormal;
+    const energyBeforePop = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
     const lean = Math.pow(clamp(n.y, 0, 1), T.popUpBias);
     _tmp.copy(UP).multiplyScalar(1 - lean).addScaledVector(n, lean).normalize();
     this.vel.addScaledVector(_tmp, speed);
@@ -290,6 +292,7 @@ export class Skater {
     this.pos.addScaledVector(this.groundNormal, 0.012); // lift off so the ground check does not re-catch us
     this.leaveGround();
     this.rolledOff = false;
+    this.launchE = energyBeforePop;   // speed carried to a lip is what counts, not the pop
     this.onEvent('pop', { charge, speed });
   }
 
@@ -317,6 +320,7 @@ export class Skater {
     }
 
     this.hugWall(h);
+    this.lipAir(h);
 
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.clampBounds(_np);
@@ -325,6 +329,47 @@ export class Skater {
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
+  }
+
+  // Airs near a coping lip. Carry enough speed to the lip (see TUNING.lipPassFrom) and you are sent out over the top;
+  // carry less and the air is held over the pit so you come back down into the transition, pop or no pop.
+  lipAir(h) {
+    let best = null, bestD = T.lipZone;
+    const px = this.pos.x, pz = this.pos.z;
+    for (const path of this.paths) {
+      if (path.kind !== 'coping') continue;
+      const b = path.bounds;
+      if (Math.max(b.min.x - px, 0, px - b.max.x) > bestD || Math.max(b.min.z - pz, 0, pz - b.max.z) > bestD) continue;
+      for (const seg of path.segments) {
+        const abx = seg.b.x - seg.a.x, abz = seg.b.z - seg.a.z;
+        const len2 = abx * abx + abz * abz;
+        if (len2 < 1e-9) continue;
+        const t = clamp(((px - seg.a.x) * abx + (pz - seg.a.z) * abz) / len2, 0, 1);
+        const d = Math.hypot(px - (seg.a.x + abx * t), pz - (seg.a.z + abz * t));
+        if (d < bestD) { bestD = d; best = { path, seg, t }; }
+      }
+    }
+    if (!best) return;
+    const { path, seg, t } = best;
+    const lipY = seg.a.y + (seg.b.y - seg.a.y) * t + path.topOffset;
+    if (this.pos.y < lipY + 0.02 || this.pos.y > lipY + 10) return;
+    const pit = this.pitDirection(seg);
+    if (!pit) return;
+    const cx = seg.a.x + (seg.b.x - seg.a.x) * t, cz = seg.a.z + (seg.b.z - seg.a.z) * t;
+    const intoPit = (px - cx) * pit.x + (pz - cz) * pit.y;       // + over the pit, − over the deck
+    const outward = -(this.vel.x * pit.x + this.vel.z * pit.y);  // + moving out over the lip
+    const carried = Math.sqrt(Math.max(0, 2 * (this.launchE - T.gravity * lipY)));
+    const pass = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo);
+    if (pass < 0.5) {
+      // A damped spring to just inside the lip line: the air stays over the pit and comes back down against the wall.
+      if (intoPit > -0.7 && intoPit < T.lipHoldDist + 2) {
+        const acc = clamp(T.lipSpring * (T.lipHoldDist - intoPit) + T.lipDamp * outward, -T.lipMaxAccel, T.lipMaxAccel);
+        this.vel.x += pit.x * acc * h; this.vel.z += pit.y * acc * h;
+      }
+    } else if (intoPit > -T.lipOutwardZone && outward < T.lipOutwardSpeed) {
+      const dv = Math.min(T.lipOutwardSpeed - outward, T.lipOutwardAccel * h);
+      this.vel.x -= pit.x * dv; this.vel.z -= pit.y * dv;
+    }
   }
 
   // Rolling slowly off a lip onto a steep wall (a drop-in) the rider leans into the wall and rides it down; without this the
@@ -396,6 +441,12 @@ export class Skater {
     }
     if (impact > T.landBailImpact) { this.bail('impact'); return; }
     this.vel.copy(_tmp);
+    // Coming back down onto a steep wall you are riding it, not slamming into it: most of the fall carries on down the face.
+    const wallness = clamp((T.wallLandFrom - n.y) / T.wallLandSpan, 0, 1);
+    if (wallness > 0 && flatSpeed > 1e-3) {
+      const total = Math.hypot(flatSpeed, impact);
+      this.vel.multiplyScalar((flatSpeed + (total - flatSpeed) * T.wallLandKeep * wallness) / flatSpeed);
+    }
     this.mode = Mode.GROUND;
     this.rolledOff = false;
     this.groundedTime = 0;
@@ -597,6 +648,8 @@ export class Skater {
     // Square-on to coping and nearly stopped is not a failed grind, it is an axle stall (rock to fakie).
     const stall = mode === 'slide' && path.kind === 'coping' && Math.abs(gs) < T.grindMinSpeed;
     if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
+    // A stall is something you do at the top of a climb; falling back past the coping at speed is not it.
+    if (stall && Math.abs(this.vel.y) > T.stallMaxVertical) return false;
     // The way back in is the way we came: against the part of our motion that was square to the coping.
     let backX = 0, backZ = 0;
     if (stall) {
@@ -738,13 +791,14 @@ export class Skater {
     const g = this.grind;
     const seg = g.path.segmentAt(g.s);
     this.vel.copy(seg.dir).multiplyScalar(g.gs);
+    this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
     if (popSpeed > 0) this.vel.y += popSpeed;
     if (g.stall && popSpeed > 0) this.vel.addScaledVector(g.back, T.stallBackSpeed);
     this.mode = Mode.AIR;
     this.rolledOff = false;
     this.airTime = 0;
     this.exitAlign = T.exitAlignTime;
-    this.grindCooldown = T.grindCooldown;
+    this.grindCooldown = g.stall ? T.stallCooldown : T.grindCooldown;
     this.lastGrindPath = g.path;
     this.popTimer = popSpeed > 0 ? 0 : 99;
     if (popSpeed > 0) this.crouch = -RIDER.popRebound;
