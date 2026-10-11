@@ -90,8 +90,8 @@ test('axle stall: reaching the coping almost stopped and square-on catches it; p
     let stallTime = -1;
     run(s, (t, sk) => {
       if (sk.mode === Mode.GRIND && stallTime < 0) stallTime = t;
-      const steer = sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.4 + sk.grind.balVel * 0.8), -1, 1) : 0;
-      return { steer, jump: stallTime >= 0 && t - stallTime > 0.5 && t - stallTime < 0.62 };
+      const lean = sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.4 + sk.grind.balVel * 0.8), -1, 1) : 0;
+      return { lean, jump: stallTime >= 0 && t - stallTime > 0.5 && t - stallTime < 0.62 };
     }, 6);
     const start = events.find((e) => e.type === 'grindStart');
     if (start?.data.name === 'Axle Stall') found = { speed, events, s };

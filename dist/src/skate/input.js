@@ -10,7 +10,7 @@ export function createInput(renderer) {
   const keys = new Set();
   const held = { recenter: 0, spawn: 0 };
   const edge = { stance: false, keyStance: false };
-  const out = { steer: 0, drive: 0, jump: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
+  const out = { steer: 0, drive: 0, lean: 0, jump: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
 
   addEventListener('keydown', (event) => {
@@ -59,6 +59,8 @@ export function createInput(renderer) {
 
     out.steer = Math.max(-1, Math.min(1, steer));
     out.drive = Math.max(-1, Math.min(1, drive));
+    // Balance comes from the hands in VR (main.js sets it); on a flat screen A/D balance so it stays playable for testing.
+    out.lean = session ? 0 : out.steer;
     out.jump = jump;
     out.recenter = recenter;
     out.toSpawn = toSpawn;
