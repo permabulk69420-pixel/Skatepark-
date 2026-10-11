@@ -98,3 +98,67 @@ test('the manual shows up as a balance meter for the HUD', () => {
   run(g, {}, 0.5);
   assert.equal(g.balance, null);
 });
+
+// ---- easier ways in ----
+const ollie = (t0) => (t) => t >= t0 && t < t0 + 0.08;
+
+test('ollie, flick in the air, land in the manual', () => {
+  const events = [];
+  const s = rolling(5, events);
+  run(s, (t) => ({ jump: ollie(0.2)(t), drive: flick(0.45, 1)(t) }), 2.2);
+  const types = events.map((e) => e.type);
+  assert.ok(types.includes('pop'), 'never popped');
+  const land = types.lastIndexOf('land');
+  const start = types.indexOf('manualStart');
+  assert.ok(start > land && land > types.indexOf('pop'), `order: ${types.join(' ')}`);
+  assert.deepEqual(starts(events), ['Manual']);
+  assert.equal(s.mode, Mode.GROUND);
+});
+
+test('a flick made in the air that is too old by the time you land is forgotten', () => {
+  const events = [];
+  const s = rolling(5, events);
+  // an enormous air: flick right after popping, land over a second later
+  run(s, (t) => ({ jump: ollie(0.1)(t), drive: flick(0.2, 1)(t) }), 0.3);
+  s.pos.y = 8; s.vel.y = 0;
+  run(s, {}, 3);
+  assert.deepEqual(starts(events), []);
+});
+
+test('the manual button (right B) starts one, and in the air it lands you in one', () => {
+  const grounded = [];
+  const a = rolling(4, grounded);
+  run(a, (t) => ({ manual: t > 0.3 && t < 0.4 ? 1 : 0 }), 1);
+  assert.deepEqual(starts(grounded), ['Manual']);
+
+  const airborne = [];
+  const b = rolling(4, airborne);
+  run(b, (t) => ({ jump: ollie(0.2)(t), manual: t > 0.45 && t < 0.55 ? 1 : 0 }), 2.2);
+  assert.deepEqual(starts(airborne), ['Manual']);
+  assert.ok(airborne.map((e) => e.type).indexOf('manualStart') > airborne.map((e) => e.type).lastIndexOf('pop'));
+});
+
+test('the button works even with the ollie button held (a deliberate press)', () => {
+  const events = [];
+  const s = rolling(4, events);
+  run(s, (t) => ({ jump: true, manual: t > 0.3 && t < 0.4 ? 1 : 0 }), 1);
+  assert.deepEqual(starts(events), ['Manual']);
+});
+
+test('a slower, sloppier flick still counts', () => {
+  const events = [];
+  const s = rolling(5, events);
+  // forward to 0.55 for 0.2 s, then back to -0.55 about half a second after the first half began
+  run(s, (t) => ({ drive: t >= 0.3 && t < 0.5 ? 0.55 : t >= 0.75 && t < 0.95 ? -0.55 : 0 }), 1.5);
+  assert.deepEqual(starts(events), ['Manual']);
+});
+
+test('a manual can start the moment you land, not only after rolling a while', () => {
+  const events = [];
+  const s = rolling(5, events);
+  run(s, (t) => ({ jump: ollie(0.1)(t) }), 0.95);          // roughly touching down
+  const landedAt = events.findIndex((e) => e.type === 'land');
+  assert.ok(landedAt >= 0 && s.mode === Mode.GROUND, 'did not land yet');
+  run(s, (t) => ({ drive: flick(0, 1)(t) }), 0.6);
+  assert.deepEqual(starts(events), ['Manual']);
+});

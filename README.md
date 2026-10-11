@@ -20,7 +20,9 @@ The camera is bolted to the board: it goes where the board goes, turns when it t
 lying on, so walls and grind balance swing the whole world around you. Gentle slopes (a fun box, a bank edge) are eased
 so they don't snap the view; past about 50° (a half-pipe wall) it follows almost rigidly. Tune it in `RIDER` in `config.js`.
 
-**Manuals.** Flick the left stick forward then back, quickly, while rolling (about 2 m/s or more) for a manual: the nose
+**Manuals.** Easiest: press **right B** while rolling, and you're in one. It also works in the air: ollie, press B (or flick)
+while you're up, and you land in the manual. The stick way: flick the left stick forward then back (a loose flick is fine, about
+half a second end to end) while rolling (about 1.5 m/s or more): the nose
 comes up and the balance meter appears. Back then forward is a nose manual. Balance it with forward/back on the stick
 (back leans a manual further over, forward brings it back; it gets harder the longer you hold it, and over-leaning is a
 bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
