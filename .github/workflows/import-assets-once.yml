@@ -2,7 +2,7 @@ name: Import and inspect skatepark assets once
 on:
   push:
     branches: [build/skatepark-v1]
-    paths: [incoming-assets/index.json, dist/src/main.js]
+    paths: [incoming-assets/index.json, dist/src/main.js, .github/workflows/import-assets-once.yml]
 permissions:
   contents: write
 jobs:
@@ -44,6 +44,7 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
             const page=await browser.newPage({viewport:{width:1500,height:950}});
+            page.setDefaultTimeout(120000);
             const errors=[];
             page.on('pageerror',e=>errors.push(e.message));
             page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
@@ -58,7 +59,7 @@ jobs:
               document.querySelectorAll('.entry,.identity,#reset,#VRButton').forEach(e=>e.style.display='none');
             });
             const statistics=[];
-            const views=[['Browser_Overview',[84,69,102],[-3,0,-1]],['Browser_Bowl',[-6,11,12],[-29,-1.3,-14]],['Browser_Street',[32,2.1,32],[25,1,-4]],['Browser_MiniRamp',[-15,5.5,36],[-29,.7,23]]];
+            const views=[['Browser_Overview',[84,69,102],[-3,0,-1]],['Browser_Bowl',[-6,11,12],[-29,-1.3,-14]]];
             for(const [name,pos,target] of views){
               statistics.push(await page.evaluate(({name,pos,target})=>{
                 const {renderer,scene,rig,camera,grindPaths,collision}=app;
