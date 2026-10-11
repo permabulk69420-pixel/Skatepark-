@@ -432,9 +432,9 @@ export class Skater {
   // ----- flips -----------------------------------------------------------------------------------------------
   startFlip(direction) {
     const kick = direction < 0;
-    // A kickflip rolls the toe-side edge of the board down and under; goofy is the mirror image. (The sign is the only place
-    // to change if it looks backwards.)
-    const sign = (kick ? -1 : 1) * (this.faceOffset < 0 ? 1 : -1);
+    // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
+    // (the first version was backwards: stick left looked like a heelflip in the headset).
+    const sign = (kick ? 1 : -1) * (this.faceOffset < 0 ? 1 : -1);
     headingVec(this.heading, _H);
     const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
     this.flip = { sign, angle: 0, name: `${fakie ? 'Fakie ' : ''}${kick ? 'Kickflip' : 'Heelflip'}` };
