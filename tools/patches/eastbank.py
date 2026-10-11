@@ -7,6 +7,11 @@
 #   2. Several big surfaces were modelled at exactly the same height on top of each other (roads over the concrete extension
 #      and so on), which z-fights. Move them 2 cm apart. Thin joint/marking lines are decals; the game gives those a depth offset.
 #   3. The grass outside the campus had no collision (you fell through it); copy it to collision.
+#   4. The ground around the campus is concrete rather than a dark loam that read as a void.
+#   5. One brick pier (UpperTerrace_SupportPier4) held nothing up and stuck out through the mid landing: removed.
+#   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
+#   7. The dock stairs ran straight into a ledge block sitting across the top step: slide the ledge (and its grind lines) along
+#      the landing so the stairs open onto it.
 import bpy
 import math
 
@@ -47,6 +52,52 @@ def copy_as_collision(name, new_name):
         c.objects.link(new)
 
 
+def replace_material(obj_name, old_part, new_name):
+    o = bpy.data.objects.get(obj_name)
+    new = bpy.data.materials.get(new_name)
+    if o is None or new is None:
+        return
+    for i, m in enumerate(o.data.materials):
+        if m is not None and old_part in m.name:
+            o.data.materials[i] = new
+
+
+def remove(name):
+    o = bpy.data.objects.get(name)
+    if o is not None:
+        bpy.data.objects.remove(o, do_unlink=True)
+
+
+def add_box(name, gx0, gx1, gz0, gz1, gy0, gy1, material, role):
+    """A solid box in glTF extents (Blender y = -glTF z)."""
+    mat = bpy.data.materials.get(material)
+    bpy.ops.mesh.primitive_cube_add(size=2, location=((gx0 + gx1) / 2, -(gz0 + gz1) / 2, (gy0 + gy1) / 2))
+    o = bpy.context.active_object
+    o.scale = ((gx1 - gx0) / 2, (gz1 - gz0) / 2, (gy1 - gy0) / 2)
+    with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o]):
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    o.name = name
+    o.data.name = name
+    o.data.materials.clear()
+    if mat is not None:
+        o.data.materials.append(mat)
+    o['role'] = role
+    return o
+
+
+def shift_x(name, dx):
+    o = bpy.data.objects.get(name)
+    if o is None:
+        return
+    o.location.x += dx
+    pts = o.get('points')
+    if pts is not None:       # grind paths keep their own world-space points
+        shifted = [float(v) for v in pts]
+        for i in range(0, len(shifted), 3):
+            shifted[i] += dx
+        o['points'] = shifted
+
+
 def apply():
     earth = bpy.data.objects.get('Surrounding_Earth')
     if earth is not None:
@@ -57,6 +108,20 @@ def apply():
     lift('EastConcourse_Asphalt', -0.02)
     lift('North_Service_Road', 0.02)
     lift('LockerHall_TimberRunway', 0.02)
+    # the ground around the campus is concrete
+    concrete = 'Concrete | trowelled aggregate / 4m repeat'
+    for name in ('Surrounding_Earth', 'Surrounding_Ground_West', 'Surrounding_Ground_East', 'Surrounding_Ground_North', 'Surrounding_Ground_South'):
+        replace_material(name, 'Landscape', concrete)
+    # a pier that holds nothing up
+    remove('UpperTerrace_SupportPier4')
+    remove('COL_UpperTerrace_SupportPier4')
+    # a base under the Locker Hall floor
+    add_box('LockerHall_Plinth', 78.0, 92.0, -34.0, 16.0, -0.1, 0.5, concrete, 'environment')
+    add_box('COL_LockerHall_Plinth', 78.0, 92.0, -34.0, 16.0, -0.1, 0.5, 'Collision | inspection only', 'collision')
+    # dock stairs: the ledge that sat across the top step moves along the landing (it is 10 m long, the stairs 5 m wide)
+    for name in ('ServiceDock_LandingLedge', 'COL_ServiceDock_LandingLedge', 'PATH_ServiceDock_LandingLedge_Edge0', 'PATH_ServiceDock_LandingLedge_Edge1',
+                 'PATH_ServiceDock_LandingLedge_Edge2', 'PATH_ServiceDock_LandingLedge_Edge3'):
+        shift_x(name, -4.0)
     # rideable ground outside the campus (and under it, so nothing can drop through a gap)
     for name in ('Surrounding_Ground_West', 'Surrounding_Ground_East', 'Surrounding_Ground_North', 'Surrounding_Ground_South', 'Surrounding_Earth'):
         copy_as_collision(name, f'COL_Landscape_Outer_{name.split("_", 1)[1]}')

@@ -13,7 +13,7 @@ try {
     const dt = 1 / 72, out = [];
     const seen = new Set();
     for (const path of sim.paths) {
-      const m = path.name.match(/^PATH_(.*Stair)_Handrail/);
+      const m = path.name.match(/^PATH_(.*Stairs?)_Handrail/);
       if (!m || seen.has(m[1])) continue;
       seen.add(m[1]);
       const pts = path.points;

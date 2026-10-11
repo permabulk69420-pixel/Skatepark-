@@ -5,15 +5,19 @@
 //   * positions/normals/colours are quantised, textures are resized and stored as WebP, buffers are meshopt-compressed
 // Collision meshes and everything that is not a render mesh (grind paths, spawns, hints) pass through untouched.
 //
-//   node tools/optimise-level.mjs <in.glb> <out.glb>
+//   node tools/optimise-level.mjs <in.glb> <out.glb> [tweaks.json]
+// An optional tweaks file corrects materials that were authored wrong, e.g. { "materials": [ { "match": "Asphalt",
+// "texturesFrom": "concrete", "baseColorFactor": [0.4, 0.4, 0.42, 1] } ] } points every material whose name matches at another
+// texture set (<name>_base / _normal / _orm) and tints it.
 import { Document, NodeIO } from '@gltf-transform/core';
 import { EXTMeshoptCompression, EXTTextureWebP, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { prune, reorder, textureCompress } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
+import fs from 'node:fs';
 
-const [input, output] = process.argv.slice(2);
-if (!input || !output) { console.error('usage: node tools/optimise-level.mjs <in.glb> <out.glb>'); process.exit(1); }
+const [input, output, tweaksPath] = process.argv.slice(2);
+if (!input || !output) { console.error('usage: node tools/optimise-level.mjs <in.glb> <out.glb> [tweaks.json]'); process.exit(1); }
 
 await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
 
@@ -41,6 +45,25 @@ const root = doc.getRoot();
 const scene = root.listScenes()[0];
 const buffer = root.listBuffers()[0];
 doc.createExtension(KHRMeshQuantization).setRequired(true);
+
+// Material corrections from the optional tweaks file.
+if (tweaksPath) {
+  const tweaks = JSON.parse(fs.readFileSync(tweaksPath, 'utf8'));
+  const texture = (name) => root.listTextures().find((t) => t.getName() === name);
+  for (const rule of tweaks.materials ?? []) {
+    for (const material of root.listMaterials().filter((m) => new RegExp(rule.match, 'i').test(m.getName()))) {
+      if (rule.texturesFrom) {
+        const [base, normal, orm] = ['base', 'normal', 'orm'].map((k) => texture(`${rule.texturesFrom}_${k}`));
+        if (!base) throw new Error(`tweaks: no texture ${rule.texturesFrom}_base`);
+        material.setBaseColorTexture(base);
+        if (normal) material.setNormalTexture(normal);
+        if (orm) material.setMetallicRoughnessTexture(orm).setOcclusionTexture(orm);
+      }
+      if (rule.baseColorFactor) material.setBaseColorFactor(rule.baseColorFactor);
+      console.log(`tweaked material ${material.getName()}`);
+    }
+  }
+}
 
 const isCollision = (node) => node.getExtras()?.role === 'collision' || /^COL_/.test(node.getName());
 

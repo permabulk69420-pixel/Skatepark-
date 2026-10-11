@@ -140,7 +140,11 @@ current one is a 7.7 MB game file. The optimiser:
 so fixes survive each new version of the `.blend`. The school's patch (1) digs pockets out of the terrain slab, which was
 drawn over everything below −0.4 m and buried the drainage basin and the Forum plaza, (2) moves surfaces that were modelled at
 exactly the same height on top of each other 2 cm apart (roads over the concrete extension, and so on) so they stop z-fighting,
-and (3) copies the grass outside the campus to collision, so it can be ridden. Thin joint and marking lines are decals: the game
+(3) copies the grass outside the campus to collision, so it can be ridden, (4) makes the ground around the campus concrete,
+(5) removes a lone pier that held nothing up, (6) gives the Locker Hall a base (its floor hovered 0.5 m off the ground), and
+(7) slides the ledge that blocked the top of the dock stairs along the landing. A small tweaks file next to it
+(`eastbank.materials.json`) corrects materials in the optimiser: the asphalt used the dark green loam texture, so it is
+re-pointed at the concrete set and tinted grey. Thin joint and marking lines are decals: the game
 gives them a depth offset (`decals` in `levels.js`). `audit-level.mjs` is how to find this sort of thing.
 
 `node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
