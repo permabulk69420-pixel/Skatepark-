@@ -100,6 +100,9 @@ const feel = (type, data = {}) => {
     case 'crouch': haptics.pulse(0.22, 18); break;
     case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
     case 'push': haptics.pulse(0.3, 28); break;
+    case 'flipStart': haptics.pulse(0.3, 22); break;
+    case 'flip': haptics.pulse(0.6, 45); hud?.say(data.name, 1.1); break;
+    case 'sketchy': haptics.pulse(0.55, 80); hud?.say('Sketchy', 0.9); break;
     case 'pump': haptics.pulse(THREE.MathUtils.clamp(0.25 + data.gain * 0.6, 0.25, 0.7), 40); break;
     case 'land': if (data.impact < 0.9) break; haptics.pulse(THREE.MathUtils.clamp(0.2 + data.impact * 0.09, 0.2, 1), Math.min(120, 30 + data.impact * 7)); break;
     case 'wall': haptics.pulse(THREE.MathUtils.clamp(0.3 + data.impact * 0.14, 0.3, 1), 70); break;
