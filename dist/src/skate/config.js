@@ -114,11 +114,11 @@ export const TUNING = Object.freeze({
   // hold, not a tap: it builds while you hold and drains fast when you let go) and enough speed carried to the lip to
   // clear it (the board remembers its energy at launch; a pop does not count). Otherwise the air is held over the pit and
   // comes back down into the transition.
-  passHold: 3,               // seconds of forward held before an air will pass over
+  passHold: 2,               // seconds of forward held before an air will pass over
   passHoldMax: 4,
-  passHoldDrain: 3,          // how many times faster letting go empties it than holding fills it
-  lipPassFrom: 3.8,          // m/s carried to the lip needed to clear it…
-  lipPassTo: 4.6,            // …fully by here
+  passHoldDrain: 2,          // how many times faster letting go empties it than holding fills it
+  lipPassFrom: 4.0,          // m/s carried to the lip needed to clear it…
+  lipPassTo: 4.8,            // …fully by here
   lipZone: 3.2,              // how far from a lip (horizontally) this applies
   lipHoldDist: 0.28,         // an air that should stay is held this far inside the lip line, against the wall, so it rides back down the face
   lipSpring: 60,
@@ -128,12 +128,19 @@ export const TUNING = Object.freeze({
   lipOutwardSpeed: 2.6,      // an air that earned it is sent this fast out over the lip
   lipOutwardZone: 2.5,       // …while it is within this of the lip line
 
+  // In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical) and
+  // eases towards whatever it is about to land on, faster the closer that gets.
+  airTiltFar: 0.9,           // 1/s while far from anything
+  airTiltNear: 7,            // 1/s as the landing surface gets close
+  airTiltReach: 3,           // metres below which "close" starts
+
   // Axle stall / rock to fakie: catching coping square-on while almost stopped
   stallLateral: 0.3,
   stallIntoPit: 0.6,         // heading over the coping this fast towards the drop is a drop-in, not a stall
   stallCooldown: 1.4,        // after rocking out of a stall you cannot catch that same lip again for this long
   stallMaxVertical: 1.4,     // no stall catch while moving this fast up or down
-  stallBackSpeed: 1.9,       // pop off a stall and you roll back down the way you came, this fast
+  stallBackSpeed: 1.9,
+  stallBlockHold: 0.5,       // holding forward this long means you are going over, so no stall catch       // pop off a stall and you roll back down the way you came, this fast
   stallPopScale: 0.55,
 
   // Bail

@@ -38,10 +38,14 @@ you lean into the wall and ride it down. Faster than the lip and you air out ove
 square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
 back in fakie (it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Ollie at the lip, or just fly out of it, and you are held over the
 pit and ride back down the wall, however fast you are going. To pass over the top you have to hold forward on the stick
-for a decent while (about 3 s of it; a tap doesn't build it and letting go drains it fast) *and* have enough speed to
+for a decent while (about 2 s of it; a tap doesn't build it and letting go drains it fast), and it's decided when you
+launch, so you can let go in the air, *and* have enough speed to
 clear the lip (the pop doesn't count, only the speed you brought). Holding forward is also what pumps the transitions, so
-it all happens together: from a 4 m/s start on the mini ramp you pass over after a few passes (see `pass*` and `lip*` in
+it all happens together. Going over never grabs the coping, and holding forward at the top never stalls: from a 4 m/s start on the mini ramp you pass over after a few passes (see `pass*` and `lip*` in
 `config.js`).
+
+In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical, and the
+view with you) and eases towards whatever it is about to land on, faster as the ground gets close.
 
 **Hold forward on a transition to pump it** (the same input that pushes on the flat):
 speed builds pass after pass until you can reach the lip and air out of it. An ollie on a wall pops you up, not backwards
