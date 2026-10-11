@@ -17,7 +17,8 @@ the skating itself is fun. Static files, no build step — `dist/` is what GitHu
 | Hold left **X** | Back to the entrance |
 
 The camera is bolted to the board: it goes where the board goes, turns when it turns and tilts with whatever the board is
-lying on, so ramps, walls and grind balance swing the whole world around you (no smoothing, on purpose).
+lying on, so walls and grind balance swing the whole world around you. Gentle slopes (a fun box, a bank edge) are eased
+so they don't snap the view; past about 50° (a half-pipe wall) it follows almost rigidly. Tune it in `RIDER` in `config.js`.
 
 You stand on the board the way you would on a real one: side-on to travel, facing the board's right side (regular)
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
@@ -35,7 +36,9 @@ fast is a bail: the board tumbles, the view fades, and you are put back where yo
 you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
 you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
 square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
-back in fakie (it only catches when you come up from the pit, never when you drop in). In VR you **pump** with your real
+back in fakie (it only catches when you come up from the pit, never when you drop in). **Hold forward on a transition to pump it** (the same input that pushes on the flat):
+speed builds pass after pass until you can reach the lip and air out of it. An ollie on a wall pops you up, not backwards
+into the pipe. In VR you can also **pump** with your real
 knees: squat, then stand as you go up a transition and you gain speed (squatting costs a little, so mashing doesn't pay).
 
 Haptics: roll rumble, push ticks, crouch tick, pop snap, landing thump scaled to the impact, grind rumble that gets

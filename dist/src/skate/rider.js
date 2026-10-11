@@ -4,6 +4,7 @@ import { Mode } from './sim.js';
 
 const { clamp } = THREE.MathUtils;
 const UP = new THREE.Vector3(0, 1, 0);
+const _smoothUp = new THREE.Vector3();
 const _qBoard = new THREE.Quaternion(), _qOff = new THREE.Quaternion(), _pivot = new THREE.Vector3(), _local = new THREE.Vector3();
 
 // Puts the player on the board. The play space (rig) is bolted to the board: it goes wherever the board goes, turns
@@ -20,6 +21,7 @@ export class Rider {
     this.yawCal = 0;                      // which way the head faced then, relative to the play space
     this.calibrated = false;
     this.settleFrames = 0;
+    this.up = new THREE.Vector3(0, 1, 0);  // the up the view is actually using: the board's, eased
     this.fade = 0;
     this.fadeMesh = this.makeFade();
     camera.add(this.fadeMesh);
@@ -51,6 +53,7 @@ export class Rider {
   update(dt) {
     const sim = this.sim;
     const vr = this.presenting;
+    if (!this.calibrated) this.up.copy(sim.up);
     if (vr) {
       this.rig.updateMatrixWorld(true);
       this.renderer.xr.updateCamera(this.camera);
@@ -72,11 +75,18 @@ export class Rider {
       const e = clamp(sim.bailTime / 0.35, 0, 1);
       drop += T.bailFallDrop * e * e * (3 - 2 * e);
     }
-    _pivot.copy(sim.pos).addScaledVector(sim.up, BOARD.deckTop - drop);
+    // Ease into changes of surface angle: gentle slopes are smoothed, steep walls are followed almost rigidly.
+    const tilt = Math.acos(clamp(sim.up.y, -1, 1));
+    const steep = THREE.MathUtils.smoothstep(tilt, RIDER.tiltGentleAngle, RIDER.tiltSteepAngle);
+    let rate = RIDER.tiltRateGentle + (RIDER.tiltRateSteep - RIDER.tiltRateGentle) * steep;
+    if (sim.mode === Mode.GRIND || sim.mode === Mode.BAIL) rate = RIDER.tiltRateGrind;
+    if (dt > 1) this.up.copy(sim.up);
+    this.up.lerp(sim.up, 1 - Math.exp(-rate * dt)).normalize();
+    _pivot.copy(sim.pos).addScaledVector(this.up, BOARD.deckTop - drop);
 
-    // Rig attitude = the board's frame, then turned so the player's calibrated gaze is the stance direction (side-on in
-    // VR, down the board on a flat screen).
-    sim.boardQuaternion(_qBoard, false);
+    // Rig attitude = the board's frame (heading + eased up), then turned so the player's calibrated gaze is the stance
+    // direction (side-on in VR, down the board on a flat screen).
+    sim.boardQuaternion(_qBoard, false, this.up);
     _qOff.setFromAxisAngle(UP, (vr ? sim.faceOffset : 0) - this.yawCal);
     this.rig.quaternion.copy(_qBoard).multiply(_qOff);
 

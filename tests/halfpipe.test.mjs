@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { Mode } from '../dist/src/skate/sim.js';
 import { PIPE, pipeSkater, rollFrom } from './halfpipe.mjs';
-import { run } from './helpers.mjs';
+import { makeSkater, run } from './helpers.mjs';
 
 const bails = (events) => events.filter((e) => e.type === 'bail').map((e) => e.data.reason);
 
@@ -122,4 +122,43 @@ test('rolling off the deck over the coping is a drop-in, never a stall', () => {
   run(s, {}, 4);
   assert.ok(!events.some((e) => e.type === 'grindStart'), 'caught the coping while dropping in');
   assert.deepEqual(bails(events), []);
+});
+
+test('holding forward pumps the transitions: speed builds pass after pass until you air out over the lip', () => {
+  const s = pipeSkater({ withCoping: false });
+  rollFrom(s, 0, 4, -1);
+  let apexByTen = 0, passes = [], last = 1;
+  run(s, { drive: 1 }, 10, 1 / 72, (t, sk) => {
+    apexByTen = Math.max(apexByTen, sk.pos.y);
+    const side = Math.sign(sk.pos.x);
+    if (side !== last && Math.abs(sk.pos.x) < 0.3 && sk.mode === Mode.GROUND) { passes.push(sk.speed); last = side; }
+  });
+  assert.ok(passes.length >= 3, 'did not complete several passes');
+  assert.ok(Math.max(...passes) > 5.8, `bottom speeds ${passes.map((p) => p.toFixed(1))}`);
+  assert.ok(apexByTen > PIPE.height, `never reached the lip (apex ${apexByTen.toFixed(2)})`);
+});
+
+test('forward on the stick while rolling fakie keeps you rolling, it does not brake you', () => {
+  const s = makeSkater();
+  run(s, {}, 0.5);
+  s.heading = Math.PI / 2;           // nose pointing -X but rolling +X: fakie
+  s.vel.set(4, 0, 0);
+  run(s, { drive: 1 }, 1.5);
+  assert.ok(s.vel.x > 3.5, `fakie speed fell to ${s.vel.x.toFixed(2)}`);
+});
+
+test('an ollie off the wall goes up, not backwards into the pipe', () => {
+  for (const popAtY of [0.5, 1.0, 1.5]) {
+    const popped = pipeSkater({ withCoping: false });
+    const plain = pipeSkater({ withCoping: false });
+    for (const sk of [popped, plain]) rollFrom(sk, 0, 7, -1);
+    let t0 = -1, apexPopped = 0, apexPlain = 0, vxAfter = 0;
+    run(popped, (t, sk) => {
+      if (t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat && sk.pos.y > popAtY && sk.vel.y > 0) t0 = t;
+      return { jump: t0 >= 0 && t - t0 < 0.04 };
+    }, 3, 1 / 72, (t, sk) => { apexPopped = Math.max(apexPopped, sk.pos.y); if (t0 >= 0 && vxAfter === 0 && t - t0 > 0.12) vxAfter = sk.vel.x; });
+    run(plain, {}, 3, 1 / 72, (t, sk) => { apexPlain = Math.max(apexPlain, sk.pos.y); });
+    assert.ok(apexPopped > apexPlain + 0.4, `pop at y>${popAtY}: apex ${apexPopped.toFixed(2)} vs ${apexPlain.toFixed(2)} without`);
+    assert.ok(vxAfter < 0.3, `pop at y>${popAtY} threw the board backwards (vx ${vxAfter.toFixed(2)})`);
+  }
 });
