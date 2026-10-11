@@ -1,5 +1,5 @@
 {
- "build": "81a4add",
+ "build": "6a4c485",
  "files": {
   "src/main.js": "16eb2eaf3e",
   "src/skate/board-view.js": "77fa836db5",
@@ -24,7 +24,7 @@
   "vendor/meshopt_decoder.module.js": "d0eb128f1e",
   "vendor/three.core.js": "01f06f11cb",
   "vendor/three.module.js": "985eb92490",
-  "assets/levels/eastbank-school.glb": "f58fec72c2",
+  "assets/levels/eastbank-school.glb": "015680d09f",
   "assets/skateboard.glb": "24c7390171",
   "assets/skatepark.glb": "88c8d75fdc",
   "models/hands/LeftHand.glb": "ff83a892ce",

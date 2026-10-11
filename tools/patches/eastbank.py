@@ -12,6 +12,7 @@
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
 #   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
 #      turn them round.
+#  11. The Academic upper stairs climbed into the veranda slab: stairwell cut through it.
 #  10. The Canteen stairs ran into the terrace ledge too: set it back 2.5 m.
 #   9. Real frames round the windows and doors, and handles (eastbank_details.py).
 #   7. The dock stairs ran straight into a ledge block sitting across the top step: slide the ledge (and its grind lines) along
@@ -39,6 +40,37 @@ def pocket(earth, gx0, gx1, gz0, gz1, floor=-2.8):
     with bpy.context.temp_override(object=earth, active_object=earth, selected_objects=[earth]):
         bpy.ops.object.modifier_apply(modifier=mod.name)
     bpy.data.objects.remove(cutter, do_unlink=True)
+    whiten_new_faces(earth)
+
+
+def whiten_new_faces(o):
+    """Faces made by a boolean get a transparent-black vertex colour (the level multiplies by it, so they render black): make it white."""
+    for attr in o.data.color_attributes:
+        for d in attr.data:
+            if d.color[3] == 0.0 and sum(d.color[:3]) == 0.0:
+                d.color = (1.0, 1.0, 1.0, 1.0)
+
+
+def cut(name, gx0, gx1, gz0, gz1, gy0, gy1):
+    """Cut a rectangular hole through an object (glTF extents, Blender y = -glTF z)."""
+    o = bpy.data.objects.get(name)
+    if o is None:
+        return
+    by0, by1 = -gz1, -gz0
+    bpy.ops.mesh.primitive_cube_add(size=2, location=((gx0 + gx1) / 2, (by0 + by1) / 2, (gy0 + gy1) / 2))
+    cutter = bpy.context.active_object
+    cutter.scale = ((gx1 - gx0) / 2, (by1 - by0) / 2, (gy1 - gy0) / 2)
+    cutter.data.materials.clear()          # the faces cut into the object take the cutter's material: give it the object's own
+    if o.data.materials and o.data.materials[0] is not None:
+        cutter.data.materials.append(o.data.materials[0])
+    mod = o.modifiers.new('cut', 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.solver = 'EXACT'
+    mod.object = cutter
+    with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o]):
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    whiten_new_faces(o)
 
 
 def copy_as_collision(name, new_name):
@@ -156,6 +188,10 @@ def apply():
     for name in ('Canteen_LongTerraceEdge', 'Canteen_LongTerraceEdge_Edge_-1', 'Canteen_LongTerraceEdge_Edge_1', 'COL_Canteen_LongTerraceEdge',
                  'PATH_Canteen_LongTerraceEdge_Edge_-1', 'PATH_Canteen_LongTerraceEdge_Edge_1'):
         shift_z(name, 2.5)
+    # Academic upper stairs: the second-floor veranda slab ran straight over the whole flight, so the stairs climbed into a ceiling and
+    # the top landing had no way down. Cut the stairwell through the slab (and its collision).
+    for name in ('Academic_Veranda_Upper', 'COL_Academic_Veranda_Upper'):
+        cut(name, 27.6, 31.4, 8.1, 16.2, 4.8, 5.6)
     # signs that faced into their buildings
     for name in ('Admin_Sign', 'Canteen_Sign', 'Gym_FrontSign', 'LedgePlaza_Sign'):
         turn_round(name)
