@@ -48,6 +48,15 @@ jobs:
           git push origin HEAD:level/eastbank-school
       - name: Inspect using the existing Three.js loader
         run: |
+          curl -fL https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz -o /tmp/eastbank-blender.tar.xz
+          tar -xJf /tmp/eastbank-blender.tar.xz -C /tmp
+          EASTBANK_REPO="$GITHUB_WORKSPACE" /tmp/blender-4.5.3-linux-x64/blender -b -t 2 --python .eastbank-work/fix_spawn.py > .eastbank-work/spawn-patch.log 2>&1
+          tail -6 .eastbank-work/spawn-patch.log
+          git config user.name 'Codex'
+          git config user.email 'codex@users.noreply.github.com'
+          git add source/levels/eastbank-school.blend dist/assets/levels/eastbank-school.glb
+          git commit -m 'Move the school entrance spawn onto the open walkway'
+          git push origin HEAD:level/eastbank-school
           npm install --prefix /tmp/eastbank-qa playwright@1.56.1
           /tmp/eastbank-qa/node_modules/.bin/playwright install --with-deps chromium
           mkdir -p incoming-school
