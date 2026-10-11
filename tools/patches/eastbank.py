@@ -12,6 +12,7 @@
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
 #   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
 #      turn them round.
+#  13. The quarter-pipes are re-profiled to end vertical under the coping (eastbank_ramps.py).
 #  12. The 33 white Academic sun-shade fins are removed.
 #  11. The Academic upper stairs climbed into the veranda slab: stairwell cut through it.
 #  10. The Canteen stairs ran into the terrace ledge too: set it back 2.5 m.
@@ -209,3 +210,7 @@ def apply():
     details = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(details)
     details.apply()
+    spec = importlib.util.spec_from_file_location('eastbank_ramps', os.path.join(os.path.dirname(__file__), 'eastbank_ramps.py'))
+    ramps = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ramps)
+    ramps.apply()

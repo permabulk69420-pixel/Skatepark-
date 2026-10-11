@@ -49,7 +49,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
-    this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
+    this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
     this.bailTime = 0; this.bailBoard = null;
@@ -123,6 +123,12 @@ export class Skater {
         else this.grindStep(h);
       }
       if (this.pos.y < T.killY) this.respawn(this.spawn);
+      // Safety net: airborne with a real velocity but not moving at all means the board is wedged in the level geometry. Bail out of it
+      // rather than hang there (and fall through it, in the end).
+      if (this.mode === Mode.AIR && this.pos.distanceToSquared(this._freezePos) < 1e-6 && this.vel.lengthSq() > 0.25) this.freezeT += dt;
+      else this.freezeT = 0;
+      this._freezePos.copy(this.pos);
+      if (this.freezeT > T.freezeBail) { this.freezeT = 0; this.bail('stuck'); }
     }
     this.updateVisuals(dt);
   }
@@ -569,7 +575,16 @@ export class Skater {
       const off = i === 0 ? 0 : (i === 1 ? lead : -lead) * BOARD.wheelHalfBase;
       _a.copy(this.pos).addScaledVector(_H, off).y += 0.02;
       const c = this.world.cast(_a, _sd, len, _cast);
-      if (c && (!best || c.dist < best.dist)) best = { dist: c.dist, nx: c.nx, ny: c.ny, nz: c.nz };
+      if (!c || (best && c.dist >= best.dist)) continue;
+      if (i !== 0 && c.ny >= T.sweepLandMinNormalY) {
+        // A wheel that clips the edge of a flat surface is only a landing if the board's middle would be over that surface too. With
+        // the middle hanging out over a drop (the lip of a ramp) the board just catches the corner, and landing there left it
+        // perched on its front wheels, sat "on the coping" and then sinking through the ramp.
+        const cx = this.pos.x + _sd.x * c.dist, cz = this.pos.z + _sd.z * c.dist, cy = this.pos.y + _sd.y * c.dist;
+        const under = this.world.ground(cx, cz, cy + T.sweepSupportReach, _hit);
+        if (!under || under.y < cy - T.sweepSupportDrop) continue;
+      }
+      best = { dist: c.dist, nx: c.nx, ny: c.ny, nz: c.nz };
     }
     if (!best) return false;
     this.pos.addScaledVector(_sd, best.dist);
@@ -812,6 +827,16 @@ export class Skater {
     if (seg.pit === undefined) {
       const mx = (seg.a.x + seg.b.x) / 2, mz = (seg.a.z + seg.b.z) / 2, y = Math.max(seg.a.y, seg.b.y);
       const px = -seg.dirH.y, pz = seg.dirH.x;
+      // The ramp is the side with the steep face just inside the lip; the other side is a flat deck, or a drop. (Going by "the lower
+      // side" alone picks the wrong side for a wall quarter whose far side is the lower ground outside the building.)
+      const faceA = this.world.ground(mx + px * 0.3, mz + pz * 0.3, y + 1, _hit, 30);
+      const steepA = faceA ? 1 - faceA.ny : 0;
+      const faceB = this.world.ground(mx - px * 0.3, mz - pz * 0.3, y + 1, _hit, 30);
+      const steepB = faceB ? 1 - faceB.ny : 0;
+      if (Math.abs(steepA - steepB) > 0.25) {
+        seg.pit = steepA > steepB ? new THREE.Vector2(px, pz) : new THREE.Vector2(-px, -pz);
+        return seg.pit;
+      }
       const hi = this.world.ground(mx + px * 0.7, mz + pz * 0.7, y + 1, _hit, 30);
       const lo = hi ? hi.y : -Infinity;
       const hj = this.world.ground(mx - px * 0.7, mz - pz * 0.7, y + 1, _hit, 30);
@@ -836,6 +861,9 @@ export class Skater {
     if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
     // Dropping back onto a coping while barely moving along it is not a boardslide (it crawled along the lip until the balance meter dumped you).
     if (!stall && path.kind === 'coping' && mode === 'slide' && Math.abs(gs) < T.copingSlideMinSpeed) return false;
+    // No axle stalls: arriving at a coping almost stopped just rolls you back in. (Catching it made the board sit on the lip, perched
+    // on its front wheels, until it rocked out or sank into the ramp; nobody wanted that.)
+    if (stall) return false;
     // A stall is something you do at the top of a climb; falling back past the coping at speed is not it.
     if (stall && (Math.abs(this.vel.y) > T.stallMaxVertical || this.holdFwd > T.stallBlockHold)) return false;
     // The way back in is the way we came: against the part of our motion that was square to the coping.

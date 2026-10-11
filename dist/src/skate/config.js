@@ -57,6 +57,9 @@ export const TUNING = Object.freeze({
   steepNormalY: 0.55,        // surfaces steeper than this are tracked with rays along the board's normal, not straight down
   wallProbe: 0.33,           // how far ahead of the board centre a wall is noticed
   edgeGrace: 0.3,            // seconds after rolling off an edge when the trailing wheels are ignored
+  freezeBail: 0.35,          // seconds airborne without moving at all (wedged in the geometry) before it bails out
+  sweepSupportReach: 0.3,    // a wheel touching down only counts as a landing if the ground under the board's middle is within this much of it…
+  sweepSupportDrop: 0.3,     // …(not more than this far lower: the middle hanging out over a drop means the board only caught the edge)
   sweepLandMinNormalY: 0.2,  // the centre of the board lands on any surface at least this far from vertical
   steepContact: 0.12,        // on a steep wall a wheel counts as touching within this of the surface
   steepLeave: 0.07,          // average hover above the wall beyond this and the board has left it
