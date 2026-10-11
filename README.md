@@ -16,6 +16,9 @@ the skating itself is fun. Static files, no build step — `dist/` is what GitHu
 | Hold both grips | Re-centre: stand on the board where you are now |
 | Hold left **X** | Back to the entrance |
 
+The camera is bolted to the board: it goes where the board goes, turns when it turns and tilts with whatever the board is
+lying on, so ramps, walls and grind balance swing the whole world around you (no smoothing, on purpose).
+
 You stand on the board the way you would on a real one: side-on to travel, facing the board's right side (regular)
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.

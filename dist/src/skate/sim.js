@@ -794,14 +794,20 @@ export class Skater {
     this.crouch = damp(this.crouch, target, RIDER.crouchSettle, dt);
   }
 
-  boardQuaternion(out) {
+  // The board's orientation. With `flair` the pop pitch and carve roll are included (the model); without it this is the
+  // frame the rider is bolted to: heading plus whatever surface (or grind tilt) the board is lying on.
+  boardQuaternion(out, flair = true) {
     headingVec(this.heading, _H);
-    _R.crossVectors(_H, this.up).normalize();
+    _R.crossVectors(_H, this.up);
+    if (_R.lengthSq() < 1e-8) _R.set(Math.cos(this.heading), 0, -Math.sin(this.heading));
+    _R.normalize();
     _f.crossVectors(this.up, _R);
     _basisM.makeBasis(_R, this.up, _f.negate());
     out.setFromRotationMatrix(_basisM);
-    out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
-    out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.visRoll));
+    if (flair) {
+      out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
+      out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.visRoll));
+    }
     return out;
   }
 }

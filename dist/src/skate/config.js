@@ -119,7 +119,5 @@ export const RIDER = Object.freeze({
   crouchSettle: 18,
   popRebound: 0.035,
   landCompress: 0.09,
-  rigYawResponse: 22,
-  maxRigLean: 0.12,
   eyeHeightDesktop: 1.65
 });
