@@ -48,6 +48,7 @@ export class Skater {
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
+    this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -72,6 +73,7 @@ export class Skater {
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
+    this.endFlip(); this.flipArm = 0;
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
@@ -101,6 +103,10 @@ export class Skater {
     }
     this.jumpWas = jump;
     this.jumpHeld = jump;
+    const flipHeld = !!input.flip;
+    if (flipHeld && !this.flipWas) this.flipArm = T.flipArmWindow;
+    this.flipWas = flipHeld;
+    this.flipArm = Math.max(0, this.flipArm - dt);
     this.trackBody(input.bodyY, dt);
     this.popBuffer -= dt;
     if (this.popBuffer <= 0) this.popRequest = null;
@@ -123,6 +129,8 @@ export class Skater {
 
   // Forward then back (or back then forward) on the stick, quickly, starts a manual.
   detectFlick() {
+    // On a rail the stick up and down picks nosegrind / 5-0; it must not read as a manual flick.
+    if (this.mode === Mode.GRIND) { this.stickExtreme = 0; this.stickExtremeT = this.clock; return; }
     const d = this.drive;
     const sign = d > T.flickThreshold ? 1 : d < -T.flickThreshold ? -1 : 0;
     if (sign !== 0 && sign !== this.stickExtreme) {
@@ -387,7 +395,15 @@ export class Skater {
 
     // A little stick drift while carving into a jump must not spin you; spin only starts past the dead zone.
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
-    const spinTarget = -spinInput * T.airSpinRate;
+    // Flips take the stick for themselves: it picks the direction and must not also spin the board.
+    if (this.flipArm > 0 && !this.flip && this.airTime > T.flipMinAir && Math.abs(this.steer) >= T.flipStick) this.startFlip(Math.sign(this.steer));
+    if (this.flip) {
+      const f = this.flip;
+      f.angle = clamp(f.angle + f.sign * (TAU / T.flipTime) * h, -TAU, TAU);
+      this.flipRoll = f.angle;
+      if (this.spinLock && Math.abs(f.angle) >= TAU && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
+    }
+    const spinTarget = this.spinLock ? 0 : -spinInput * T.airSpinRate;
     this.spinVel = damp(this.spinVel, spinTarget, T.airSpinResponse, h);
     this.heading = wrap(this.heading + this.spinVel * h);
     if (this.exitAlign > 0) {
@@ -408,10 +424,43 @@ export class Skater {
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.clampBounds(_np);
 
-    if (this.tryGrind(_np, h)) return;
+    // A board that is mid-flip cannot catch a rail; one that has come round (or is nearly there) can.
+    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && this.tryGrind(_np, h)) return;
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
+  }
+
+  // ----- flips -----------------------------------------------------------------------------------------------
+  startFlip(direction) {
+    const kick = direction < 0;
+    // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
+    // (the first version was backwards: stick left looked like a heelflip in the headset).
+    const sign = (kick ? 1 : -1) * (this.faceOffset < 0 ? 1 : -1);
+    headingVec(this.heading, _H);
+    const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
+    this.flip = { sign, angle: 0, name: `${fakie ? 'Fakie ' : ''}${kick ? 'Kickflip' : 'Heelflip'}` };
+    this.flipArm = 0;
+    this.spinLock = true;
+    this.onEvent('flipStart', { name: this.flip.name });
+  }
+
+  // How far the board is from lying flat, in radians: the distance to the nearest whole turn.
+  flipResidual() {
+    const a = Math.abs(this.flip.angle);
+    return Math.abs(a - Math.round(a / TAU) * TAU);
+  }
+
+  endFlip() {
+    this.flip = null;
+    this.flipRoll = 0;
+    this.spinLock = false;
+  }
+
+  // The name to credit when the board is back under you, or null if the flip never really happened.
+  flipCredit() {
+    const f = this.flip;
+    return f && Math.abs(f.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll ? f.name : null;
   }
 
   // What is below the airborne board, so its tilt can ease towards that surface's before it lands.
@@ -519,6 +568,14 @@ export class Skater {
   }
 
   land(w) {
+    let credit = null, sketchy = false;
+    if (this.flip) {
+      const residual = this.flipResidual();
+      if (residual > T.flipBailRoll) { this.bail('flip'); return; }
+      sketchy = residual > T.flipCleanRoll;
+      credit = this.flipCredit();
+      this.endFlip();
+    }
     if (w.hasNormal) this.groundNormal.copy(w.normal); else this.groundNormal.set(0, 1, 0);
     const n = this.groundNormal;
     const impact = Math.max(0, -this.vel.dot(n));
@@ -546,7 +603,13 @@ export class Skater {
     this.spinVel = 0;
     this.visPitch *= 0.4;
     this.crouch = RIDER.landCompress * clamp(impact / 6, 0.25, 1.3);
+    if (sketchy) {
+      this.vel.multiplyScalar(T.flipSketchySpeed);
+      this.crouch = Math.max(this.crouch, RIDER.landCompress * 1.3);
+      this.onEvent('sketchy');
+    }
     this.onEvent('land', { impact });
+    if (credit) this.onEvent('flip', { name: credit });
     const q = this.manualQueue;
     this.manualQueue = null;
     if (q && this.clock - q.t <= T.manualQueueWindow) this.tryManual(q.kind, true);
@@ -769,10 +832,18 @@ export class Skater {
       path, mode, s, gs, time: 0, yawOffset: offset, stall,
       back: new THREE.Vector3(),
       bal: 0, balVel: 0, p1: this.random() * TAU, p2: this.random() * TAU,
+      variant: 0, vb: 0, vTime: { nose: 0, tail: 0 },
       snap: new THREE.Vector3(), name: ''
     };
+    // The stick held up or down as you land on the rail starts you in the nosegrind or 5-0.
+    if (mode === 'truck' && !stall) g.variant = g.vb = this.variantFor(0);
     this.mode = Mode.GRIND;
     this.grind = g;
+    if (this.flip) {
+      const credit = this.flipCredit();
+      this.endFlip();
+      if (credit) this.onEvent('flip', { name: credit });
+    }
     this.vel.copy(seg.dir).multiplyScalar(gs);
     this.spinVel = 0;
     this.braking = false;
@@ -813,6 +884,7 @@ export class Skater {
 
     // Board attitude: lie along the rail's slope for a 50-50, stay level for a boardslide.
     _F.set(-Math.sin(this.facingYaw), 0, -Math.cos(this.facingYaw));
+    let truckShift = 0;
     if (g.mode === 'truck') {
       const phi = Math.atan2(seg.dir.y, Math.max(seg.hLen, 1e-6));
       const forwardSign = Math.abs(wrap(yawOf(seg.dir.x, seg.dir.z) - this.heading)) < Math.PI / 2 ? 1 : -1;
@@ -820,6 +892,14 @@ export class Skater {
       _R.crossVectors(_f, UP).normalize();
       _u.crossVectors(_R, _f).normalize();
       g.tilt = (g.tilt || new THREE.Vector3()).copy(_R).multiplyScalar(Math.sign(_R.dot(_F)) || 1);
+      // Nosegrind (vb > 0): pitched nose-down onto the front truck; 5-0 (vb < 0): nose up onto the back one.
+      const a = g.vb * T.variantTilt;
+      if (a) {
+        _a.copy(_u).multiplyScalar(Math.cos(a)).addScaledVector(_f, Math.sin(a));
+        _b.copy(_f).multiplyScalar(Math.cos(a)).addScaledVector(_u, -Math.sin(a));
+        _u.copy(_a); _f.copy(_b);
+        truckShift = g.vb * BOARD.wheelHalfBase;
+      }
     } else {
       _u.copy(UP);
       const playerRight = _t.crossVectors(_F, UP);
@@ -829,6 +909,22 @@ export class Skater {
     g.u = (g.u || new THREE.Vector3()).copy(_u).multiplyScalar(Math.cos(rho)).addScaledVector(g.tilt, Math.sin(rho)).normalize();
     const contact = g.mode === 'truck' ? BOARD.truckBottom : path.slideContact;
     this.pos.copy(_P).addScaledVector(g.u, -contact);
+    // The rail is under one truck, so the middle of the board is behind it (nosegrind) or ahead of it (5-0).
+    if (truckShift) this.pos.addScaledVector(_f, -truckShift);
+  }
+
+  // Stick up is the nose on the rail, down is the tail; between the two thresholds it stays as it was.
+  variantFor(current) {
+    if (this.drive > T.variantStick) return 1;
+    if (this.drive < -T.variantStick) return -1;
+    return Math.abs(this.drive) < T.variantRelease ? 0 : current;
+  }
+
+  grindName(g) {
+    const { nose, tail } = g.vTime;
+    const prefix = g.path.kind === 'coping' ? 'Coping ' : '';
+    if (Math.max(nose, tail) < T.variantMinTime) return `${prefix}50-50`;
+    return `${prefix}${nose >= tail ? 'Nosegrind' : '5-0 Grind'}`;
   }
 
   grindStep(h) {
@@ -843,11 +939,18 @@ export class Skater {
       return;
     }
 
+    if (g.mode === 'truck' && !g.stall) {
+      g.variant = this.variantFor(g.variant);
+      g.vb += (g.variant - g.vb) * (1 - Math.exp(-T.variantResponse * h));
+      if (g.variant) g.vTime[g.variant > 0 ? 'nose' : 'tail'] += h;
+      g.name = this.grindName(g);
+    }
+
     // Speed along the rail: gravity on sloped rails, friction on everything.
     const seg = path.segmentAt(g.s);
     if (!g.stall) {
       g.gs += -T.gravity * seg.dir.y * h;
-      const fric = path.friction * h;
+      const fric = path.friction * (1 + T.variantDrag * Math.abs(g.vb)) * h;
       g.gs -= Math.sign(g.gs) * Math.min(Math.abs(g.gs), fric);
       g.s += g.gs * h;
     }
@@ -867,7 +970,7 @@ export class Skater {
     }
 
     // Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
-    const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax);
+    const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax) * (1 + (T.variantHard - 1) * Math.abs(g.vb));
     const wobble = T.balWobble * (0.6 * Math.sin(2.3 * g.time + g.p1) + 0.4 * Math.sin(5.7 * g.time + g.p2));
     const acc = instab * g.bal + wobble + T.balControl * this.lean - T.balDamp * g.balVel;
     g.balVel += acc * h;
@@ -920,6 +1023,8 @@ export class Skater {
       spin: new THREE.Vector3((this.random() - 0.5) * 14, (this.random() - 0.5) * 10, (this.random() - 0.5) * 14),
       quat: this.boardQuaternion(new THREE.Quaternion())
     };
+    this.endFlip();
+    this.flipArm = 0;
     this.onEvent('bail', { reason });
   }
 
@@ -1000,7 +1105,7 @@ export class Skater {
     out.setFromRotationMatrix(_basisM);
     if (flair) {
       out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
-      out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.visRoll));
+      out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.visRoll + this.flipRoll));
     }
     return out;
   }

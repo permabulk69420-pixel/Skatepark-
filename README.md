@@ -10,10 +10,11 @@ default) and **Eastbank school** (`?level=eastbank`, a 180 × 150 m school campu
 
 | Input | Does |
 | --- | --- |
-| Left stick up / down | Push (kicks repeat while held) / brake. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
+| Left stick up / down | Push (kicks repeat while held) / brake; on a rail in a 50-50: up = nosegrind, down = 5-0. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
 | Left stick sideways | Steer · spin in the air |
 | Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
 | Right **A** (or right trigger) | Hold to crouch, release to ollie. A longer hold pops higher |
+| Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip** or **right for a heelflip** (the stick can come just before or just after) |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |
 | Hold left **X** | Back to the entrance |
@@ -28,6 +29,19 @@ Flick in the air after an ollie and you land in it. Balance it with your hands, 
 harder the longer you hold it; push it back with the opposite hand; over-leaning is a bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
 out of speed. The camera tilts with the board. Tune it in the `manual*` and `flick*` values in `config.js`.
 
+**Nosegrind / 5-0.** While you are in a 50-50 (board along the rail), hold the left stick **up** to put the front truck on the
+rail (a nosegrind: tail up, the board sits behind the rail point) or **down** for the back truck (a 5-0: nose up, the board sits
+ahead of it). Let go and it is a 50-50 again. Holding the stick as you land on the rail starts you in it. They are harder to
+balance and a bit slower than a 50-50, and the trick takes the name of whichever you held longest. Boardslides are unchanged.
+The stick does not read as a manual flick while you are on a rail. Tune it in the `variant*` values in `config.js`.
+
+**Flips.** In the air, press right **B** and push the left stick left (kickflip) or right (heelflip): the board turns one full
+revolution in about half a second. The stick picks the direction and does not also spin you while the flip is going. You have to
+start early enough to finish: a tap ollie needs the flip started within about 0.2 s of leaving the ground, a full one about
+0.35 s. Land with the board nearly flat and it counts; land a bit short (up to ~110° off) and it is a sketchy landing (you
+stumble and lose speed, no trick); land mid-flip and you bail. A board that is still turning cannot catch a rail, one that has come
+round can (kickflip to rail). Tune it in the `flip*` values in `config.js`; the direction sign for goofy and regular is in `startFlip`.
+
 **Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
 your direction of travel, forward on the stick pushes the way you are rolling, a manual lifts the end that leads (a
 "Fakie Manual" tail-up), and the balance moves are the same as going forward.
@@ -36,7 +50,7 @@ You stand on the board the way you would on a real one: side-on to travel, facin
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.
 
-**Flat screen:** W push · S brake · A/D steer & balance (no hands on a flat screen) · hold Space, release to ollie · drag to look · Z stance · R entrance.
+**Flat screen:** W push · S brake · A/D steer & balance (no hands on a flat screen) · hold Space, release to ollie · F in the air with A/D: kickflip / heelflip · drag to look · Z stance · R entrance.
 
 **Grinding.** Be in the air, close to a rail, ledge or coping, with the board roughly parallel (50-50) or roughly
 square (boardslide) to it. It locks on, and the meter starts wherever your landing put it. Left unattended the board

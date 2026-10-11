@@ -42,6 +42,15 @@ export const TUNING = Object.freeze({
   popAnimTime: 0.38,
   popUpBias: 2,              // pop direction leans from the surface normal towards straight up as the surface steepens (n.y^this)
 
+  // Flips: the flip button in the air plus the stick left (kickflip) or right (heelflip), one full turn of the board.
+  flipTime: 0.46,            // seconds for the board to turn all the way round
+  flipArmWindow: 0.3,        // the stick may come this long after the button (or the button this long before leaving the ground)
+  flipStick: 0.45,           // how far the stick has to go to pick a direction
+  flipMinAir: 0.05,          // seconds in the air before a flip can start
+  flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
+  flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
+  flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
+
   // Ground following
   maxStep: 0.08,             // free rise allowed per step before it counts as a wall
   maxSlopeTan: 1.7,          // plus this × horizontal travel (≈60°) beyond what the board's own climb explains
@@ -94,6 +103,14 @@ export const TUNING = Object.freeze({
   balControl: 7.5,
   balDamp: 1.4,
   balEntryScale: 0.8,
+  // Nosegrind / 5-0: in a 50-50, hold the stick up (front truck on the rail, tail up) or down (back truck, nose up).
+  variantStick: 0.55,        // stick deflection that picks a nose grind or a 5-0
+  variantRelease: 0.35,      // back inside this and it is a 50-50 again (in between it stays as it was)
+  variantTilt: 0.24,         // rad the board pitches on the rail
+  variantResponse: 12,       // 1/s: how fast the board rocks onto the one truck
+  variantHard: 1.3,          // balance instability × this at the full variant: harder than a 50-50
+  variantDrag: 0.25,         // extra rail friction at the full variant
+  variantMinTime: 0.3,       // seconds in a variant before the trick takes its name
   balMaxTilt: 0.34,          // board lean at the edge of the meter
   railTopOffset: Object.freeze({ rail: 1, coping: 1, ledge: -0.9 }), // × path radius above the stored line (ledge lines sit just above their surface)
 
