@@ -81,38 +81,24 @@ test('pumping (squat then stand) on the transitions gains speed; no pumping does
   assert.ok(bestPlain <= startE * 1.02, `unpumped energy grew to ${bestPlain.toFixed(1)} from ${startE.toFixed(1)}`);
 });
 
-test('axle stall: reaching the coping almost stopped and square-on catches it; popping rocks you back in fakie', () => {
-  let found = null;
-  for (let speed = 6.0; speed <= 7.6 && !found; speed += 0.1) {
+test('reaching the coping almost stopped never catches it: you roll back down the wall, no stall, no bail', () => {
+  for (let speed = 5.4; speed <= 7.8; speed += 0.2) {
     const events = [];
-    const s = pipeSkater({ events });
+    const s = pipeSkater({ events, withCoping: true });
     rollFrom(s, 0, speed, -1);
-    let stallTime = -1;
-    run(s, (t, sk) => {
-      if (sk.mode === Mode.GRIND && stallTime < 0) stallTime = t;
-      const lean = sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.4 + sk.grind.balVel * 0.8), -1, 1) : 0;
-      return { lean, jump: stallTime >= 0 && t - stallTime > 0.5 && t - stallTime < 0.62 };
-    }, 6);
-    const start = events.find((e) => e.type === 'grindStart');
-    if (start?.data.name === 'Axle Stall') found = { speed, events, s };
+    let maxVx = -9, outsideLip = 0, parked = 0, prev = s.pos.clone();
+    run(s, {}, 8, 1 / 72, (t, sk) => {
+      maxVx = Math.max(maxVx, sk.vel.x); outsideLip = Math.max(outsideLip, -sk.pos.x - PIPE.lip);
+      if (sk.pos.y > 1 && sk.pos.distanceTo(prev) < 0.002) parked++;     // sitting up on the lip
+      prev = sk.pos.clone();
+    });
+    assert.ok(parked < 20, `entry ${speed.toFixed(1)}: sat on the lip for ${(parked / 72).toFixed(1)} s`);
+    const label = `entry ${speed.toFixed(1)}`;
+    assert.ok(!events.some((e) => e.type === 'grindStart'), `${label}: caught the coping`);
+    assert.deepEqual(bails(events), [], `${label}: bailed`);
+    assert.ok(maxVx > 2, `${label}: never rolled back down`);
+    assert.ok(outsideLip < 0.2, `${label}: ended up beyond the lip`);
   }
-  assert.ok(found, 'no entry speed produced an axle stall');
-  assert.deepEqual(bails(found.events), [], 'bailed out of the stall');
-  assert.equal(found.events.filter((e) => e.type === 'grindStart').length, 1, 'caught the coping again after popping off');
-  assert.equal(found.events.find((e) => e.type === 'grindEnd').data.reason, 'pop');
-  assert.equal(found.s.mode, Mode.GROUND);
-  assert.ok(found.s.pos.x > -PIPE.lip + 0.2, `ended up outside the pipe (x ${found.s.pos.x.toFixed(2)})`);
-});
-
-test('an unattended axle stall rocks back into the pipe by itself rather than hanging there or bailing', () => {
-  const events = [];
-  const s = pipeSkater({ events });
-  rollFrom(s, 0, 7.0, -1);
-  run(s, {}, 8);
-  assert.ok(events.some((e) => e.type === 'grindStart' && e.data.name === 'Axle Stall'));
-  assert.ok(events.some((e) => e.type === 'grindEnd' && e.data.reason === 'rock'), 'did not rock back in');
-  assert.deepEqual(bails(events), []);
-  assert.ok(s.pos.x > -PIPE.lip + 0.2, `ended up outside the pipe (x ${s.pos.x.toFixed(2)})`);
 });
 
 test('rolling off the deck over the coping is a drop-in, never a stall', () => {

@@ -66,8 +66,7 @@ fast is a bail: the board tumbles, the view fades, and you are put back where yo
 **Half pipes and transitions.** Ramps are ridden, not climbed: gravity does the work, so speed you carry in is the height
 you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
 you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
-square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
-back in fakie (leave it and it rocks back in by itself after about 0.8 s, always down into the pipe; it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Fly out of the lip and you are held over the pit and ride back down the wall, however fast you are going and however long you have been holding forward (the first version sent you over the top after about 2 s of holding forward, which on a headset is just pushing, so every ride up a quarter-pipe ended on the deck behind it). To pass over the top you ollie at the lip *and* have the speed to clear it (see `passPopWindow` and `lip*` in `config.js`). Going over never grabs the coping, and holding forward at the top never stalls. Dropping back onto a coping while barely moving along it is not a boardslide (`copingSlideMinSpeed`); one that slows to a crawl drops you into the pit (`copingSlideEnd`).
+almost stopped and you simply roll back down the wall (the axle stall was taken out: it left the board perched on the lip). **Airs stay in the pipe unless you mean to go over.** Fly out of the lip and you are held over the pit and ride back down the wall, however fast you are going and however long you have been holding forward (the first version sent you over the top after about 2 s of holding forward, which on a headset is just pushing, so every ride up a quarter-pipe ended on the deck behind it). To pass over the top you ollie at the lip *and* have the speed to clear it (see `passPopWindow` and `lip*` in `config.js`). Going over never grabs the coping, and holding forward at the top never stalls. Dropping back onto a coping while barely moving along it is not a boardslide (`copingSlideMinSpeed`); one that slows to a crawl drops you into the pit (`copingSlideEnd`).
 
 In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical, and the
 view with you) and eases towards whatever it is about to land on, faster as the ground gets close.
@@ -113,6 +112,7 @@ tools/check-ramps.mjs      finds every ramp in the collision and rides up it at 
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
 tools/patches/burnside.py  Burnside's spawn points moved to their real positions on export; `burnside.tweaks.json` simplifies its collision (510k → 23k triangles within 1 cm)
+tools/patches/eastbank_ramps.py  re-profiles the school's quarter-pipes to end vertical under the coping (the model's ended at 59° with a flat deck, which nothing in the ramp physics copes with)
 tools/patches/eastbank_details.py  frames round windows and doors, door handles (built in Blender during the same export)
 tests/                     simulation tests
 ```

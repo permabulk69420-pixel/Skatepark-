@@ -87,7 +87,7 @@ function readPrimitive(prim) {
   };
   const idxAcc = prim.getIndices();
   const idx = idxAcc ? Uint32Array.from(idxAcc.getArray()) : Uint32Array.from({ length: n }, (_, i) => i);
-  return { n, idx, pos, nor: readAttr('NORMAL', 3), uv: readAttr('TEXCOORD_0', 2), col: readAttr('COLOR_0', 4) };
+  return { n, idx, pos, nor: readAttr('NORMAL', 3), uv: readAttr('TEXCOORD_0', 2), uv1: readAttr('TEXCOORD_1', 2), col: readAttr('COLOR_0', 4) };
 }
 
 // Compact copy of the given triangles (indices into src.idx / 3), with its own vertex arrays.
@@ -109,7 +109,7 @@ function extract(src, triangles) {
     order.forEach((old, i) => { for (let k = 0; k < size; k++) out[i * size + k] = arr[old * size + k]; });
     return out;
   };
-  return { n: order.length, idx, pos: take(src.pos, 3), nor: take(src.nor, 3), uv: take(src.uv, 2), col: take(src.col, 4) };
+  return { n: order.length, idx, pos: take(src.pos, 3), nor: take(src.nor, 3), uv: take(src.uv, 2), uv1: take(src.uv1, 2), col: take(src.col, 4) };
 }
 
 // ---------------------------------------------------------------- LOD generation
@@ -117,16 +117,18 @@ function simplifyData(data, ratio, errMetres) {
   const target = Math.max(12, Math.floor(data.idx.length * ratio / 3) * 3);
   const attrs = [];
   const weights = [];
-  const stride = (data.nor ? 3 : 0) + (data.uv ? 2 : 0) + (data.col ? 3 : 0);
+  const stride = (data.nor ? 3 : 0) + (data.uv ? 2 : 0) + (data.uv1 ? 2 : 0) + (data.col ? 3 : 0);
   const packed = new Float32Array(data.n * stride);
   for (let i = 0; i < data.n; i++) {
     let o = i * stride;
     if (data.nor) for (let k = 0; k < 3; k++) packed[o++] = data.nor[i * 3 + k];
     if (data.uv) for (let k = 0; k < 2; k++) packed[o++] = data.uv[i * 2 + k];
+    if (data.uv1) for (let k = 0; k < 2; k++) packed[o++] = data.uv1[i * 2 + k];
     if (data.col) for (let k = 0; k < 3; k++) packed[o++] = data.col[i * 4 + k];
   }
   if (data.nor) weights.push(0.5, 0.5, 0.5);
   if (data.uv) weights.push(0.8, 0.8);
+  if (data.uv1) weights.push(0.8, 0.8);
   if (data.col) weights.push(0.3, 0.3, 0.3);
   void attrs;
   const scale = MeshoptSimplifier.getScale(data.pos, 3);
@@ -211,6 +213,7 @@ function emit(data, material, name, extras) {
     prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(nq).setNormalized(true).setBuffer(buffer));
   }
   if (data.uv) prim.setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(data.uv).setBuffer(buffer));
+  if (data.uv1) prim.setAttribute('TEXCOORD_1', doc.createAccessor().setType('VEC2').setArray(data.uv1).setBuffer(buffer));
   if (data.col) {
     const cq = new Uint8Array(data.n * 4);
     for (let i = 0; i < data.n * 4; i++) cq[i] = Math.round(Math.max(0, Math.min(1, data.col[i])) * 255);
@@ -266,8 +269,8 @@ function mergePrimitives(list) {
   if (list.length === 1) return list[0];
   const n = list.reduce((sum, p) => sum + p.n, 0);
   const idx = new Uint32Array(list.reduce((sum, p) => sum + p.idx.length, 0));
-  const out = { n, idx, pos: new Float32Array(n * 3), nor: null, uv: null, col: null };
-  const attrs = [['nor', 3, 0], ['uv', 2, 0], ['col', 4, 1]];       // [name, size, fill for parts that lack it]
+  const out = { n, idx, pos: new Float32Array(n * 3), nor: null, uv: null, uv1: null, col: null };
+  const attrs = [['nor', 3, 0], ['uv', 2, 0], ['uv1', 2, 0], ['col', 4, 1]];       // [name, size, fill for parts that lack it]
   for (const [name, size, fill] of attrs) if (list.some((p) => p[name])) out[name] = new Float32Array(n * size).fill(fill);
   let vo = 0, io2 = 0;
   for (const p of list) {
