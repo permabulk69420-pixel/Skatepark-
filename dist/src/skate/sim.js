@@ -44,7 +44,7 @@ export class Skater {
 
     this.steer = 0; this.drive = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0;
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
@@ -69,7 +69,7 @@ export class Skater {
     this.grind = null; this.bailBoard = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
-    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0;
+    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false;
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
@@ -275,6 +275,7 @@ export class Skater {
     this.edgeGrace = T.edgeGrace;
     this.rolledOff = true;
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
+    this.passIntent = this.holdFwd >= T.passHold;
     this.groundedTime = 0;
     this.braking = false;
   }
@@ -321,8 +322,10 @@ export class Skater {
       }
     }
 
+    if (this.holdFwd >= T.passHold) this.passIntent = true;
     this.hugWall(h);
     this.lipAir(h);
+    this.sampleAirFloor();
 
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.clampBounds(_np);
@@ -331,6 +334,14 @@ export class Skater {
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
+  }
+
+  // What is below the airborne board, so its tilt can ease towards that surface's before it lands.
+  sampleAirFloor() {
+    const f = this.airFloor;
+    const hit = this.world.ground(this.pos.x, this.pos.z, this.pos.y + 0.2, _hit, 40);
+    f.found = !!hit;
+    if (hit) { f.y = hit.y; f.nx = hit.nx; f.ny = hit.ny; f.nz = hit.nz; }
   }
 
   // Airs near a coping lip. Carry enough speed to the lip (see TUNING.lipPassFrom) and you are sent out over the top;
@@ -362,7 +373,7 @@ export class Skater {
     const outward = -(this.vel.x * pit.x + this.vel.z * pit.y);  // + moving out over the lip
     const carried = Math.sqrt(Math.max(0, 2 * (this.launchE - T.gravity * lipY)));
     const clears = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo) >= 0.5;
-    const pass = clears && this.holdFwd >= T.passHold ? 1 : 0;
+    const pass = clears && this.passIntent ? 1 : 0;
     if (pass < 0.5) {
       // A damped spring to just inside the lip line: the air stays over the pit and comes back down against the wall.
       if (intoPit > -0.7 && intoPit < T.lipHoldDist + 2) {
@@ -452,6 +463,7 @@ export class Skater {
     }
     this.mode = Mode.GROUND;
     this.rolledOff = false;
+    this.passIntent = false;
     this.groundedTime = 0;
     this.spinVel = 0;
     this.visPitch *= 0.4;
@@ -594,6 +606,7 @@ export class Skater {
     let best = null, bestScore = Infinity;
     for (const path of this.paths) {
       if (path === this.lastGrindPath && this.grindCooldown > 0) continue;
+      if (path.kind === 'coping' && this.passIntent) continue;      // going over the top: the coping is not a place to land
       if (!path.bounds.containsPoint(np)) continue;
       const segs = path.segments;
       for (let i = 0; i < segs.length; i++) {
@@ -652,7 +665,7 @@ export class Skater {
     const stall = mode === 'slide' && path.kind === 'coping' && Math.abs(gs) < T.grindMinSpeed;
     if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
     // A stall is something you do at the top of a climb; falling back past the coping at speed is not it.
-    if (stall && Math.abs(this.vel.y) > T.stallMaxVertical) return false;
+    if (stall && (Math.abs(this.vel.y) > T.stallMaxVertical || this.holdFwd > T.stallBlockHold)) return false;
     // The way back in is the way we came: against the part of our motion that was square to the coping.
     let backX = 0, backZ = 0;
     if (stall) {
@@ -795,6 +808,7 @@ export class Skater {
     const seg = g.path.segmentAt(g.s);
     this.vel.copy(seg.dir).multiplyScalar(g.gs);
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
+    this.passIntent = this.holdFwd >= T.passHold;
     if (popSpeed > 0) this.vel.y += popSpeed;
     if (g.stall && popSpeed > 0) this.vel.addScaledVector(g.back, T.stallBackSpeed);
     this.mode = Mode.AIR;
@@ -853,7 +867,16 @@ export class Skater {
   updateVisuals(dt) {
     if (this.mode === Mode.GRIND && this.grind) this.up.copy(this.grind.u);
     else if (this.mode === Mode.GROUND) this.up.lerp(this.groundNormal, 1 - Math.exp(-30 * dt)).normalize();
-    else this.up.lerp(UP, 1 - Math.exp(-1.6 * dt)).normalize();
+    else if (this.mode === Mode.AIR) {
+      // Keep the tilt we left the surface with; ease towards what is below, faster as it gets close.
+      const f = this.airFloor;
+      let rate = T.airTiltFar;
+      if (f.found) {
+        _u.set(f.nx, f.ny, f.nz);
+        rate += (T.airTiltNear - T.airTiltFar) * clamp(1 - (this.pos.y - f.y) / T.airTiltReach, 0, 1);
+      } else _u.copy(UP);
+      this.up.lerp(_u, 1 - Math.exp(-rate * dt)).normalize();
+    } else this.up.lerp(UP, 1 - Math.exp(-1.6 * dt)).normalize();
 
     if (this.mode === Mode.AIR && this.popTimer < T.popAnimTime) {
       this.visPitch = 0.5 * Math.sin(Math.PI * this.popTimer / T.popAnimTime);

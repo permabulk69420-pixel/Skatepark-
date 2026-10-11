@@ -236,3 +236,39 @@ test('holding forward: early airs stay in the pipe, and a decent while later you
   assert.ok(r.over > 3.5, `passed over after only ${r.over.toFixed(1)} s`);
   assert.ok(r.over < 22, `still had not passed over after ${r.over.toFixed(1)} s`);
 });
+
+test('coming out of the wall you stay tilted like the wall, easing towards what you will land on', () => {
+  const s = pipeSkater({ withCoping: true });
+  rollFrom(s, 0, 8, -1);
+  const tilt = () => Math.acos(THREE.MathUtils.clamp(s.up.y, -1, 1));
+  let leftAt = -1, atLeave = 0, after04 = 0, landed = 0;
+  run(s, {}, 3, 1 / 72, (t) => {
+    if (s.mode === Mode.AIR && leftAt < 0 && s.pos.y > 1.2) { leftAt = t; atLeave = tilt(); }
+    if (leftAt >= 0 && t - leftAt > 0.4 && after04 === 0) after04 = tilt();
+  });
+  assert.ok(atLeave > 0.7, `left the wall only tilted ${(atLeave * 57.3).toFixed(0)}°`);
+  assert.ok(after04 > atLeave * 0.8, `snapped back to ${(after04 * 57.3).toFixed(0)}° from ${(atLeave * 57.3).toFixed(0)}° within 0.4 s`);
+});
+
+test('passing over the top never grabs the coping', () => {
+  for (const speed of [8.2, 9.2, 10.5]) {
+    const events = [];
+    const s = pipeSkater({ events, withCoping: true });
+    rollFrom(s, 0, speed, -1);
+    s.holdFwd = 4;
+    const r = airOverLip(s, { drive: 1 }, 3);
+    assert.ok(r.maxOut > 1.0, `entry ${speed}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
+    assert.ok(!events.some((e) => e.type === 'grindStart'), `entry ${speed}: grabbed the coping`);
+    assert.deepEqual(bails(events), []);
+  }
+});
+
+test('holding forward at the top is never an axle stall', () => {
+  for (let speed = 6.4; speed <= 7.4; speed += 0.2) {
+    const events = [];
+    const s = pipeSkater({ events, withCoping: true });
+    rollFrom(s, 0, speed, -1);
+    run(s, { drive: 1 }, 3);
+    assert.ok(!events.some((e) => e.type === 'grindStart'), `entry ${speed.toFixed(1)}: stalled while holding forward`);
+  }
+});
