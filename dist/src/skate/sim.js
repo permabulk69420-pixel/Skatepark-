@@ -138,7 +138,13 @@ export class Skater {
   tryManual(kind) {
     if (this.mode !== Mode.GROUND || this.manual || this.jumpHeld) return;
     if (this.groundNormal.y < 0.97 || this.speed < T.manualMinSpeed || this.groundedTime < 0.15) return;
-    this.manual = { pitchSign: kind, bal: 0, balVel: 0, time: 0, p1: this.random() * TAU, p2: this.random() * TAU, name: kind > 0 ? 'Manual' : 'Nose Manual' };
+    // A manual lifts the end that leads: the nose going forward, the tail rolling fakie (and the nose manual the other way).
+    headingVec(this.heading, _H);
+    const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
+    this.manual = {
+      kind, pitchSign: fakie ? -kind : kind, bal: 0, balVel: 0, time: 0, p1: this.random() * TAU, p2: this.random() * TAU,
+      name: `${fakie ? 'Fakie ' : ''}${kind > 0 ? 'Manual' : 'Nose Manual'}`
+    };
     this.pushPending = 0;
     this.stickExtreme = 0;
     this.onEvent('manualStart', { name: this.manual.name });
@@ -156,8 +162,8 @@ export class Skater {
     m.time += h;
     const instab = Math.min(T.manualInstab0 + T.manualInstabGrow * m.time, T.manualInstabMax);
     const wobble = T.manualWobble * (0.6 * Math.sin(2.1 * m.time + m.p1) + 0.4 * Math.sin(4.9 * m.time + m.p2));
-    // Back on the stick leans a tail manual further back (and a nose manual less far forward), forward does the opposite.
-    const acc = instab * m.bal + wobble - m.pitchSign * T.manualControl * this.drive - T.manualDamp * m.balVel;
+    // Back on the stick leans a manual further over (a nose manual: forward does), whichever way you are rolling.
+    const acc = instab * m.bal + wobble - m.kind * T.manualControl * this.drive - T.manualDamp * m.balVel;
     m.balVel += acc * h;
     m.bal += m.balVel * h;
     if (Math.abs(m.bal) >= 1) { m.bal = Math.sign(m.bal); this.endManual('bail'); this.bail('manual'); return; }
@@ -246,8 +252,10 @@ export class Skater {
     // Steering: trucks need roll speed to bite, so almost-stopped turning is a slow tail pivot.
     const bite = clamp(sp / T.steerSpeedRef, 0, 1);
     const maxRate = Math.min(T.maxYawRate, T.maxLateralAccel / Math.max(sp, 1.6));
-    this.heading = wrap(this.heading - this.steer * (maxRate * (this.manual ? T.manualSteer : 1) * bite * (s >= 0 ? 1 : -1) + T.pivotRate * (1 - bite)) * h);
-    this.carve = damp(this.carve, this.steer * clamp(sp / 6, 0, 1), 10, h);
+    // Left and right mean left and right of where you are going, forward or fakie (a real board's trucks would turn the other
+    // way rolling backwards, which is just confusing).
+    this.heading = wrap(this.heading - this.steer * (maxRate * (this.manual ? T.manualSteer : 1) * bite + T.pivotRate * (1 - bite)) * h);
+    this.carve = damp(this.carve, this.steer * clamp(sp / 6, 0, 1) * (s < 0 ? -1 : 1), 10, h);
 
     headingVec(this.heading, _H);
     _f.copy(_H).addScaledVector(u, -_H.dot(u)).normalize();

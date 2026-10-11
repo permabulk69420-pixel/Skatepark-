@@ -64,7 +64,7 @@ test('a balanced manual holds, does not push, and runs out of speed without a ba
   run(s, (t, sk) => {
     if (t < 0.5) return { drive: flick(0.3, 1)(t) };
     const m = sk.manual;
-    return { drive: m ? THREE.MathUtils.clamp(m.pitchSign * (m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0 };
+    return { drive: m ? THREE.MathUtils.clamp(m.kind * (m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0 };
   }, 12, 1 / 72, (t, sk) => { if (sk.manual) { if (last !== null && sk.speed > last + 0.001) rose = true; last = sk.speed; } });
   const end = events.find((e) => e.type === 'manualEnd');
   assert.ok(end, 'manual never ended');
@@ -82,7 +82,7 @@ test('ollie out of a manual', () => {
   run(s, (t, sk) => {
     if (t < 0.5) return { drive: flick(0.3, 1)(t) };
     const m = sk.manual;
-    return { drive: m ? THREE.MathUtils.clamp(m.pitchSign * (m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0, jump: t > 1.2 && t < 1.3 };
+    return { drive: m ? THREE.MathUtils.clamp(m.kind * (m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0, jump: t > 1.2 && t < 1.3 };
   }, 2.5);
   const end = events.find((e) => e.type === 'manualEnd');
   assert.equal(end?.data.reason, 'pop');

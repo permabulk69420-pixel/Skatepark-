@@ -26,6 +26,10 @@ comes up and the balance meter appears. Back then forward is a nose manual. Bala
 bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
 out of speed. The camera tilts with the board. Tune it in the `manual*` and `flick*` values in `config.js`.
 
+**Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
+your direction of travel, forward on the stick pushes the way you are rolling, a manual lifts the end that leads (a
+"Fakie Manual" tail-up), and the balance moves are the same as going forward.
+
 You stand on the board the way you would on a real one: side-on to travel, facing the board's right side (regular)
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.
