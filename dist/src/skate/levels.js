@@ -25,6 +25,15 @@ export const LEVELS = {
     doubleSided: /^(Brick|Concrete \| warm|School \| (opaque|ochre|oxidised|worn))/,   // not the cream enamel: that is the lettering, which must only read from the front
     // Ground slabs and terrain do not cast; trees, buildings and props do.
     noShadow: /Landscape_Landscape|Site_Concrete|Site_Asphalt|Asphalt/
+  },
+  burnside: {
+    name: 'Burnside',
+    file: 'assets/levels/burnside.glb',
+    blurb: '81 × 100 metres · Pools, a blue wall and a tunnel under a bridge · RIFT board',
+    bounds: { x: 45, z: 55, cx: 1.6, cz: 0 },
+    shadowHalf: 70,
+    center: { x: 1.6, z: 0 },
+    noShadow: /Asphalt/
   }
 };
 

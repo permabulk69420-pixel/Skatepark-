@@ -2,7 +2,7 @@
 
 A Quest 3 WebXR skateboarding test bed: you ride a RIFT board around, to find out whether the skating itself is fun.
 There are two levels, picked with `?level=` (or the links in the info panel): **Breakwater** (a 104 × 88 m skatepark, the
-default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
+default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus) and **Burnside** (`?level=burnside`, an 81 × 100 m pools-and-bridge park, work in progress). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
 
 ## Playing
 
@@ -103,7 +103,7 @@ dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding)
 dist/src/skate/haptics.js  controller pulses
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
-dist/assets/levels/        optimised level models (eastbank-school.glb)
+dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
 tools/export-blend.py      level .blend -> raw GLB, via Blender as a Python module (see Levels)
@@ -118,6 +118,7 @@ tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then 
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
+tools/patches/burnside.py  Burnside's spawn points moved to their real positions on export; `burnside.tweaks.json` simplifies its collision (510k → 23k triangles within 1 cm)
 tools/patches/eastbank_details.py  frames round windows and doors, door handles (built in Blender during the same export)
 tests/                     simulation tests
 ```
