@@ -12,6 +12,7 @@
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
 #   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
 #      turn them round.
+#  12. The 33 white Academic sun-shade fins are removed.
 #  11. The Academic upper stairs climbed into the veranda slab: stairwell cut through it.
 #  10. The Canteen stairs ran into the terrace ledge too: set it back 2.5 m.
 #   9. Real frames round the windows and doors, and handles (eastbank_details.py).
@@ -192,6 +193,10 @@ def apply():
     # the top landing had no way down. Cut the stairwell through the slab (and its collision).
     for name in ('Academic_Veranda_Upper', 'COL_Academic_Veranda_Upper'):
         cut(name, 27.6, 31.4, 8.1, 16.2, 4.8, 5.6)
+    # the white sun-shade fins stuck out over the classroom windows at odd angles and looked broken
+    import re
+    for o in [o for o in bpy.data.objects if re.match(r'^(COL_)?Academic_ShadeFin_', o.name)]:
+        bpy.data.objects.remove(o, do_unlink=True)
     # signs that faced into their buildings
     for name in ('Admin_Sign', 'Canteen_Sign', 'Gym_FrontSign', 'LedgePlaza_Sign'):
         turn_round(name)
