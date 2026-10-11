@@ -24,6 +24,7 @@ jobs:
       - name: Pack and validate the GLB without reducing geometry
         run: |
           npm install --prefix .eastbank-work/gltf-tools @gltf-transform/core@4.5.1 @gltf-transform/extensions@4.5.1 @gltf-transform/functions@4.5.1 meshoptimizer@0.25.0 gltf-validator@2.0.0-dev.3.10
+          mkdir -p dist/assets/levels
           node .eastbank-work/pack_glb.mjs .eastbank-work/eastbank-school-raw.glb dist/assets/levels/eastbank-school.glb
           node .eastbank-work/validate.mjs dist/assets/levels/eastbank-school.glb
           rm dist/assets/levels/eastbank-school.glb.stats.json
