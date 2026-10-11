@@ -46,6 +46,15 @@ export const TUNING = Object.freeze({
   maxSlopeTan: 1.7,          // plus this × horizontal travel (≈60°) beyond what the board's own climb explains
   steepNormalY: 0.55,        // surfaces steeper than this are tracked with rays along the board's normal, not straight down
   wallProbe: 0.33,           // how far ahead of the board centre a wall is noticed
+  edgeGrace: 0.3,            // seconds after rolling off an edge when the trailing wheels are ignored
+  sweepLandMinNormalY: 0.2,  // the centre of the board lands on any surface at least this far from vertical
+  steepContact: 0.12,        // on a steep wall a wheel counts as touching within this of the surface
+  steepLeave: 0.07,          // average hover above the wall beyond this and the board has left it
+  wheelAgreement: 0.85,      // any single wheel's surface this far (≈32°) off the fitted plane means a lip, not a slope
+  hugTime: 0.7,              // a drop-in rider leans into the wall for this long after rolling off the lip
+  hugMaxSpeed: 3,
+  hugReach: 1,
+  hugDamp: 9,
   planeAgreement: 0.92,      // wheel plane vs the surfaces they hit: below this the wheels straddle an edge
   wallCos: 0.45,             // a surface this much steeper than the one you are on counts as a wall
   snapDistance: 0.05,        // stay glued to the ground within this
@@ -83,6 +92,20 @@ export const TUNING = Object.freeze({
   balEntryScale: 0.8,
   balMaxTilt: 0.34,          // board lean at the edge of the meter
   railTopOffset: Object.freeze({ rail: 1, coping: 1, ledge: -0.9 }), // × path radius above the stored line (ledge lines sit just above their surface)
+
+  // Pumping: standing up out of a squat while on a curved surface adds speed (VR: your real knees do it)
+  pumpGain: 3.2,             // m/s² of speed per m/s of extension, on a fully curved surface
+  pumpMaxAccel: 4.5,
+  pumpRefTime: 2.5,          // seconds the "standing height" baseline takes to follow your head
+  pumpResponse: 14,          // smoothing of the head's vertical speed
+  pumpCurve: 0.22,           // 1 - surface normal y at which the pump is at full strength
+  pumpEventSpeed: 0.18,      // speed gained in one stand-up worth a haptic tick
+
+  // Axle stall / rock to fakie: catching coping square-on while almost stopped
+  stallLateral: 0.3,
+  stallIntoPit: 0.6,         // heading over the coping this fast towards the drop is a drop-in, not a stall
+  stallBackSpeed: 1.9,       // pop off a stall and you roll back down the way you came, this fast
+  stallPopScale: 0.55,
 
   // Bail
   bailTime: 1.25,

@@ -28,6 +28,13 @@ leans over and falls off, and it gets harder the longer you hold it — stick to
 to bring it back. Release the ollie button to pop off. Over-leaning, landing sideways at speed, or hitting a wall
 fast is a bail: the board tumbles, the view fades, and you are put back where you were last rolling.
 
+**Half pipes and transitions.** Ramps are ridden, not climbed: gravity does the work, so speed you carry in is the height
+you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
+you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
+square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
+back in fakie (it only catches when you come up from the pit, never when you drop in). In VR you **pump** with your real
+knees: squat, then stand as you go up a transition and you gain speed (squatting costs a little, so mashing doesn't pay).
+
 Haptics: roll rumble, push ticks, crouch tick, pop snap, landing thump scaled to the impact, grind rumble that gets
 harder as you near falling, wall hits and bails.
 
@@ -62,4 +69,6 @@ npm test
 ```
 
 Runs the simulation against a flat test floor: rolling, pushing, steering, ollie height, landing and wall bails,
-rail locking (50-50 and boardslide), balance, popping off, near-misses, respawn.
+rail locking (50-50 and boardslide), balance, popping off, near-misses, respawn. `tests/halfpipe.test.mjs` builds a real
+half-pipe mesh (round transitions, vertical, deck, coping) and checks wall riding, drop-ins, airs, pumping and axle stalls
+through the same collision code the game uses.

@@ -44,15 +44,15 @@ export class Skater {
 
     this.steer = 0; this.drive = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false;
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false;
     this.spinVel = 0; this.exitAlign = 0;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
-    this.crouch = 0; this.rollSpeed = 0; this.groundedTime = 0; this.airTime = 0;
+    this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
     this.bailTime = 0; this.bailBoard = null;
     this.safe = { pos: new THREE.Vector3(), heading: 0 };
     this.spawn = { pos: new THREE.Vector3(), heading: 0 };
-    this.wheels = { pts: [0, 1, 2, 3].map(() => new THREE.Vector3()), nrm: [0, 1, 2, 3].map(() => new THREE.Vector3()), ok: [false, false, false, false], count: 0, maxY: 0, centre: new THREE.Vector3(), normal: new THREE.Vector3(0, 1, 0), hasNormal: false };
+    this.wheels = { pts: [0, 1, 2, 3].map(() => new THREE.Vector3()), nrm: [0, 1, 2, 3].map(() => new THREE.Vector3()), h: [0, 0, 0, 0], ok: [false, false, false, false], count: 0, maxY: 0, centre: new THREE.Vector3(), normal: new THREE.Vector3(0, 1, 0), hasNormal: false };
   }
 
   setSpawn(pos, heading = 0) {
@@ -92,6 +92,7 @@ export class Skater {
     }
     this.jumpWas = jump;
     this.jumpHeld = jump;
+    this.trackBody(input.bodyY, dt);
     this.popBuffer -= dt;
     if (this.popBuffer <= 0) this.popRequest = null;
     this.grindCooldown = Math.max(0, this.grindCooldown - dt);
@@ -109,6 +110,16 @@ export class Skater {
       if (this.pos.y < T.killY) this.respawn(this.spawn);
     }
     this.updateVisuals(dt);
+  }
+
+  // Head height (VR only) → how fast the rider is standing up or squatting, relative to their own standing height.
+  trackBody(y, dt) {
+    if (typeof y !== 'number' || !isFinite(y) || y < 0.2) { this.extend = damp(this.extend, 0, 10, dt); return; }
+    if (this.bodyY === null) { this.bodyY = y; this.bodyRef = y; return; }
+    const rate = (y - this.bodyY) / dt;
+    this.bodyY = y;
+    this.bodyRef += (y - this.bodyRef) * (1 - Math.exp(-dt / T.pumpRefTime));
+    this.extend = damp(this.extend, clamp(rate, -3, 3), T.pumpResponse, dt);
   }
 
   // ----- ground ----------------------------------------------------------------------------------------------
@@ -150,6 +161,17 @@ export class Skater {
     }
     const sp = Math.abs(s);
     if (sp > 0) s -= Math.sign(s) * Math.min(sp, (T.rollFriction + T.airDrag * sp * sp) * h);
+
+    // Pumping a transition: standing up out of a squat while on a curved surface adds speed along the way you are rolling.
+    const curve = clamp((1 - u.y) / T.pumpCurve, 0, 1);
+    if (curve > 0 && sp > 1) {
+      const before = s;
+      if (this.extend > 0) s += Math.sign(s) * Math.min(T.pumpMaxAccel, T.pumpGain * this.extend * curve) * h;
+      else s += Math.sign(s) * T.pumpGain * 0.35 * this.extend * curve * h; // squatting costs a little, so mashing is not free
+      this.pumpAcc += Math.abs(s) - Math.abs(before);
+    }
+    if (this.pumpAcc > T.pumpEventSpeed && this.extend < 0.2) { this.onEvent('pump', { gain: this.pumpAcc }); this.pumpAcc = 0; }
+    else if (this.extend < 0) this.pumpAcc = 0;
 
     // Steering: trucks need roll speed to bite, so almost-stopped turning is a slow tail pivot.
     const bite = clamp(sp / T.steerSpeedRef, 0, 1);
@@ -194,16 +216,30 @@ export class Skater {
       return;
     }
     if (steep) {
-      // Rays along the normal only report wheels that are actually touching.
-      if (w.count < 3) { this.pos.copy(np); this.leaveGround(); return; }
-      this.pos.copy(w.centre);
-      if (w.hasNormal) this.groundNormal.copy(w.normal);
+      // Rays along the normal only report wheels that are actually near the surface; how high they hover says whether we left it.
+      let hover = 0;
+      for (let k = 0; k < 4; k++) if (w.ok[k]) hover += w.h[k];
+      hover /= w.count;
+      if (hover > T.steepLeave) { this.pos.copy(np); this.leaveGround(); return; }
+      if (w.count >= 3) {
+        this.pos.copy(w.centre);
+        if (w.hasNormal) this.groundNormal.copy(w.normal);
+      } else {
+        this.pos.copy(np).addScaledVector(n, -hover);
+      }
       this.projectVelocity(this.groundNormal);
       return;
     }
     const hStep = Math.hypot(this.vel.x, this.vel.z) * h;
     const expected = oldY + Math.max(this.vel.y, 0) * h;
-    if (w.centre.y - expected > T.maxStep + hStep * T.maxSlopeTan) { this.hitWall(null); return; }
+    if (w.centre.y - expected > T.maxStep + hStep * T.maxSlopeTan) {
+      // Higher ground behind us means we have rolled off an edge (tail still on the deck), not into a wall.
+      const hv = Math.hypot(this.vel.x, this.vel.z);
+      const ahead = hv > 1e-4 ? ((w.centre.x - np.x) * this.vel.x + (w.centre.z - np.z) * this.vel.z) / hv : 0;
+      if (ahead < -0.05) { this.pos.copy(np); this.leaveGround(); return; }
+      this.hitWall(null);
+      return;
+    }
     if (np.y - w.centre.y <= T.snapDistance) {
       this.pos.set(np.x, w.centre.y, np.z);
       if (w.hasNormal) this.groundNormal.copy(w.normal);
@@ -224,6 +260,8 @@ export class Skater {
   leaveGround() {
     this.mode = Mode.AIR;
     this.airTime = 0;
+    this.edgeGrace = T.edgeGrace;
+    this.rolledOff = true;
     this.groundedTime = 0;
     this.braking = false;
   }
@@ -236,6 +274,7 @@ export class Skater {
     this.crouch = -RIDER.popRebound;
     this.pos.addScaledVector(this.groundNormal, 0.012); // lift off so the ground check does not re-catch us
     this.leaveGround();
+    this.rolledOff = false;
     this.onEvent('pop', { charge, speed });
   }
 
@@ -262,36 +301,69 @@ export class Skater {
       }
     }
 
+    this.hugWall(h);
+
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.clampBounds(_np);
 
     if (this.tryGrind(_np, h)) return;
 
-    const w = this.sampleWheels(_np, this.heading, Math.max(this.pos.y, _np.y) + 0.5, false);
-    if (!w.count) {
-      if (this.insideSolid(_np)) { this.hitWall(null); this.pos.y = _np.y; return; }
-      this.pos.copy(_np);
-      return;
-    }
-    const pen = w.maxY - _np.y;
-    if (pen > 0) {
-      const hStep = Math.hypot(this.vel.x, this.vel.z) * h;
-      const slope = w.hasNormal ? clamp(Math.sqrt(Math.max(0, 1 - w.normal.y * w.normal.y)) / Math.max(w.normal.y, 0.17), 0, T.maxSlopeTan) : 0;
-      const allowed = Math.max(0, -this.vel.y * h) + 0.04 + hStep * slope;
-      const rising = this.vel.dot(w.hasNormal ? w.normal : UP) > 0.6 && this.popTimer < 0.12;
-      if (pen > allowed && !rising) {
-        // The side of something, not its top.
-        this.pos.y = _np.y;
-        this.hitWall(null);
-        return;
-      }
-      if (!rising) {
-        this.pos.set(_np.x, w.centre.y, _np.z);
-        this.land(w);
-        return;
-      }
-    }
+    if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
+  }
+
+  // Rolling slowly off a lip onto a steep wall (a drop-in) the rider leans into the wall and rides it down; without this the
+  // board just drifts away from the face and free-falls onto the curve, losing most of the speed the drop should give.
+  hugWall(h) {
+    if (!this.rolledOff || this.airTime > T.hugTime) return;
+    const hv = Math.hypot(this.vel.x, this.vel.z);
+    if (hv < 0.05 || hv > T.hugMaxSpeed) return;
+    _sd.set(-this.vel.x / hv, 0, -this.vel.z / hv);
+    _a.copy(this.pos); _a.y -= 0.3;
+    const c = this.world.cast(_a, _sd, T.hugReach, _cast);
+    if (!c || c.ny > 0.5 || c.nx * -_sd.x + c.nz * -_sd.z < 0.5) return;
+    const k = Math.exp(-T.hugDamp * h);
+    this.vel.x *= k; this.vel.z *= k;
+  }
+
+  // Continuous collision while airborne: the board's centre and its leading wheels (and, once clear of the edge
+  // it just left, its trailing wheels) are swept along this step's motion. Whatever they meet first is what the
+  // board lands on or bounces off, however steep, so there is no separate "wall" guess from wheel heights.
+  sweepBoard(np, h) {
+    _sd.copy(np).sub(this.pos);
+    const len = _sd.length();
+    if (len < 1e-5) return false;
+    _sd.divideScalar(len);
+    headingVec(this.heading, _H);
+    const lead = _H.x * _sd.x + _H.z * _sd.z >= 0 ? 1 : -1;
+    this.edgeGrace = Math.max(0, this.edgeGrace - h);
+    let best = null;
+    for (let i = 0; i < 3; i++) {
+      if (i === 2 && this.edgeGrace > 0) continue;
+      const off = i === 0 ? 0 : (i === 1 ? lead : -lead) * BOARD.wheelHalfBase;
+      _a.copy(this.pos).addScaledVector(_H, off).y += 0.02;
+      const c = this.world.cast(_a, _sd, len, _cast);
+      if (c && (!best || c.dist < best.dist)) best = { dist: c.dist, nx: c.nx, ny: c.ny, nz: c.nz };
+    }
+    if (!best) return false;
+    this.pos.addScaledVector(_sd, best.dist);
+    if (best.ny >= T.sweepLandMinNormalY) {
+      _wn.set(best.nx, best.ny, best.nz);
+      this.landOn(_wn);
+      return true;
+    }
+    this.pos.x += best.nx * 0.01; this.pos.z += best.nz * 0.01;
+    this.hitWall(best);
+    return true;
+  }
+
+  // Touch down on a surface with this normal: let the wheels settle the board onto it, then run the landing checks.
+  landOn(normal) {
+    this.groundNormal.copy(normal);
+    const steep = normal.y < T.steepNormalY;
+    const w = this.sampleWheels(this.pos, this.heading, this.pos.y + 0.5, steep);
+    if (w.count >= 3 && w.hasNormal) { this.pos.copy(w.centre); this.groundNormal.copy(w.normal); }
+    this.land({ hasNormal: true, normal: this.groundNormal });
   }
 
   land(w) {
@@ -310,6 +382,7 @@ export class Skater {
     if (impact > T.landBailImpact) { this.bail('impact'); return; }
     this.vel.copy(_tmp);
     this.mode = Mode.GROUND;
+    this.rolledOff = false;
     this.groundedTime = 0;
     this.spinVel = 0;
     this.visPitch *= 0.4;
@@ -356,7 +429,7 @@ export class Skater {
   // Raycasts under the four wheels; fills this.wheels with their contact points and the plane through them.
   // Flat ground is probed straight down. Steep ground (a bowl wall) is probed along the board's own normal, because
   // a vertical ray cannot see a surface that is almost vertical itself.
-  sampleWheels(np, heading, fromY, steep = false) {
+  sampleWheels(np, heading, fromY, steep = false, trailVel = null) {
     const w = this.wheels;
     const n = this.groundNormal;
     headingVec(heading, _H);
@@ -374,13 +447,20 @@ export class Skater {
       if (steep) {
         _so.addScaledVector(n, WHEEL_LIFT);
         _sd.copy(n).negate();
-        const c = this.world.cast(_so, _sd, WHEEL_LIFT + T.snapDistance, _cast);
+        const c = this.world.cast(_so, _sd, WHEEL_LIFT + T.steepContact, _cast);
         w.ok[k] = !!c && c.nx * n.x + c.ny * n.y + c.nz * n.z > 0.3;
-        if (w.ok[k]) { w.pts[k].copy(_so).addScaledVector(_sd, c.dist); w.nrm[k].set(c.nx, c.ny, c.nz); }
+        if (w.ok[k]) { w.pts[k].copy(_so).addScaledVector(_sd, c.dist); w.nrm[k].set(c.nx, c.ny, c.nz); w.h[k] = WHEEL_LIFT - c.dist; }
       } else {
         const hit = this.world.ground(_so.x, _so.z, fromY, _hit);
         w.ok[k] = !!hit;
         if (hit) { w.pts[k].set(_so.x, hit.y, _so.z); w.nrm[k].set(hit.nx, hit.ny, hit.nz); }
+      }
+    }
+    if (trailVel) {
+      for (let k = 0; k < 4; k++) {
+        const across = (k & 1 ? 1 : -1) * BOARD.wheelHalfTrack;
+        const along = (k & 2 ? 1 : -1) * BOARD.wheelHalfBase;
+        if (_sf.x * along * trailVel.x + _sf.z * along * trailVel.z + _sr.x * across * trailVel.x + _sr.z * across * trailVel.z < 0) w.ok[k] = false;
       }
     }
     let count = 0;
@@ -397,7 +477,9 @@ export class Skater {
       _wn.set(0, 0, 0);
       for (let k = 0; k < 4; k++) if (w.ok[k]) _wn.add(w.nrm[k]);
       _wn.normalize();
-      if (w.normal.dot(_wn) < T.planeAgreement) {
+      let straddling = w.normal.dot(_wn) < T.planeAgreement;
+      for (let k = 0; k < 4 && !straddling; k++) if (w.ok[k] && w.nrm[k].dot(w.normal) < T.wheelAgreement) straddling = true;
+      if (straddling) {
         let top = -Infinity;
         for (let k = 0; k < 4; k++) if (w.ok[k]) top = Math.max(top, w.pts[k].dot(_wn));
         count = 0;
@@ -455,16 +537,17 @@ export class Skater {
         if (Math.abs(raw - t) * Math.sqrt(len2) > 0.12) continue;
         const cx = seg.a.x + abx * t, cz = seg.a.z + abz * t;
         const d = Math.hypot(np.x - cx, np.z - cz);
-        if (d > T.slideLateral) continue;
+        if (d > (path.kind === 'coping' ? T.stallLateral : T.slideLateral)) continue;
         const theta = Math.acos(clamp(Math.abs(_H.x * seg.dirH.x + _H.z * seg.dirH.y), 0, 1));
         let mode = null;
         if (theta <= T.grindAlign && d <= T.truckLateral) mode = 'truck';
-        else if (theta >= Math.PI / 2 - T.slideAlign && d <= T.slideLateral) mode = 'slide';
+        else if (theta >= Math.PI / 2 - T.slideAlign && d <= (path.kind === 'coping' ? T.stallLateral : T.slideLateral)) mode = 'slide';
         if (!mode) continue;
+        if (mode === 'slide' && path.kind === 'coping' && this.rollingIntoPit(seg, np)) continue;
         const top = seg.a.y + (seg.b.y - seg.a.y) * t + path.topOffset;
         const dy = np.y + (mode === 'truck' ? BOARD.truckBottom : path.slideContact) - top;
         if (dy < -T.catchBelow || dy > T.catchAbove + Math.max(0, -this.vel.y * h)) continue;
-        const score = d / (mode === 'truck' ? T.truckLateral : T.slideLateral) + Math.abs(dy) / 0.1;
+        const score = d / (mode === 'truck' ? T.truckLateral : (path.kind === 'coping' ? T.stallLateral : T.slideLateral)) + Math.abs(dy) / 0.1;
         if (score < bestScore) { bestScore = score; best = { path, seg, i, t, mode, theta, d }; }
       }
     }
@@ -472,10 +555,42 @@ export class Skater {
     return this.startGrind(best, np);
   }
 
+  // Which side of this stretch of coping is the drop (lower ground), as a horizontal unit vector; cached on the segment.
+  pitDirection(seg) {
+    if (seg.pit === undefined) {
+      const mx = (seg.a.x + seg.b.x) / 2, mz = (seg.a.z + seg.b.z) / 2, y = Math.max(seg.a.y, seg.b.y);
+      const px = -seg.dirH.y, pz = seg.dirH.x;
+      const hi = this.world.ground(mx + px * 0.7, mz + pz * 0.7, y + 1, _hit, 30);
+      const lo = hi ? hi.y : -Infinity;
+      const hj = this.world.ground(mx - px * 0.7, mz - pz * 0.7, y + 1, _hit, 30);
+      const lo2 = hj ? hj.y : -Infinity;
+      seg.pit = lo === lo2 ? null : (lo < lo2 ? new THREE.Vector2(px, pz) : new THREE.Vector2(-px, -pz));
+    }
+    return seg.pit;
+  }
+
+  // Heading over the coping towards the drop is a drop-in (or an air coming down onto the deck side), not something to stall on.
+  rollingIntoPit(seg, np) {
+    const pit = this.pitDirection(seg);
+    if (!pit) return false;
+    return this.vel.x * pit.x + this.vel.z * pit.y > T.stallIntoPit;
+  }
+
   startGrind({ path, seg, i, t, mode, theta, d }, np) {
     const s = seg.start + t * seg.length;
     let gs = this.vel.dot(seg.dir);
-    if (Math.abs(gs) < T.grindMinSpeed) return false;
+    // Square-on to coping and nearly stopped is not a failed grind, it is an axle stall (rock to fakie).
+    const stall = mode === 'slide' && path.kind === 'coping' && Math.abs(gs) < T.grindMinSpeed;
+    if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
+    // The way back in is the way we came: against the part of our motion that was square to the coping.
+    let backX = 0, backZ = 0;
+    if (stall) {
+      gs = 0;
+      _tmp.set(this.vel.x, 0, this.vel.z);
+      _P.set(seg.dir.x, 0, seg.dir.z).normalize();
+      _tmp.addScaledVector(_P, -_tmp.dot(_P));
+      if (_tmp.lengthSq() > 1e-4) { _tmp.normalize(); backX = -_tmp.x; backZ = -_tmp.z; }
+    }
     // Pick the board orientation on the rail closest to how we arrived, then see how sloppy the entry was.
     const pathYaw = yawOf(seg.dir.x, seg.dir.z);
     const options = mode === 'truck' ? [0, Math.PI] : [Math.PI / 2, -Math.PI / 2];
@@ -485,7 +600,8 @@ export class Skater {
       if (diff < bestDiff) { bestDiff = diff; offset = o; }
     }
     const g = {
-      path, mode, s, gs, time: 0, yawOffset: offset,
+      path, mode, s, gs, time: 0, yawOffset: offset, stall,
+      back: new THREE.Vector3(),
       bal: 0, balVel: 0, p1: this.random() * TAU, p2: this.random() * TAU,
       snap: new THREE.Vector3(), name: ''
     };
@@ -499,14 +615,15 @@ export class Skater {
     this.placeOnRail(g, 0);
     g.snap.copy(np).sub(this.pos);
     // Sloppy entries start the meter off-centre: lateral error and angle error both count.
-    const limit = mode === 'truck' ? T.truckLateral : T.slideLateral;
+    const limit = mode === 'truck' ? T.truckLateral : (path.kind === 'coping' ? T.stallLateral : T.slideLateral);
     const angleLimit = mode === 'truck' ? T.grindAlign : T.slideAlign;
     const dev = mode === 'truck' ? theta : Math.PI / 2 - theta;
     _tmp.set(np.x - (seg.a.x + (seg.b.x - seg.a.x) * t), 0, np.z - (seg.a.z + (seg.b.z - seg.a.z) * t));
     const lateral = _tmp.dot(g.tilt);
     const angSide = Math.sign(wrap(pathYaw + offset - this.heading)) || 1;
     g.bal = clamp(T.balEntryScale * (0.6 * (lateral / limit) + 0.4 * angSide * (dev / angleLimit)), -0.85, 0.85);
-    g.name = `${path.kind === 'coping' ? 'Coping ' : ''}${mode === 'truck' ? '50-50' : 'Boardslide'}`;
+    g.name = stall ? 'Axle Stall' : `${path.kind === 'coping' ? 'Coping ' : ''}${mode === 'truck' ? '50-50' : 'Boardslide'}`;
+    g.back.set(backX, 0, backZ);
     this.pos.copy(np);
     this.placeOnRail(g, 0);
     this.pos.add(g.snap);
@@ -554,7 +671,7 @@ export class Skater {
     g.time += h;
 
     if (this.popRequest !== null) {
-      const speed = (T.popMin + (T.popMax - T.popMin) * this.popRequest) * 0.9;
+      const speed = (T.popMin + (T.popMax - T.popMin) * this.popRequest) * (g.stall ? T.stallPopScale : 0.9);
       this.popRequest = null;
       this.endGrind('pop', speed);
       return;
@@ -562,10 +679,12 @@ export class Skater {
 
     // Speed along the rail: gravity on sloped rails, friction on everything.
     const seg = path.segmentAt(g.s);
-    g.gs += -T.gravity * seg.dir.y * h;
-    const fric = path.friction * h;
-    g.gs -= Math.sign(g.gs) * Math.min(Math.abs(g.gs), fric);
-    g.s += g.gs * h;
+    if (!g.stall) {
+      g.gs += -T.gravity * seg.dir.y * h;
+      const fric = path.friction * h;
+      g.gs -= Math.sign(g.gs) * Math.min(Math.abs(g.gs), fric);
+      g.s += g.gs * h;
+    }
     this.rollSpeed = g.gs;
 
     if (path.closed) {
@@ -576,7 +695,7 @@ export class Skater {
       this.endGrind('end', 0);
       return;
     }
-    if (Math.abs(g.gs) < T.grindStallSpeed) {
+    if (!g.stall && Math.abs(g.gs) < T.grindStallSpeed) {
       this.endGrind('stall', 0);
       return;
     }
@@ -605,7 +724,9 @@ export class Skater {
     const seg = g.path.segmentAt(g.s);
     this.vel.copy(seg.dir).multiplyScalar(g.gs);
     if (popSpeed > 0) this.vel.y += popSpeed;
+    if (g.stall && popSpeed > 0) this.vel.addScaledVector(g.back, T.stallBackSpeed);
     this.mode = Mode.AIR;
+    this.rolledOff = false;
     this.airTime = 0;
     this.exitAlign = T.exitAlignTime;
     this.grindCooldown = T.grindCooldown;
