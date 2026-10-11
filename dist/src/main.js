@@ -168,6 +168,7 @@ try {
     object.frustumCulled = true;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
+      if (level.decals?.test(material.name)) Object.assign(material, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       if (!material.isMeshStandardMaterial) continue;
       for (const map of [material.map, material.normalMap, material.roughnessMap, material.metalnessMap]) {
         if (map) map.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
