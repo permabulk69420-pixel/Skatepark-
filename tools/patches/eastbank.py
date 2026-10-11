@@ -12,6 +12,7 @@
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
 #   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
 #      turn them round.
+#  10. The Canteen stairs ran into the terrace ledge too: set it back 2.5 m.
 #   9. Real frames round the windows and doors, and handles (eastbank_details.py).
 #   7. The dock stairs ran straight into a ledge block sitting across the top step: slide the ledge (and its grind lines) along
 #      the landing so the stairs open onto it.
@@ -113,6 +114,20 @@ def shift_x(name, dx):
         o['points'] = shifted
 
 
+def shift_z(name, dz):
+    """Move an object (and a grind path's own points) along glTF z; Blender y = -glTF z."""
+    o = bpy.data.objects.get(name)
+    if o is None:
+        return
+    o.location.y -= dz
+    pts = o.get('points')
+    if pts is not None:
+        shifted = [float(v) for v in pts]
+        for i in range(2, len(shifted), 3):
+            shifted[i] += dz
+        o['points'] = shifted
+
+
 def apply():
     earth = bpy.data.objects.get('Surrounding_Earth')
     if earth is not None:
@@ -137,6 +152,10 @@ def apply():
     for name in ('ServiceDock_LandingLedge', 'COL_ServiceDock_LandingLedge', 'PATH_ServiceDock_LandingLedge_Edge0', 'PATH_ServiceDock_LandingLedge_Edge1',
                  'PATH_ServiceDock_LandingLedge_Edge2', 'PATH_ServiceDock_LandingLedge_Edge3'):
         shift_x(name, -4.0)
+    # Canteen three-stair: the terrace ledge sat right across the top of the stairs (a 0.5 m wall to ollie or bump into); set it back 2.5 m
+    for name in ('Canteen_LongTerraceEdge', 'Canteen_LongTerraceEdge_Edge_-1', 'Canteen_LongTerraceEdge_Edge_1', 'COL_Canteen_LongTerraceEdge',
+                 'PATH_Canteen_LongTerraceEdge_Edge_-1', 'PATH_Canteen_LongTerraceEdge_Edge_1'):
+        shift_z(name, 2.5)
     # signs that faced into their buildings
     for name in ('Admin_Sign', 'Canteen_Sign', 'Gym_FrontSign', 'LedgePlaza_Sign'):
         turn_round(name)
