@@ -42,6 +42,11 @@ start early enough to finish: a tap ollie needs the flip started within about 0.
 stumble and lose speed, no trick); land mid-flip and you bail. A board that is still turning cannot catch a rail, one that has come
 round can (kickflip to rail). Tune it in the `flip*` values in `config.js`; the direction sign for goofy and regular is in `startFlip`.
 
+**Ramps that end in a deck.** A steep bank (up to about 70° at its top) that meets a flat deck is ridden, not treated as a wall: at the crest
+the board is judged by the ground under its middle, and once the middle is over a flat deck it flies off the lip with the speed it
+has (hold forward and it carries on over the top; otherwise the half-pipe air logic brings you back into the ramp). Tune it with
+`crestMinNormalY`, `crestDeckNormalY` and `crestLeave` in `config.js`. `tests/crest.test.mjs` is built from the school's real ramp profile.
+
 **Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
 your direction of travel, forward on the stick pushes the way you are rolling, a manual lifts the end that leads (a
 "Fakie Manual" tail-up), and the balance moves are the same as going forward.
@@ -109,6 +114,9 @@ tools/shoot-level.mjs      screenshots a level from chosen spots
 tools/plan-level.mjs       top-down plan of a level;  plan-collision.mjs: the same for its collision, coloured by height
 tools/audit-level.mjs      compares what is drawn with what can be ridden (visible floor with no collision and the reverse)
 tools/check-stairs.mjs     rolls the skater off the top of every stair set, with and without an ollie
+tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then a wall, a drop or nothing)
+tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
+tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
 tests/                     simulation tests
 ```
