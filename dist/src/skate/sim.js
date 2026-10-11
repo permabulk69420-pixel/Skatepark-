@@ -20,7 +20,7 @@ const _F = new THREE.Vector3(), _t = new THREE.Vector3(), _basisM = new THREE.Ma
 const _hit = { y: 0, nx: 0, ny: 1, nz: 0 };
 const _cast = { dist: 0, nx: 0, ny: 1, nz: 0 };
 const _sf = new THREE.Vector3(), _sr = new THREE.Vector3(), _so = new THREE.Vector3(), _sd = new THREE.Vector3();
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _wn = new THREE.Vector3();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _wn = new THREE.Vector3(), _cand = new THREE.Vector3();
 const WHEEL_LIFT = 0.3;
 const _qPitch = new THREE.Quaternion(), _qRoll = new THREE.Quaternion();
 const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
@@ -321,20 +321,45 @@ export class Skater {
         this.pos.copy(w.centre);
         if (w.hasNormal) this.groundNormal.copy(w.normal);
       } else {
-        this.pos.copy(np).addScaledVector(n, -hover);
+        // Fewer than three wheels agree: at a crest the front wheels are over a flat deck and the rear ones still on the slope.
+        // Sliding the board "down onto the surface" along the slope normal can drive it into the deck, so check the candidate
+        // against the ground that is really under it. If that is a flat deck the board is over the lip and flies off with the
+        // speed it has; otherwise it is lifted onto the real surface.
+        _cand.copy(np).addScaledVector(n, -hover);
+        const mid = this.world.ground(_cand.x, _cand.z, _cand.y + 0.6, _hit);
+        if (mid) {
+          if (mid.ny > T.crestDeckNormalY && mid.y >= _cand.y - T.crestLeave) {
+            this.pos.set(_cand.x, Math.max(_cand.y, mid.y), _cand.z);
+            this.leaveGround();
+            return;
+          }
+          if (_cand.y < mid.y - 0.02) _cand.y = mid.y;
+        }
+        this.pos.copy(_cand);
       }
       this.projectVelocity(this.groundNormal);
       return;
     }
     const hStep = Math.hypot(this.vel.x, this.vel.z) * h;
     const expected = oldY + Math.max(this.vel.y, 0) * h;
-    if (w.centre.y - expected > T.maxStep + hStep * T.maxSlopeTan) {
-      // Higher ground behind us means we have rolled off an edge (tail still on the deck), not into a wall.
-      const hv = Math.hypot(this.vel.x, this.vel.z);
-      const ahead = hv > 1e-4 ? ((w.centre.x - np.x) * this.vel.x + (w.centre.z - np.z) * this.vel.z) / hv : 0;
-      if (ahead < -0.05) { this.pos.copy(np); this.leaveGround(); return; }
-      this.hitWall(null);
-      return;
+    const allowed = T.maxStep + hStep * T.maxSlopeTan;
+    if (w.centre.y - expected > allowed) {
+      // At the crest of a steep ramp the front wheels reach a flat deck while the rear ones are still on the slope; the wheel
+      // fit then jumps well above the board, which looks like a wall. A surface that is continuous under the middle of the
+      // board is a ramp, however steep its last few centimetres: judge by that, so a bank ending in a deck can be ridden over.
+      const mid = this.world.ground(np.x, np.z, Math.max(oldY, np.y) + 0.5, _hit);
+      if (mid && mid.y - expected <= allowed && mid.ny > T.crestMinNormalY) {
+        w.centre.set(np.x, mid.y, np.z);
+        w.normal.set(mid.nx, mid.ny, mid.nz);
+        w.hasNormal = true;
+      } else {
+        // Higher ground behind us means we have rolled off an edge (tail still on the deck), not into a wall.
+        const hv = Math.hypot(this.vel.x, this.vel.z);
+        const ahead = hv > 1e-4 ? ((w.centre.x - np.x) * this.vel.x + (w.centre.z - np.z) * this.vel.z) / hv : 0;
+        if (ahead < -0.05) { this.pos.copy(np); this.leaveGround(); return; }
+        this.hitWall(null);
+        return;
+      }
     }
     if (np.y - w.centre.y <= T.snapDistance) {
       this.pos.set(np.x, w.centre.y, np.z);

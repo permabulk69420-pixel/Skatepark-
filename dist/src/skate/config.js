@@ -66,6 +66,9 @@ export const TUNING = Object.freeze({
   hugReach: 1,
   hugDamp: 9,
   planeAgreement: 0.92,      // wheel plane vs the surfaces they hit: below this the wheels straddle an edge
+  crestMinNormalY: 0.3,      // the ground under the middle of the board may be this steep (≈72°) and still count as a ramp, not a wall, at a crest
+  crestDeckNormalY: 0.9,     // ground this flat under the middle of the board, past a steep slope, is a deck: over the lip you fly
+  crestLeave: 0.03,
   wallCos: 0.45,             // a surface this much steeper than the one you are on counts as a wall
   snapDistance: 0.05,        // stay glued to the ground within this
   transitionKeep: 0.8,       // how much speed survives a sudden change of surface angle
