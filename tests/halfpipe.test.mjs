@@ -193,10 +193,11 @@ test('an air out of the lip with ordinary speed comes back down into the pipe, p
   }
 });
 
-test('real speed alone is not enough: without holding forward you stay in the pipe, even at 10 m/s', () => {
-  for (const [label, drive] of [['not touching the stick', () => 0], ['tapping forward', (t) => ((t * 3) % 1 < 0.4 ? 1 : 0)]]) {
+test('real speed alone is not enough: holding forward, even for ages and at 10 m/s, keeps you in the pipe', () => {
+  for (const [label, drive] of [['not touching the stick', () => 0], ['tapping forward', (t) => ((t * 3) % 1 < 0.4 ? 1 : 0)], ['holding forward the whole way', () => 1]]) {
     const events = [];
     const s = pipeSkater({ events });
+    s.holdFwd = 4;                       // forward has been held a good while: this used to send you over the top by itself
     rollFrom(s, 0, 10.5, -1);
     const r = airOverLip(s, (t) => ({ drive: drive(t) }), 4);
     assert.ok(r.maxOut < 0.45, `${label}: went ${r.maxOut.toFixed(2)} m out over the lip`);
@@ -205,38 +206,30 @@ test('real speed alone is not enough: without holding forward you stay in the pi
   }
 });
 
-test('holding forward with the speed to clear the lip takes you out over the top, with or without a pop', () => {
-  for (const pop of [false, true]) {
+function ollieAtLip(s, extra = {}) {
+  let t0 = -1;
+  return airOverLip(s, (t, sk) => {
+    if (t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat + 1 && sk.pos.y > 1.0 && sk.vel.y > 0) t0 = t;
+    return { ...extra, jump: t0 >= 0 && t - t0 < 0.05 };
+  }, 2.5);
+}
+
+test('an ollie at the lip with the speed to clear it takes you out over the top', () => {
+  for (const drive of [0, 1]) {
     const events = [];
     const s = pipeSkater({ events });
     rollFrom(s, 0, 9.5, -1);
-    s.holdFwd = 4;                       // forward has been held a good while
-    let t0 = -1;
-    const r = airOverLip(s, (t, sk) => {
-      if (pop && t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat + 1 && sk.pos.y > 1.0 && sk.vel.y > 0) t0 = t;
-      return { drive: 1, jump: t0 >= 0 && t - t0 < 0.05 };
-    }, 2.5);
-    assert.ok(r.maxOut > 1.2, `${pop ? 'pop' : 'no pop'}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
+    const r = ollieAtLip(s, { drive });
+    assert.ok(r.maxOut > 1.2, `drive ${drive}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
     assert.deepEqual(bails(events), []);
   }
 });
 
-test('holding forward without the speed to clear the lip still stays in', () => {
+test('an ollie at the lip without the speed to clear it still stays in', () => {
   const s = pipeSkater({});
   rollFrom(s, 0, 6.2, -1);
-  s.holdFwd = 4;
-  const r = airOverLip(s, { drive: 1 }, 3);
+  const r = ollieAtLip(s, { drive: 1 });
   assert.ok(r.maxOut < 0.45, `went ${r.maxOut.toFixed(2)} m out over the lip`);
-});
-
-test('holding forward: early airs stay in the pipe, and a decent while later you pass over', () => {
-  const s = pipeSkater({ withCoping: true });
-  rollFrom(s, 0, 4, -1);
-  const r = airOverLip(s, { drive: 1 }, 25);
-  assert.ok(r.air > 0 && r.over > 0, `air at ${r.air}, over at ${r.over}`);
-  assert.ok(r.air < r.over, 'passed over before ever airing in the pipe');
-  assert.ok(r.over > 3.5, `passed over after only ${r.over.toFixed(1)} s`);
-  assert.ok(r.over < 22, `still had not passed over after ${r.over.toFixed(1)} s`);
 });
 
 test('coming out of the wall you stay tilted like the wall, easing towards what you will land on', () => {
@@ -257,8 +250,7 @@ test('passing over the top never grabs the coping', () => {
     const events = [];
     const s = pipeSkater({ events, withCoping: true });
     rollFrom(s, 0, speed, -1);
-    s.holdFwd = 4;
-    const r = airOverLip(s, { drive: 1 }, 3);
+    const r = ollieAtLip(s, { drive: 1 });
     assert.ok(r.maxOut > 1.0, `entry ${speed}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
     assert.ok(!events.some((e) => e.type === 'grindStart'), `entry ${speed}: grabbed the coping`);
     assert.deepEqual(bails(events), []);
@@ -272,5 +264,26 @@ test('holding forward at the top is never an axle stall', () => {
     rollFrom(s, 0, speed, -1);
     run(s, { drive: 1 }, 3);
     assert.ok(!events.some((e) => e.type === 'grindStart'), `entry ${speed.toFixed(1)}: stalled while holding forward`);
+  }
+});
+
+// The school's quarter-pipes: pushing up one holding forward, a few degrees off square, used to fall back onto the coping barely moving
+// along it and "boardslide" at a crawl until the balance meter dumped you. (Sliding along it at real speed is fine.)
+test('arriving a little off square, holding forward: no coping crawl, no bail, and straight on you never cross the lip without an ollie', () => {
+  for (const speed of [4, 5.5, 7, 9]) for (const yawDeg of [0, 3, 6]) {
+    const events = [];
+    const s = pipeSkater({ events, withCoping: true });
+    s.respawn({ pos: new THREE.Vector3(0, 0, 0), heading: Math.PI / 2 + yawDeg * Math.PI / 180 });
+    for (let i = 0; i < 20; i++) s.update({}, 1 / 72);
+    const h = s.heading;
+    s.vel.set(-Math.sin(h) * speed, 0, -Math.cos(h) * speed);
+    let maxOut = 0;
+    run(s, { drive: 1 }, 8, 1 / 72, (t, sk) => { if (sk.pos.y > PIPE.height - 0.3) maxOut = Math.max(maxOut, Math.abs(sk.pos.x) - PIPE.lip); });
+    const label = `speed ${speed}, ${yawDeg}° off`;
+    // (a real boardslide along the coping that nobody balances still falls off the balance meter; that is the grind game, not the bug)
+    assert.deepEqual(bails(events).filter((r) => r !== 'balance'), [], `${label}: bailed`);
+    if (yawDeg === 0) assert.ok(maxOut < 0.45, `${label}: crossed ${maxOut.toFixed(2)} m over the lip without an ollie`);
+    const crawl = events.filter((e) => e.type === 'grindEnd' && /Boardslide/.test(e.data.name) && e.data.time > 2.2);
+    assert.equal(crawl.length, 0, `${label}: crawled along the coping for ${crawl[0]?.data.time.toFixed(1)} s`);
   }
 });

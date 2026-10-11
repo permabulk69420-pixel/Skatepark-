@@ -385,7 +385,7 @@ export class Skater {
     this.rolledOff = true;
     this.endManual('air');
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
-    this.passIntent = this.holdFwd >= T.passHold;
+    this.passIntent = this.popTimer < T.passPopWindow;      // only an ollie sends you over a lip, never just riding up it holding forward
     this.groundedTime = 0;
     this.braking = false;
   }
@@ -441,7 +441,7 @@ export class Skater {
       }
     }
 
-    if (this.holdFwd >= T.passHold) this.passIntent = true;
+    if (this.popTimer < T.passPopWindow) this.passIntent = true;
     this.hugWall(h);
     this.lipAir(h);
     this.sampleAirFloor();
@@ -834,6 +834,8 @@ export class Skater {
     // Square-on to coping and nearly stopped is not a failed grind, it is an axle stall (rock to fakie).
     const stall = mode === 'slide' && path.kind === 'coping' && Math.abs(gs) < T.grindMinSpeed;
     if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
+    // Dropping back onto a coping while barely moving along it is not a boardslide (it crawled along the lip until the balance meter dumped you).
+    if (!stall && path.kind === 'coping' && mode === 'slide' && Math.abs(gs) < T.copingSlideMinSpeed) return false;
     // A stall is something you do at the top of a climb; falling back past the coping at speed is not it.
     if (stall && (Math.abs(this.vel.y) > T.stallMaxVertical || this.holdFwd > T.stallBlockHold)) return false;
     // The way back in is the way we came: against the part of our motion that was square to the coping.
@@ -1004,6 +1006,18 @@ export class Skater {
       this.endGrind('stall', 0);
       return;
     }
+    // A coping slide that has slowed to a crawl drops you back into the pit instead of creeping along the lip.
+    if (!g.stall && path.kind === 'coping' && Math.abs(g.gs) < T.copingSlideEnd) {
+      const pit = this.pitDirection(path.segmentAt(g.s));
+      this.endGrind('stall', 0);
+      if (pit) {
+        // Face the way you are going (down the wall), not along the lip, so the landing on the wall is a clean one.
+        this.vel.x = pit.x * T.copingDropIn; this.vel.z = pit.y * T.copingDropIn;
+        this.heading = yawOf(pit.x, pit.y);
+        this.spinVel = 0;
+      }
+      return;
+    }
 
     // Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
     const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax) * (1 + (T.variantHard - 1) * Math.abs(g.vb));
@@ -1029,7 +1043,7 @@ export class Skater {
     const seg = g.path.segmentAt(g.s);
     this.vel.copy(seg.dir).multiplyScalar(g.gs);
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
-    this.passIntent = this.holdFwd >= T.passHold;
+    this.passIntent = popSpeed > 0;
     if (popSpeed > 0) this.vel.y += popSpeed;
     if (g.stall && popSpeed > 0) this.vel.addScaledVector(g.back, T.stallBackSpeed);
     this.mode = Mode.AIR;

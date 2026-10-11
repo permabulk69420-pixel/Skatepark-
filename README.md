@@ -44,7 +44,7 @@ round can (kickflip to rail). Tune it in the `flip*` values in `config.js`; the 
 
 **Ramps that end in a deck.** A steep bank (up to about 70° at its top) that meets a flat deck is ridden, not treated as a wall: at the crest
 the board is judged by the ground under its middle, and once the middle is over a flat deck it flies off the lip with the speed it
-has (hold forward and it carries on over the top; otherwise the half-pipe air logic brings you back into the ramp). Tune it with
+has (ollie at the lip and it carries on over the top; otherwise the half-pipe air logic brings you back into the ramp). Tune it with
 `crestMinNormalY`, `crestDeckNormalY` and `crestLeave` in `config.js`. `tests/crest.test.mjs` is built from the school's real ramp profile.
 
 **Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
@@ -67,13 +67,7 @@ fast is a bail: the board tumbles, the view fades, and you are put back where yo
 you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
 you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
 square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
-back in fakie (leave it and it rocks back in by itself after about 0.8 s, always down into the pipe; it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Ollie at the lip, or just fly out of it, and you are held over the
-pit and ride back down the wall, however fast you are going. To pass over the top you have to hold forward on the stick
-for a decent while (about 2 s of it; a tap doesn't build it and letting go drains it fast), and it's decided when you
-launch, so you can let go in the air, *and* have enough speed to
-clear the lip (the pop doesn't count, only the speed you brought). Holding forward is also what pumps the transitions, so
-it all happens together. Going over never grabs the coping, and holding forward at the top never stalls: from a 4 m/s start on the mini ramp you pass over after a few passes (see `pass*` and `lip*` in
-`config.js`).
+back in fakie (leave it and it rocks back in by itself after about 0.8 s, always down into the pipe; it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Fly out of the lip and you are held over the pit and ride back down the wall, however fast you are going and however long you have been holding forward (the first version sent you over the top after about 2 s of holding forward, which on a headset is just pushing, so every ride up a quarter-pipe ended on the deck behind it). To pass over the top you ollie at the lip *and* have the speed to clear it (see `passPopWindow` and `lip*` in `config.js`). Going over never grabs the coping, and holding forward at the top never stalls. Dropping back onto a coping while barely moving along it is not a boardslide (`copingSlideMinSpeed`); one that slows to a crawl drops you into the pit (`copingSlideEnd`).
 
 In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical, and the
 view with you) and eases towards whatever it is about to land on, faster as the ground gets close.
