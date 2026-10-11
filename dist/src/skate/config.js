@@ -103,6 +103,14 @@ export const TUNING = Object.freeze({
   balControl: 7.5,
   balDamp: 1.4,
   balEntryScale: 0.8,
+  // Nosegrind / 5-0: in a 50-50, hold the stick up (front truck on the rail, tail up) or down (back truck, nose up).
+  variantStick: 0.55,        // stick deflection that picks a nose grind or a 5-0
+  variantRelease: 0.35,      // back inside this and it is a 50-50 again (in between it stays as it was)
+  variantTilt: 0.24,         // rad the board pitches on the rail
+  variantResponse: 12,       // 1/s: how fast the board rocks onto the one truck
+  variantHard: 1.3,          // balance instability × this at the full variant: harder than a 50-50
+  variantDrag: 0.25,         // extra rail friction at the full variant
+  variantMinTime: 0.3,       // seconds in a variant before the trick takes its name
   balMaxTilt: 0.34,          // board lean at the edge of the meter
   railTopOffset: Object.freeze({ rail: 1, coping: 1, ledge: -0.9 }), // × path radius above the stored line (ledge lines sit just above their surface)
 

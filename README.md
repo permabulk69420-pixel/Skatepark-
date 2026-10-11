@@ -10,7 +10,7 @@ default) and **Eastbank school** (`?level=eastbank`, a 180 × 150 m school campu
 
 | Input | Does |
 | --- | --- |
-| Left stick up / down | Push (kicks repeat while held) / brake. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
+| Left stick up / down | Push (kicks repeat while held) / brake; on a rail in a 50-50: up = nosegrind, down = 5-0. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
 | Left stick sideways | Steer · spin in the air |
 | Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
 | Right **A** (or right trigger) | Hold to crouch, release to ollie. A longer hold pops higher |
@@ -28,6 +28,12 @@ so they don't snap the view; past about 50° (a half-pipe wall) it follows almos
 Flick in the air after an ollie and you land in it. Balance it with your hands, like a grind (the marker drifts and gets
 harder the longer you hold it; push it back with the opposite hand; over-leaning is a bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
 out of speed. The camera tilts with the board. Tune it in the `manual*` and `flick*` values in `config.js`.
+
+**Nosegrind / 5-0.** While you are in a 50-50 (board along the rail), hold the left stick **up** to put the front truck on the
+rail (a nosegrind: tail up, the board sits behind the rail point) or **down** for the back truck (a 5-0: nose up, the board sits
+ahead of it). Let go and it is a 50-50 again. Holding the stick as you land on the rail starts you in it. They are harder to
+balance and a bit slower than a 50-50, and the trick takes the name of whichever you held longest. Boardslides are unchanged.
+The stick does not read as a manual flick while you are on a rail. Tune it in the `variant*` values in `config.js`.
 
 **Flips.** In the air, press right **B** and push the left stick left (kickflip) or right (heelflip): the board turns one full
 revolution in about half a second. The stick picks the direction and does not also spin you while the flip is going. You have to
