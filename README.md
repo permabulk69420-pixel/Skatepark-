@@ -1,7 +1,8 @@
-# Skatepark — Breakwater
+# Skatepark
 
-A Quest 3 WebXR skateboarding test bed: a 104 × 88 m skatepark you ride a RIFT board around, to find out whether
-the skating itself is fun. Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
+A Quest 3 WebXR skateboarding test bed: you ride a RIFT board around, to find out whether the skating itself is fun.
+There are two levels, picked with `?level=` (or the links in the info panel): **Breakwater** (a 104 × 88 m skatepark, the
+default) and **Eastbank school** (`?level=eastbank`, a 180 × 150 m school campus). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
 
 ## Playing
 
@@ -74,6 +75,8 @@ dist/src/main.js           scene, loading, main loop
 dist/src/skate/config.js   every tuning number (speeds, ollie height, balance difficulty, wall/landing limits …)
 dist/src/skate/sim.js      the skater: ground, air, grinds, bails
 dist/src/skate/world.js    ground/wall queries against the park's collision meshes
+dist/src/skate/levels.js   the level list (?level=): model, play area, shadow reach, intro text
+dist/src/skate/lod.js      swaps chunks of a level between full and cheaper versions by distance
 dist/src/skate/rails.js    grind paths read from the park file (node extras, role "grind_path")
 dist/src/skate/rider.js    puts the player on the board (stance, centring, crouch, lean)
 dist/src/skate/input.js    Quest controllers / keyboard
@@ -81,13 +84,39 @@ dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding)
 dist/src/skate/haptics.js  controller pulses
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
+dist/assets/levels/        optimised level models (eastbank-school.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
+tools/optimise-level.mjs   raw level GLB -> chunked, LOD'd, compressed game GLB (see Levels)
+tools/measure-level.mjs    triangles / draw calls per view over a grid of ground positions, with and without LODs
+tools/check-level.mjs      drives the real skater on a level: spawns, ground grid, every grind path
+tools/shoot-level.mjs      screenshots a level from chosen spots
 tests/                     simulation tests
 ```
 
 The board's origin is where the wheels meet the ground and the nose points down −Z. Heading `h` points the nose along
 (−sin h, 0, −cos h). Rails have no collision of their own; they only exist as grind paths.
+
+## Levels
+
+A level is a GLB with `ENV_*` render meshes, `COL_*` collision meshes (invisible), `PATH_*` grind paths (node extras, role
+`grind_path`) and a `Spawn_Entrance` node. Add it to `dist/src/skate/levels.js` with its play-area `bounds` (the skater is
+kept inside them) and the `?level=` id it answers to.
+
+Eastbank school comes from a raw 80 MB export (one huge mesh per material, 2048² textures: 1.6 M triangles and ~335 MB of
+texture memory). `node tools/optimise-level.mjs <raw.glb> dist/assets/levels/eastbank-school.glb` turns it into the game file
+(32 MB, ~60 MB of texture memory):
+
+- render meshes are cut into chunks with a quadtree (a square only splits while it holds too many triangles), so culling works
+  and sparse things such as rails stay a single draw call;
+- every chunk gets LOD1/LOD2 copies, swapped in by distance to the chunk's box (`lod.js`). Geometry is simplified with locked
+  borders so chunks do not crack apart; leaf cards are thinned (whole leaves dropped, the rest scaled up) instead;
+- positions, normals and colours are quantised, textures are resized (base/normal 1024², ORM 512²) and stored as WebP, buffers
+  are meshopt-compressed. Collision meshes are left exactly as exported.
+
+The raw export lives on the `level/eastbank-school` branch (`git show origin/level/eastbank-school:dist/assets/levels/eastbank-school.glb > raw.glb`).
+`node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw: about 420 k triangles and 93 draw calls on
+average, at worst ~760 k and ~220 (Breakwater: see `node tools/measure-level.mjs breakwater`).
 
 ## Cache busting (so you always test the latest)
 
