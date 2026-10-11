@@ -250,9 +250,11 @@ function frame(dt) {
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
   if (renderer.xr.isPresenting) {
-    // In VR the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left.
-    const grips = hands.gripHeights();
-    command.lean = handBalance.update(dt, grips.left, grips.right, !!sim.balance);
+    // In VR the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left. The neutral
+    // hand position is only learned while rolling relaxed on the ground, not through a crouch, pop or flight.
+    const grips = hands.gripPositions();
+    const relaxed = sim.mode === Mode.GROUND && !sim.manual && sim.groundedTime > 0.4 && Math.abs(sim.crouch) < 0.06 && !command.jump;
+    command.lean = handBalance.update(dt, grips.left, grips.right, { balancing: !!sim.balance, learn: relaxed });
   }
   if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
     sim.faceOffset = -sim.faceOffset;

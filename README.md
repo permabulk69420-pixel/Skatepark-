@@ -141,9 +141,10 @@ through the same collision code the game uses.
 
 ## Balancing with your hands (VR)
 
-Grinds and manuals are balanced with your hands, not the thumbstick. The difference in height between your hands, compared with
-how they were resting just before the balance began, is the push: right hand up moves the marker right, left hand up moves it
-left; about 22 cm of difference is a full push. The resting reference follows your hands whenever you are not balancing, so
-however you stand or hold your arms is "no push", and it freezes while a balance is running. Change the feel in `HANDS` in
-`config.js` (`range`, `deadzone`, `restTime`, `response`). The thumbstick still pushes, brakes, steers, spins you in the air
-and flicks for a manual.
+Grinds and manuals are balanced with your hands, not the thumbstick. The push is the tilt of the line between your hands, like
+holding a balance pole: right hand up moves the marker right, left hand up moves it left; about 22° is a full push. Because it
+is an angle it feels the same with the hands close together or wide apart. It is measured from a neutral that is learned only
+while you are rolling relaxed on the ground (not crouching, popping or in the air, where your arms swing about), and frozen for
+the length of the grind or manual. The push eases in over a quarter of a second when a balance starts. Change the feel in `HANDS` in
+`config.js` (`range`, `deadzone`, `restTime`, `minSpread`, `ease`, `response`). The thumbstick still pushes, brakes, steers,
+spins you in the air and flicks for a manual.
