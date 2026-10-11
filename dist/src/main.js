@@ -113,17 +113,17 @@ function continuousFeedback() {
 const manager = new THREE.LoadingManager();
 const loader = new GLTFLoader(manager);
 loader.setMeshoptDecoder(MeshoptDecoder);
-const bust = encodeURIComponent(window.__skateparkCacheKey || Date.now());
+const assetUrl = window.__skateparkUrl || ((file) => `./${file}?t=${Date.now()}`);
 try {
   const [gltf, boardGltf] = await Promise.all([
-    loader.loadAsync(`./assets/skatepark.glb?fresh=${bust}`, (event) => {
+    loader.loadAsync(assetUrl('assets/skatepark.glb'), (event) => {
       if (event.total) {
         const percent = Math.round(event.loaded / event.total * 100);
         progress.style.width = `${percent}%`;
         status.textContent = percent < 100 ? `Loading the park… ${percent}%` : 'Preparing materials…';
       }
     }),
-    loader.loadAsync(`./assets/skateboard.glb?fresh=${bust}`)
+    loader.loadAsync(assetUrl('assets/skateboard.glb'))
   ]);
   park = gltf.scene;
   scene.add(park);
@@ -197,6 +197,7 @@ renderer.xr.addEventListener('sessionstart', () => {
   camera.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
   rider?.requestCalibration();
+  hud?.say(`Build ${window.__skateparkBuild || '?'}`, 5);
   const session = renderer.xr.getSession();
   if (session.supportedFrameRates?.includes(72) && session.updateTargetFrameRate) session.updateTargetFrameRate(72).catch(() => {});
 });

@@ -28,17 +28,46 @@
     body.in-vr .identity,body.in-vr .entry,body.in-vr #reset,body.in-vr #hud{display:none}
     @media(max-width:650px){.entry{bottom:88px;left:16px;right:16px;padding:14px 16px;max-width:none}.identity{left:16px;top:18px}.identity strong{font-size:21px}#reset{right:16px;top:18px}#VRButton{bottom:18px!important;right:16px!important;left:16px!important;width:calc(100% - 32px)!important}}
   </style>
-  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
 </head>
 <body>
   <div class="identity"><span>SKATE PARK</span><strong>Breakwater</strong></div>
-  <div class="entry"><p id="status">Loading the park…</p><p>104 × 88 metres · Street, bowl and transition · RIFT board</p><small id="controls">Quest — left stick: up pushes, down brakes, sideways steers (and balances on a grind).<br>Right A: hold to crouch, release to ollie. Left Y: switch stance. Hold both grips: stand on the board where you are. Hold left X: back to the entrance.</small><template id="controls-desktop">W push · S brake · A/D steer &amp; balance · hold Space to crouch, release to ollie · drag to look · R back to the entrance · Z stance</template><div class="progress"><div id="progress"></div></div></div>
+  <div class="entry"><p id="status">Loading the park…</p><p>104 × 88 metres · Street, bowl and transition · RIFT board</p><p id="build" style="font-size:11px;opacity:.7;margin-top:4px"></p><small id="controls">Quest — left stick: up pushes, down brakes, sideways steers (and balances on a grind).<br>Right A: hold to crouch, release to ollie. Left Y: switch stance. Hold both grips: stand on the board where you are. Hold left X: back to the entrance.</small><template id="controls-desktop">W push · S brake · A/D steer &amp; balance · hold Space to crouch, release to ollie · drag to look · R back to the entrance · Z stance</template><div class="progress"><div id="progress"></div></div></div>
   <button id="reset" type="button" aria-label="Return to the park entrance">Return to entrance</button>
   <div id="hud" aria-hidden="true"><div class="trick" data-trick></div><div class="balance" data-balance><i></i></div><div class="speed" data-speed></div></div>
-  <script type="module">
-    const cacheKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    window.__skateparkCacheKey = cacheKey;
-    await import(`./src/main.js?fresh=${encodeURIComponent(cacheKey)}`);
+  <script>
+    // Every file the game loads is requested as ?v=<content hash> from manifest.json, which is itself fetched fresh each visit, so
+    // a changed file always has a new URL and the Quest browser cannot run a stale copy. The import map does the same for the
+    // modules that import each other; the build id is shown on screen and at the start of a VR session.
+    (async () => {
+      const note = document.querySelector('#build');
+      let manifest = null;
+      try {
+        const response = await fetch(`./manifest.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (response.ok) manifest = await response.json();
+      } catch { /* falls back to unversioned URLs below */ }
+      const base = new URL('./', location.href);
+      const version = (file) => (manifest?.files?.[file] ? `?v=${manifest.files[file]}` : `?t=${Date.now()}`);
+      const url = (file) => `./${file}${version(file)}`;
+      const abs = (file) => new URL(file, base).href;
+      const imports = { three: url('vendor/three.module.js'), 'three/addons/': './vendor/addons/' };
+      if (manifest) {
+        for (const file of Object.keys(manifest.files)) {
+          if (!/\.js$/.test(file)) continue;
+          imports[abs(file)] = new URL(`${file}?v=${manifest.files[file]}`, base).href;
+          const addon = file.match(/^vendor\/addons\/(.+)$/);
+          if (addon) imports[`three/addons/${addon[1]}`] = url(file);
+        }
+      }
+      const map = document.createElement('script');
+      map.type = 'importmap';
+      map.textContent = JSON.stringify({ imports });
+      document.head.append(map);
+      window.__skateparkManifest = manifest;
+      window.__skateparkBuild = manifest?.build || 'unversioned';
+      window.__skateparkUrl = url;
+      if (note) note.textContent = `Build ${window.__skateparkBuild}`;
+      await import(url('src/main.js'));
+    })();
   </script>
 </body>
 </html>

@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Breakwater skatepark: Quest WebXR skateboarding test bed. The game itself is static files in dist/.",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "manifest": "node tools/make-manifest.mjs"
   },
   "devDependencies": {
     "three": "0.180.0"
