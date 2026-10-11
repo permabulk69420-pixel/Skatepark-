@@ -44,7 +44,7 @@ export class Skater {
 
     this.steer = 0; this.drive = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0;
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0;
     this.spinVel = 0; this.exitAlign = 0;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
@@ -69,7 +69,7 @@ export class Skater {
     this.grind = null; this.bailBoard = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
-    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null;
+    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0;
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
@@ -82,6 +82,8 @@ export class Skater {
     if (!(dt > 0)) return;
     this.steer = damp(this.steer, clamp(input.steer || 0, -1, 1), 20, dt);
     this.drive = clamp(input.drive || 0, -1, 1);
+    // How long forward has been held; a tap does not build it and letting go drains it quickly.
+    this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
 
     const jump = !!input.jump;
     if (jump && !this.jumpWas) { this.crouchTime = 0; this.crouch = Math.max(this.crouch, RIDER.crouchPress); this.onEvent('crouch'); }
@@ -359,7 +361,8 @@ export class Skater {
     const intoPit = (px - cx) * pit.x + (pz - cz) * pit.y;       // + over the pit, − over the deck
     const outward = -(this.vel.x * pit.x + this.vel.z * pit.y);  // + moving out over the lip
     const carried = Math.sqrt(Math.max(0, 2 * (this.launchE - T.gravity * lipY)));
-    const pass = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo);
+    const clears = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo) >= 0.5;
+    const pass = clears && this.holdFwd >= T.passHold ? 1 : 0;
     if (pass < 0.5) {
       // A damped spring to just inside the lip line: the air stays over the pit and comes back down against the wall.
       if (intoPit > -0.7 && intoPit < T.lipHoldDist + 2) {

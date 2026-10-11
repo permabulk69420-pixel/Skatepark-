@@ -110,12 +110,16 @@ export const TUNING = Object.freeze({
   pumpCurve: 0.22,           // 1 - surface normal y at which the pump is at full strength
   pumpEventSpeed: 0.18,      // speed gained in one stand-up worth a haptic tick
 
-  // Airs at a lip: stay in the pipe unless you carried real speed. At launch the board remembers its energy (a pop does not
-  // count). Compared with the height of the nearest coping that is the speed you had at the lip: below passFrom an air is
-  // held over the pit and comes back down into it, above passTo you are carried out over the top.
+  // Airs at a lip: you stay in the pipe unless you mean to go over. Going over takes two things: holding forward (a sustained
+  // hold, not a tap: it builds while you hold and drains fast when you let go) and enough speed carried to the lip to
+  // clear it (the board remembers its energy at launch; a pop does not count). Otherwise the air is held over the pit and
+  // comes back down into the transition.
+  passHold: 3,               // seconds of forward held before an air will pass over
+  passHoldMax: 4,
+  passHoldDrain: 3,          // how many times faster letting go empties it than holding fills it
+  lipPassFrom: 3.8,          // m/s carried to the lip needed to clear it…
+  lipPassTo: 4.6,            // …fully by here
   lipZone: 3.2,              // how far from a lip (horizontally) this applies
-  lipPassFrom: 5.4,          // m/s carried to the lip
-  lipPassTo: 6.6,
   lipHoldDist: 0.28,         // an air that should stay is held this far inside the lip line, against the wall, so it rides back down the face
   lipSpring: 60,
   lipDamp: 15,
