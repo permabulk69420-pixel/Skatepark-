@@ -69,7 +69,7 @@ export function createHud({ rig, rider, sim }) {
 
   function update(dt) {
     messageTime -= dt;
-    const g = sim.mode === Mode.GRIND ? sim.grind : null;
+    const g = sim.balance;
     const showMessage = messageTime > 0;
     group.visible = !!g || showMessage;
     if (group.visible) {

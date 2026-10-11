@@ -143,6 +143,23 @@ export const TUNING = Object.freeze({
   stallBlockHold: 0.5,       // holding forward this long means you are going over, so no stall catch       // pop off a stall and you roll back down the way you came, this fast
   stallPopScale: 0.55,
 
+  // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
+  // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.
+  flickThreshold: 0.6,       // how far the stick has to go either way to count as a flick
+  flickWindow: 0.4,          // seconds between the two halves of the flick
+  manualMinSpeed: 2,         // you need to be rolling to start one
+  manualEndSpeed: 0.7,       // below this a manual runs out
+  manualTilt: 0.26,          // rad the board sits at when balanced (≈15°)
+  manualMaxTilt: 0.24,       // extra rad at the edge of the meter
+  manualDrag: 0.45,          // m/s² extra drag on one pair of wheels
+  manualSteer: 0.7,          // turning is weaker while balancing
+  manualInstab0: 1.6,
+  manualInstabGrow: 0.2,
+  manualInstabMax: 4.5,
+  manualWobble: 0.9,
+  manualControl: 6.5,
+  manualDamp: 1.6,
+
   // Bail
   bailTime: 1.25,
   bailFallDrop: 0.8
