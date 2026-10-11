@@ -4,6 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#193d40">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    // GitHub Pages controls HTTP caching, so use a unique document URL on each visit.
+    (() => {
+      const url = new URL(location.href);
+      const issued = Number(url.searchParams.get('_fresh'));
+      if (!issued || Math.abs(Date.now() - issued) > 30000) {
+        url.searchParams.set('_fresh', String(Date.now()));
+        location.replace(url.href);
+      }
+    })();
+  </script>
   <link rel="icon" href="data:,">
   <title>Skate Park — Breakwater</title>
   <link rel="canonical" href="https://breakwater-skatepark.permabulk69420.chatgpt.site">
@@ -19,6 +33,10 @@
   <div class="identity"><span>SKATE PARK</span><strong>Breakwater</strong></div>
   <div class="entry"><p id="status">Loading the park…</p><p>104 × 88 metres · Street, bowl and transition</p><small id="controls">Quest: left stick move · right stick smooth turn.<br>Hold right grip + right stick up/down to fly for inspection.</small><div class="progress"><div id="progress"></div></div></div>
   <button id="reset" type="button" aria-label="Return to the park entrance">Return to entrance</button>
-  <script type="module" src="./src/main.js"></script>
+  <script type="module">
+    const cacheKey = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.__skateparkCacheKey = cacheKey;
+    await import(`./src/main.js?fresh=${encodeURIComponent(cacheKey)}`);
+  </script>
 </body>
 </html>

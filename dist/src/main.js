@@ -196,7 +196,7 @@ const manager = new THREE.LoadingManager();
 const loader = new GLTFLoader(manager);
 loader.setMeshoptDecoder(MeshoptDecoder);
 try {
-  const gltf = await loader.loadAsync('./assets/skatepark.glb', event => {
+  const gltf = await loader.loadAsync(`./assets/skatepark.glb?fresh=${encodeURIComponent(window.__skateparkCacheKey || Date.now())}`, event => {
     if (event.total) {
       const percent = Math.round(event.loaded / event.total * 100);
       progress.style.width = `${percent}%`;
@@ -250,6 +250,9 @@ try {
 }
 
 renderer.xr.addEventListener('sessionstart', () => {
+  renderer.xr.setFoveation(0);
+  const baseLayer = renderer.xr.getSession()?.renderState?.baseLayer;
+  if (baseLayer && 'fixedFoveation' in baseLayer) baseLayer.fixedFoveation = 0;
   document.body.classList.add('in-vr');
   camera.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
