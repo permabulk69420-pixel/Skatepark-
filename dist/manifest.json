@@ -1,11 +1,11 @@
 {
- "build": "62f1845",
+ "build": "afeb512",
  "files": {
-  "src/main.js": "27f38ac65a",
+  "src/main.js": "5dcaa81456",
   "src/skate/board-view.js": "77fa836db5",
-  "src/skate/config.js": "a83cfbc9c3",
-  "src/skate/hand-balance.js": "089326041f",
-  "src/skate/hands.js": "d9d7f7a9d5",
+  "src/skate/config.js": "19d1cf935a",
+  "src/skate/hand-balance.js": "569e4a15e9",
+  "src/skate/hands.js": "56c0648e78",
   "src/skate/haptics.js": "764fa2faba",
   "src/skate/hud.js": "315e33c808",
   "src/skate/input.js": "fd5e80ac97",
