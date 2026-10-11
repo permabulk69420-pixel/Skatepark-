@@ -21,7 +21,7 @@ renderer.shadowMap.autoUpdate = false;
 renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 renderer.xr.setFramebufferScaleFactor(1);
-renderer.xr.setFoveation(0.5);
+renderer.xr.setFoveation(0);
 document.body.prepend(renderer.domElement);
 
 const rig = new THREE.Group();
