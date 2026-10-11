@@ -1,0 +1,81 @@
+name: Import and inspect skatepark assets once
+on:
+  push:
+    branches: [build/skatepark-v1]
+    paths: [incoming-assets/index.json]
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and verify original Blender files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, hashlib
+          for entry in json.loads(Path('incoming-assets/index.json').read_text()):
+              target=Path(entry['destination'])
+              target.parent.mkdir(parents=True,exist_ok=True)
+              data=b''.join(Path(p['path']).read_bytes() for p in entry['parts'])
+              assert len(data)==entry['bytes']
+              assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==entry['sha']
+              target.write_bytes(data)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source/skatepark.blend dist/assets/skatepark.glb
+          git rm -r incoming-assets
+          git commit -m "Store verified Blender master and environment GLB"
+          git push origin HEAD:build/skatepark-v1
+      - name: Install browser for export inspection
+        run: |
+          npm install --prefix "$RUNNER_TEMP/skate-qa" playwright@1.56.0
+          node "$RUNNER_TEMP/skate-qa/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Inspect the actual WebXR app and exported park
+        run: |
+          python3 -m http.server 8080 --directory dist > "$RUNNER_TEMP/skate-http.log" 2>&1 &
+          mkdir -p qa-preview
+          cat > "$RUNNER_TEMP/skate-qa/inspect.cjs" <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('node:fs/promises');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const page=await browser.newPage({viewport:{width:1500,height:950}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto('http://127.0.0.1:8080',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>['Park ready','The park could not load.'].includes(document.querySelector('#status').textContent),{timeout:180000});
+            const status=await page.locator('#status').textContent();
+            if(status!=='Park ready')throw new Error('Application failed: '+await page.locator('#controls').textContent());
+            await page.screenshot({path:'qa-preview/Browser_Entrance.png'});
+            await page.evaluate(async()=>{
+              window.app=await import('./src/main.js');
+              app.renderer.setAnimationLoop(null);
+              document.querySelectorAll('.entry,.identity,#reset,#VRButton').forEach(e=>e.style.display='none');
+            });
+            const statistics=[];
+            const views=[['Browser_Overview',[84,69,102],[-3,0,-1]],['Browser_Bowl',[-6,11,12],[-29,-1.3,-14]],['Browser_Street',[32,2.1,32],[25,1,-4]],['Browser_MiniRamp',[-15,5.5,36],[-29,.7,23]]];
+            for(const [name,pos,target] of views){
+              statistics.push(await page.evaluate(({name,pos,target})=>{
+                const {renderer,scene,rig,camera,grindPaths,collision}=app;
+                rig.position.set(0,0,0);rig.rotation.set(0,0,0);
+                camera.position.set(...pos);camera.fov=58;camera.lookAt(...target);camera.updateProjectionMatrix();
+                renderer.info.reset();renderer.render(scene,camera);
+                return {name,calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,grindPaths:grindPaths.length,colliders:collision.length,textures:renderer.info.memory.textures};
+              },{name,pos,target}));
+              await page.screenshot({path:'qa-preview/'+name+'.png'});
+            }
+            const result={status,errors,statistics};
+            await fs.writeFile('qa-preview/browser-statistics.json',JSON.stringify(result,null,2));
+            console.log(JSON.stringify(result));
+            if(errors.length)throw new Error(errors.join('\n'));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node "$RUNNER_TEMP/skate-qa/inspect.cjs"
+          git add qa-preview
+          git commit -m "Inspect exported skatepark in WebGL"
+          git push origin HEAD:build/skatepark-v1
