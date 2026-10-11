@@ -72,11 +72,11 @@ try {
       if (a.bail) problems.push(`bails (${a.bail})`);
       if (a.stuck || c.stuck) problems.push('STOPS DEAD ON THE SLOPE');
       if (!a.bail && !a.stuck && a.reached < Math.min(highY - lowY, canReach) - 0.25) problems.push(`only reaches ${a.reached} of ${(highY - lowY).toFixed(2)} m`);
-      rowsOut.push({ at: `(${cx.toFixed(0)}, ${cz.toFixed(0)})`, rise: +(highY - lowY).toFixed(2), cells: patch.length, reached: a.reached, problems: problems.join('; ') || 'ok' });
+      rowsOut.push({ at: `(${cx.toFixed(0)}, ${cz.toFixed(0)})`, rise: +(highY - lowY).toFixed(2), cells: patch.length, reached: a.reached, problems: problems.join('; ') || 'ok', ride: `${start.x.toFixed(1)},${start.z.toFixed(1)} ${(heading * 180 / Math.PI).toFixed(0)}` });
     }
     return rowsOut;
   }, { speed });
   const bad = rows.filter((r) => r.problems !== 'ok' && r.result === undefined || r.result);
   console.log(`${rows.length} ramps ridden at ${speed} m/s, ${bad.length} with problems`);
-  for (const r of rows.sort((a, b) => (a.problems === 'ok') - (b.problems === 'ok'))) console.log(`  ${r.at.padEnd(11)} rise ${String(r.rise).padStart(5)} m  reached ${String(r.reached ?? '-').padStart(5)}  ${r.problems ?? r.result}`);
+  for (const r of rows.sort((a, b) => (a.problems === 'ok') - (b.problems === 'ok'))) console.log(`  ${r.at.padEnd(11)} rise ${String(r.rise).padStart(5)} m  reached ${String(r.reached ?? '-').padStart(5)}  ${r.problems ?? r.result}${r.ride ? `   ride-ramp: ${r.ride}` : ''}`);
 } finally { await browser.close(); server.close(); }
