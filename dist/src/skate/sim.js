@@ -43,7 +43,7 @@ export class Skater {
     this.faceOffset = -Math.PI / 2;               // rider's facing relative to the nose (regular stance faces the board's right)
 
     this.steer = 0; this.drive = 0;
-    this.manual = null; this.manualLift = 0; this.clock = 0; this.stickExtreme = 0; this.stickExtremeT = -9; this.stickExtremeSpeed = 0;
+    this.manual = null; this.manualQueue = null; this.manualWas = 0; this.manualLift = 0; this.clock = 0; this.stickExtreme = 0; this.stickExtremeT = -9; this.stickExtremeSpeed = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
@@ -70,7 +70,7 @@ export class Skater {
     this.grind = null; this.bailBoard = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
-    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualLift = 0;
+    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
@@ -89,6 +89,9 @@ export class Skater {
     this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
     this.clock += dt;
     this.detectFlick();
+    const manualKey = input.manual || 0;
+    if (manualKey && !this.manualWas) this.requestManual(manualKey, true);
+    this.manualWas = manualKey;
 
     const jump = !!input.jump;
     if (jump && !this.jumpWas) { this.crouchTime = 0; this.crouch = Math.max(this.crouch, RIDER.crouchPress); this.onEvent('crouch'); }
@@ -125,7 +128,7 @@ export class Skater {
     const sign = d > T.flickThreshold ? 1 : d < -T.flickThreshold ? -1 : 0;
     if (sign !== 0 && sign !== this.stickExtreme) {
       // Judge speed when the flick began: the forward half is itself a kick and must not lift a stand-still over the bar.
-      if (this.stickExtreme !== 0 && this.clock - this.stickExtremeT <= T.flickWindow && this.stickExtremeSpeed >= T.manualMinSpeed) this.tryManual(this.stickExtreme);
+      if (this.stickExtreme !== 0 && this.clock - this.stickExtremeT <= T.flickWindow && this.stickExtremeSpeed >= T.manualMinSpeed) this.requestManual(this.stickExtreme, false);
       this.stickExtreme = sign;
       this.stickExtremeT = this.clock;
       this.stickExtremeSpeed = this.speed;
@@ -134,10 +137,18 @@ export class Skater {
     }
   }
 
+  // Ask for a manual. On the ground it starts now; in the air it is remembered and starts when you land (ollie, flick, land in
+  // it). `deliberate` is true for the button, which also works with the ollie button held.
+  requestManual(kind, deliberate) {
+    if (this.manual) return;
+    if (this.mode === Mode.GROUND) this.tryManual(kind, deliberate);
+    else if (this.mode === Mode.AIR) this.manualQueue = { kind, t: this.clock };
+  }
+
   // kind +1: tail manual (nose up), −1: nose manual (tail up).
-  tryManual(kind) {
-    if (this.mode !== Mode.GROUND || this.manual || this.jumpHeld) return;
-    if (this.groundNormal.y < 0.97 || this.speed < T.manualMinSpeed || this.groundedTime < 0.15) return;
+  tryManual(kind, deliberate = false) {
+    if (this.mode !== Mode.GROUND || this.manual || (this.jumpHeld && !deliberate)) return;
+    if (this.groundNormal.y < 0.97 || this.speed < T.manualMinSpeed) return;
     // A manual lifts the end that leads: the nose going forward, the tail rolling fakie (and the nose manual the other way).
     headingVec(this.heading, _H);
     const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
@@ -537,6 +548,9 @@ export class Skater {
     this.visPitch *= 0.4;
     this.crouch = RIDER.landCompress * clamp(impact / 6, 0.25, 1.3);
     this.onEvent('land', { impact });
+    const q = this.manualQueue;
+    this.manualQueue = null;
+    if (q && this.clock - q.t <= T.manualQueueWindow) this.tryManual(q.kind, true);
   }
 
   // ----- walls -----------------------------------------------------------------------------------------------
@@ -895,6 +909,7 @@ export class Skater {
   bail(reason) {
     if (this.mode === Mode.BAIL) return;
     this.manual = null;
+    this.manualQueue = null;
     if (this.grind) this.grind = null;
     this.mode = Mode.BAIL;
     this.bailTime = 0;

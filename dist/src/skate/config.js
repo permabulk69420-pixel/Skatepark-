@@ -145,9 +145,10 @@ export const TUNING = Object.freeze({
 
   // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
   // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.
-  flickThreshold: 0.6,       // how far the stick has to go either way to count as a flick
-  flickWindow: 0.4,          // seconds between the two halves of the flick
-  manualMinSpeed: 2,         // you need to be rolling to start one
+  flickThreshold: 0.5,       // how far the stick has to go either way to count as a flick
+  flickWindow: 0.55,         // seconds between the two halves of the flick
+  manualQueueWindow: 0.7,    // a manual asked for in the air (or just before landing) starts when you land, if it was this recent
+  manualMinSpeed: 1.5,       // you need to be rolling to start one
   manualEndSpeed: 0.7,       // below this a manual runs out
   manualTilt: 0.26,          // rad the board sits at when balanced (≈15°)
   manualMaxTilt: 0.24,       // extra rad at the edge of the meter
