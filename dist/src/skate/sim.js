@@ -28,8 +28,9 @@ const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
 // The skater is the board: position is where the wheels meet the ground, heading is which way the nose points.
 // The rider is placed over it by the view layer. Everything runs in fixed-ish substeps so frame rate does not change the feel.
 export class Skater {
-  constructor({ world, paths = [], onEvent = () => {}, random = Math.random }) {
+  constructor({ world, paths = [], onEvent = () => {}, random = Math.random, bounds = T.bounds }) {
     this.world = world;
+    this.bounds = bounds;                        // the level's play area: half-extents x/z around an optional centre cx/cz
     this.paths = paths;
     this.onEvent = onEvent;
     this.random = random;
@@ -42,9 +43,10 @@ export class Skater {
     this.up = new THREE.Vector3(0, 1, 0);         // smoothed board up, for display
     this.faceOffset = -Math.PI / 2;               // rider's facing relative to the nose (regular stance faces the board's right)
 
-    this.steer = 0; this.drive = 0;
+    this.steer = 0; this.drive = 0; this.lean = 0;
+    this.manual = null; this.manualQueue = null; this.manualLift = 0; this.clock = 0; this.stickExtreme = 0; this.stickExtremeT = -9; this.stickExtremeSpeed = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0;
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
@@ -69,19 +71,26 @@ export class Skater {
     this.grind = null; this.bailBoard = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
-    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null;
+    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
 
   get speed() { return Math.hypot(this.vel.x, this.vel.z); }
+  // Whatever balance meter is running (a grind or a manual), for the HUD and haptics.
+  get balance() { return this.mode === Mode.GRIND ? this.grind : (this.mode === Mode.GROUND ? this.manual : null); }
   get facingYaw() { return this.heading + this.faceOffset; }
 
   // ----- per-frame entry point -------------------------------------------------------------------------------
   update(input, dt) {
     if (!(dt > 0)) return;
     this.steer = damp(this.steer, clamp(input.steer || 0, -1, 1), 20, dt);
+    this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
     this.drive = clamp(input.drive || 0, -1, 1);
+    // How long forward has been held; a tap does not build it and letting go drains it quickly.
+    this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
+    this.clock += dt;
+    this.detectFlick();
 
     const jump = !!input.jump;
     if (jump && !this.jumpWas) { this.crouchTime = 0; this.crouch = Math.max(this.crouch, RIDER.crouchPress); this.onEvent('crouch'); }
@@ -112,6 +121,66 @@ export class Skater {
     this.updateVisuals(dt);
   }
 
+  // Forward then back (or back then forward) on the stick, quickly, starts a manual.
+  detectFlick() {
+    const d = this.drive;
+    const sign = d > T.flickThreshold ? 1 : d < -T.flickThreshold ? -1 : 0;
+    if (sign !== 0 && sign !== this.stickExtreme) {
+      // Judge speed when the flick began: the forward half is itself a kick and must not lift a stand-still over the bar.
+      if (this.stickExtreme !== 0 && this.clock - this.stickExtremeT <= T.flickWindow && this.stickExtremeSpeed >= T.manualMinSpeed) this.requestManual(this.stickExtreme);
+      this.stickExtreme = sign;
+      this.stickExtremeT = this.clock;
+      this.stickExtremeSpeed = this.speed;
+    } else if (sign === 0 && this.clock - this.stickExtremeT > T.flickWindow) {
+      this.stickExtreme = 0;
+    }
+  }
+
+  // Ask for a manual (a flick of the stick). On the ground it starts now; in the air it is remembered and starts when you land:
+  // ollie, flick, land in it.
+  requestManual(kind) {
+    if (this.manual) return;
+    if (this.mode === Mode.GROUND) this.tryManual(kind);
+    else if (this.mode === Mode.AIR) this.manualQueue = { kind, t: this.clock };
+  }
+
+  // kind +1: tail manual (nose up), −1: nose manual (tail up).
+  tryManual(kind, queued = false) {
+    if (this.mode !== Mode.GROUND || this.manual || (this.jumpHeld && !queued)) return;
+    if (this.groundNormal.y < 0.97 || this.speed < T.manualMinSpeed) return;
+    // A manual lifts the end that leads: the nose going forward, the tail rolling fakie (and the nose manual the other way).
+    headingVec(this.heading, _H);
+    const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
+    this.manual = {
+      kind, pitchSign: fakie ? -kind : kind, bal: 0, balVel: 0, time: 0, p1: this.random() * TAU, p2: this.random() * TAU,
+      name: `${fakie ? 'Fakie ' : ''}${kind > 0 ? 'Manual' : 'Nose Manual'}`
+    };
+    this.pushPending = 0;
+    this.stickExtreme = 0;
+    this.onEvent('manualStart', { name: this.manual.name });
+  }
+
+  endManual(reason) {
+    const m = this.manual;
+    if (!m) return;
+    this.manual = null;
+    this.onEvent('manualEnd', { reason, name: m.name, time: m.time });
+  }
+
+  manualStep(h, sp) {
+    const m = this.manual;
+    m.time += h;
+    const instab = Math.min(T.manualInstab0 + T.manualInstabGrow * m.time, T.manualInstabMax);
+    const wobble = T.manualWobble * (0.6 * Math.sin(2.1 * m.time + m.p1) + 0.4 * Math.sin(4.9 * m.time + m.p2));
+    // The meter is the interface: a push to the right moves the marker right, whichever way the board is leaning.
+    const acc = instab * m.bal + wobble + T.manualControl * this.lean - T.manualDamp * m.balVel;
+    m.balVel += acc * h;
+    m.bal += m.balVel * h;
+    if (Math.abs(m.bal) >= 1) { m.bal = Math.sign(m.bal); this.endManual('bail'); this.bail('manual'); return; }
+    if (sp < T.manualEndSpeed) this.endManual('stall');
+    else if (this.groundNormal.y < 0.93) this.endManual('slope');
+  }
+
   // Head height (VR only) → how fast the rider is standing up or squatting, relative to their own standing height.
   trackBody(y, dt) {
     if (typeof y !== 'number' || !isFinite(y) || y < 0.2) { this.extend = damp(this.extend, 0, 10, dt); return; }
@@ -125,6 +194,7 @@ export class Skater {
   // ----- ground ----------------------------------------------------------------------------------------------
   groundStep(h) {
     this.groundedTime += h;
+    const m = this.manual;
     const u = this.groundNormal;
     headingVec(this.heading, _H);
     _f.copy(_H).addScaledVector(u, -_H.dot(u)).normalize();
@@ -147,7 +217,7 @@ export class Skater {
     this.braking = false;
     // Kicks go the way you are already rolling (rolling fakie, forward on the stick keeps you going, it does not brake you).
     const rolling = s < -0.3 ? -1 : 1;
-    if (this.drive > T.driveThreshold && this.pushCool <= 0 && Math.abs(s) < T.pushMaxSpeed && u.y > 0.97) {
+    if (!m && this.drive > T.driveThreshold && this.pushCool <= 0 && Math.abs(s) < T.pushMaxSpeed && u.y > 0.97) {
       this.pushPending += T.pushImpulse * clamp(1 - Math.abs(s) / T.pushMaxSpeed, 0.12, 1);
       this.pushCool = T.pushInterval;
       this.onEvent('push', { speed: s });
@@ -157,7 +227,7 @@ export class Skater {
       s += give * rolling;
       this.pushPending -= give;
     }
-    if (this.drive < -T.driveThreshold && Math.abs(s) > 0.05) {
+    if (!m && this.drive < -T.driveThreshold && Math.abs(s) > 0.05) {
       this.braking = true;
       s -= Math.sign(s) * Math.min(Math.abs(s), T.brakeDecel * h);
     }
@@ -166,7 +236,7 @@ export class Skater {
 
     // Forward on the stick pumps a curved surface (the same input that pushes on the flat).
     const bend = clamp((1 - u.y) / T.pumpCurve, 0, 1);
-    if (this.drive > T.driveThreshold && bend > 0 && sp > 1.2 && sp < T.autoPumpMaxSpeed) {
+    if (!m && this.drive > T.driveThreshold && bend > 0 && sp > 1.2 && sp < T.autoPumpMaxSpeed) {
       const before = s;
       s += Math.sign(s) * T.autoPump * bend * h;
       this.pumpAcc += Math.abs(s) - Math.abs(before);
@@ -183,11 +253,19 @@ export class Skater {
     if (this.pumpAcc > T.pumpEventSpeed && this.extend < 0.2) { this.onEvent('pump', { gain: this.pumpAcc }); this.pumpAcc = 0; }
     else if (this.extend < 0) this.pumpAcc = 0;
 
+    if (m) {
+      s -= Math.sign(s) * Math.min(Math.abs(s), T.manualDrag * h);
+      this.manualStep(h, Math.abs(s));
+      if (this.mode !== Mode.GROUND) return;
+    }
+
     // Steering: trucks need roll speed to bite, so almost-stopped turning is a slow tail pivot.
     const bite = clamp(sp / T.steerSpeedRef, 0, 1);
     const maxRate = Math.min(T.maxYawRate, T.maxLateralAccel / Math.max(sp, 1.6));
-    this.heading = wrap(this.heading - this.steer * (maxRate * bite * (s >= 0 ? 1 : -1) + T.pivotRate * (1 - bite)) * h);
-    this.carve = damp(this.carve, this.steer * clamp(sp / 6, 0, 1), 10, h);
+    // Left and right mean left and right of where you are going, forward or fakie (a real board's trucks would turn the other
+    // way rolling backwards, which is just confusing).
+    this.heading = wrap(this.heading - this.steer * (maxRate * (this.manual ? T.manualSteer : 1) * bite + T.pivotRate * (1 - bite)) * h);
+    this.carve = damp(this.carve, this.steer * clamp(sp / 6, 0, 1) * (s < 0 ? -1 : 1), 10, h);
 
     headingVec(this.heading, _H);
     _f.copy(_H).addScaledVector(u, -_H.dot(u)).normalize();
@@ -272,12 +350,15 @@ export class Skater {
     this.airTime = 0;
     this.edgeGrace = T.edgeGrace;
     this.rolledOff = true;
+    this.endManual('air');
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
+    this.passIntent = this.holdFwd >= T.passHold;
     this.groundedTime = 0;
     this.braking = false;
   }
 
   pop(charge) {
+    this.endManual('pop');
     const speed = T.popMin + (T.popMax - T.popMin) * clamp(charge, 0, 1);
     // Straight off the surface on flat ground, but leaning towards straight up as it steepens: popping off a wall along
     // its normal would throw you backwards into the pit.
@@ -319,8 +400,10 @@ export class Skater {
       }
     }
 
+    if (this.holdFwd >= T.passHold) this.passIntent = true;
     this.hugWall(h);
     this.lipAir(h);
+    this.sampleAirFloor();
 
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.clampBounds(_np);
@@ -329,6 +412,14 @@ export class Skater {
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
+  }
+
+  // What is below the airborne board, so its tilt can ease towards that surface's before it lands.
+  sampleAirFloor() {
+    const f = this.airFloor;
+    const hit = this.world.ground(this.pos.x, this.pos.z, this.pos.y + 0.2, _hit, 40);
+    f.found = !!hit;
+    if (hit) { f.y = hit.y; f.nx = hit.nx; f.ny = hit.ny; f.nz = hit.nz; }
   }
 
   // Airs near a coping lip. Carry enough speed to the lip (see TUNING.lipPassFrom) and you are sent out over the top;
@@ -359,7 +450,8 @@ export class Skater {
     const intoPit = (px - cx) * pit.x + (pz - cz) * pit.y;       // + over the pit, − over the deck
     const outward = -(this.vel.x * pit.x + this.vel.z * pit.y);  // + moving out over the lip
     const carried = Math.sqrt(Math.max(0, 2 * (this.launchE - T.gravity * lipY)));
-    const pass = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo);
+    const clears = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo) >= 0.5;
+    const pass = clears && this.passIntent ? 1 : 0;
     if (pass < 0.5) {
       // A damped spring to just inside the lip line: the air stays over the pit and comes back down against the wall.
       if (intoPit > -0.7 && intoPit < T.lipHoldDist + 2) {
@@ -449,11 +541,15 @@ export class Skater {
     }
     this.mode = Mode.GROUND;
     this.rolledOff = false;
+    this.passIntent = false;
     this.groundedTime = 0;
     this.spinVel = 0;
     this.visPitch *= 0.4;
     this.crouch = RIDER.landCompress * clamp(impact / 6, 0.25, 1.3);
     this.onEvent('land', { impact });
+    const q = this.manualQueue;
+    this.manualQueue = null;
+    if (q && this.clock - q.t <= T.manualQueueWindow) this.tryManual(q.kind, true);
   }
 
   // ----- walls -----------------------------------------------------------------------------------------------
@@ -480,11 +576,12 @@ export class Skater {
   }
 
   clampBounds(np) {
-    const b = T.bounds;
-    if (np.x > b.x) { np.x = b.x; if (this.vel.x > 0) this.vel.x = 0; }
-    if (np.x < -b.x) { np.x = -b.x; if (this.vel.x < 0) this.vel.x = 0; }
-    if (np.z > b.z) { np.z = b.z; if (this.vel.z > 0) this.vel.z = 0; }
-    if (np.z < -b.z) { np.z = -b.z; if (this.vel.z < 0) this.vel.z = 0; }
+    const b = this.bounds;
+    const cx = b.cx || 0, cz = b.cz || 0;
+    if (np.x > cx + b.x) { np.x = cx + b.x; if (this.vel.x > 0) this.vel.x = 0; }
+    if (np.x < cx - b.x) { np.x = cx - b.x; if (this.vel.x < 0) this.vel.x = 0; }
+    if (np.z > cz + b.z) { np.z = cz + b.z; if (this.vel.z > 0) this.vel.z = 0; }
+    if (np.z < cz - b.z) { np.z = cz - b.z; if (this.vel.z < 0) this.vel.z = 0; }
   }
 
   insideSolid(p) {
@@ -591,6 +688,7 @@ export class Skater {
     let best = null, bestScore = Infinity;
     for (const path of this.paths) {
       if (path === this.lastGrindPath && this.grindCooldown > 0) continue;
+      if (path.kind === 'coping' && this.passIntent) continue;      // going over the top: the coping is not a place to land
       if (!path.bounds.containsPoint(np)) continue;
       const segs = path.segments;
       for (let i = 0; i < segs.length; i++) {
@@ -649,7 +747,7 @@ export class Skater {
     const stall = mode === 'slide' && path.kind === 'coping' && Math.abs(gs) < T.grindMinSpeed;
     if (Math.abs(gs) < T.grindMinSpeed && !stall) return false;
     // A stall is something you do at the top of a climb; falling back past the coping at speed is not it.
-    if (stall && Math.abs(this.vel.y) > T.stallMaxVertical) return false;
+    if (stall && (Math.abs(this.vel.y) > T.stallMaxVertical || this.holdFwd > T.stallBlockHold)) return false;
     // The way back in is the way we came: against the part of our motion that was square to the coping.
     let backX = 0, backZ = 0;
     if (stall) {
@@ -768,10 +866,10 @@ export class Skater {
       return;
     }
 
-    // Balance: left unattended the board leans over and falls off; the stick pushes the lean back.
+    // Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
     const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax);
     const wobble = T.balWobble * (0.6 * Math.sin(2.3 * g.time + g.p1) + 0.4 * Math.sin(5.7 * g.time + g.p2));
-    const acc = instab * g.bal + wobble + T.balControl * this.steer - T.balDamp * g.balVel;
+    const acc = instab * g.bal + wobble + T.balControl * this.lean - T.balDamp * g.balVel;
     g.balVel += acc * h;
     g.bal += g.balVel * h;
     if (Math.abs(g.bal) >= 1) {
@@ -792,6 +890,7 @@ export class Skater {
     const seg = g.path.segmentAt(g.s);
     this.vel.copy(seg.dir).multiplyScalar(g.gs);
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
+    this.passIntent = this.holdFwd >= T.passHold;
     if (popSpeed > 0) this.vel.y += popSpeed;
     if (g.stall && popSpeed > 0) this.vel.addScaledVector(g.back, T.stallBackSpeed);
     this.mode = Mode.AIR;
@@ -809,6 +908,8 @@ export class Skater {
   // ----- bail ------------------------------------------------------------------------------------------------
   bail(reason) {
     if (this.mode === Mode.BAIL) return;
+    this.manual = null;
+    this.manualQueue = null;
     if (this.grind) this.grind = null;
     this.mode = Mode.BAIL;
     this.bailTime = 0;
@@ -849,8 +950,32 @@ export class Skater {
   // ----- display ---------------------------------------------------------------------------------------------
   updateVisuals(dt) {
     if (this.mode === Mode.GRIND && this.grind) this.up.copy(this.grind.u);
-    else if (this.mode === Mode.GROUND) this.up.lerp(this.groundNormal, 1 - Math.exp(-30 * dt)).normalize();
-    else this.up.lerp(UP, 1 - Math.exp(-1.6 * dt)).normalize();
+    else if (this.mode === Mode.GROUND) {
+      let lift = 0;
+      _u.copy(this.groundNormal);
+      if (this.manual) {
+        // The board rocks back (or forward) onto one pair of wheels; the rider's world rocks with it.
+        const a = this.manual.pitchSign * (T.manualTilt + this.manual.bal * T.manualMaxTilt);
+        headingVec(this.heading, _H);
+        _f.copy(_H).addScaledVector(this.groundNormal, -_H.dot(this.groundNormal)).normalize();
+        _u.multiplyScalar(Math.cos(a)).addScaledVector(_f, -Math.sin(a));
+        lift = BOARD.wheelHalfBase * Math.abs(Math.sin(a));
+      }
+      this.manualLift = damp(this.manualLift, lift, 14, dt);
+      this.up.lerp(_u, 1 - Math.exp(-30 * dt)).normalize();
+    }
+    else if (this.mode === Mode.AIR) {
+      // Keep the tilt we left the surface with; ease towards what is below, faster as it gets close.
+      const f = this.airFloor;
+      let rate = T.airTiltFar;
+      if (f.found) {
+        _u.set(f.nx, f.ny, f.nz);
+        rate += (T.airTiltNear - T.airTiltFar) * clamp(1 - (this.pos.y - f.y) / T.airTiltReach, 0, 1);
+      } else _u.copy(UP);
+      this.up.lerp(_u, 1 - Math.exp(-rate * dt)).normalize();
+    } else this.up.lerp(UP, 1 - Math.exp(-1.6 * dt)).normalize();
+
+    if (this.mode !== Mode.GROUND) this.manualLift = damp(this.manualLift, 0, 14, dt);
 
     if (this.mode === Mode.AIR && this.popTimer < T.popAnimTime) {
       this.visPitch = 0.5 * Math.sin(Math.PI * this.popTimer / T.popAnimTime);

@@ -50,7 +50,7 @@ export class BoardView {
       this.root.position.copy(sim.bailBoard.pos);
       this.root.quaternion.copy(sim.bailBoard.quat);
     } else {
-      this.root.position.copy(sim.pos);
+      this.root.position.copy(sim.pos).addScaledVector(sim.up, sim.manualLift);
       sim.boardQuaternion(this.root.quaternion);
     }
     const spin = -(sim.rollSpeed / BOARD.wheelRadius) * dt;

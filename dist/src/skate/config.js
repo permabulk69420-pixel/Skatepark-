@@ -110,12 +110,16 @@ export const TUNING = Object.freeze({
   pumpCurve: 0.22,           // 1 - surface normal y at which the pump is at full strength
   pumpEventSpeed: 0.18,      // speed gained in one stand-up worth a haptic tick
 
-  // Airs at a lip: stay in the pipe unless you carried real speed. At launch the board remembers its energy (a pop does not
-  // count). Compared with the height of the nearest coping that is the speed you had at the lip: below passFrom an air is
-  // held over the pit and comes back down into it, above passTo you are carried out over the top.
+  // Airs at a lip: you stay in the pipe unless you mean to go over. Going over takes two things: holding forward (a sustained
+  // hold, not a tap: it builds while you hold and drains fast when you let go) and enough speed carried to the lip to
+  // clear it (the board remembers its energy at launch; a pop does not count). Otherwise the air is held over the pit and
+  // comes back down into the transition.
+  passHold: 2,               // seconds of forward held before an air will pass over
+  passHoldMax: 4,
+  passHoldDrain: 2,          // how many times faster letting go empties it than holding fills it
+  lipPassFrom: 4.0,          // m/s carried to the lip needed to clear it…
+  lipPassTo: 4.8,            // …fully by here
   lipZone: 3.2,              // how far from a lip (horizontally) this applies
-  lipPassFrom: 5.4,          // m/s carried to the lip
-  lipPassTo: 6.6,
   lipHoldDist: 0.28,         // an air that should stay is held this far inside the lip line, against the wall, so it rides back down the face
   lipSpring: 60,
   lipDamp: 15,
@@ -124,13 +128,38 @@ export const TUNING = Object.freeze({
   lipOutwardSpeed: 2.6,      // an air that earned it is sent this fast out over the lip
   lipOutwardZone: 2.5,       // …while it is within this of the lip line
 
+  // In the air the board keeps the tilt it left the surface with (come out of a wall vertical and you stay vertical) and
+  // eases towards whatever it is about to land on, faster the closer that gets.
+  airTiltFar: 0.9,           // 1/s while far from anything
+  airTiltNear: 7,            // 1/s as the landing surface gets close
+  airTiltReach: 3,           // metres below which "close" starts
+
   // Axle stall / rock to fakie: catching coping square-on while almost stopped
   stallLateral: 0.3,
   stallIntoPit: 0.6,         // heading over the coping this fast towards the drop is a drop-in, not a stall
   stallCooldown: 1.4,        // after rocking out of a stall you cannot catch that same lip again for this long
   stallMaxVertical: 1.4,     // no stall catch while moving this fast up or down
-  stallBackSpeed: 1.9,       // pop off a stall and you roll back down the way you came, this fast
+  stallBackSpeed: 1.9,
+  stallBlockHold: 0.5,       // holding forward this long means you are going over, so no stall catch       // pop off a stall and you roll back down the way you came, this fast
   stallPopScale: 0.55,
+
+  // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
+  // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.
+  flickThreshold: 0.5,       // how far the stick has to go either way to count as a flick
+  flickWindow: 0.55,         // seconds between the two halves of the flick
+  manualQueueWindow: 0.7,    // a manual asked for in the air (or just before landing) starts when you land, if it was this recent
+  manualMinSpeed: 1.5,       // you need to be rolling to start one
+  manualEndSpeed: 0.7,       // below this a manual runs out
+  manualTilt: 0.26,          // rad the board sits at when balanced (≈15°)
+  manualMaxTilt: 0.24,       // extra rad at the edge of the meter
+  manualDrag: 0.45,          // m/s² extra drag on one pair of wheels
+  manualSteer: 0.7,          // turning is weaker while balancing
+  manualInstab0: 1.6,
+  manualInstabGrow: 0.2,
+  manualInstabMax: 4.5,
+  manualWobble: 0.9,
+  manualControl: 6.5,
+  manualDamp: 1.6,
 
   // Bail
   bailTime: 1.25,
@@ -152,4 +181,15 @@ export const RIDER = Object.freeze({
   popRebound: 0.035,
   landCompress: 0.09,
   eyeHeightDesktop: 1.65
+});
+
+// Balancing a grind or a manual with your hands (VR): raise your right hand (relative to the left) to push the meter right,
+// your left hand to push it left. "Relative" is to how your hands were resting a moment before the balance began.
+export const HANDS = Object.freeze({
+  range: 0.38,               // radians (~22°) of hand-line tilt from neutral that is a full push on the meter
+  deadzone: 0.05,            // radians (~3°) of tilt that is ignored
+  restTime: 1.0,             // seconds the neutral takes to follow your hands while you are rolling relaxed on the ground
+  minSpread: 0.25,           // metres: hands closer than this count as this far apart, so a tiny wobble is not a big angle
+  ease: 0.25,                // seconds the push takes to come in when a grind or manual starts
+  response: 25               // 1/s smoothing of the push
 });
