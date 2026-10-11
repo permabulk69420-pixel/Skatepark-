@@ -42,6 +42,15 @@ export const TUNING = Object.freeze({
   popAnimTime: 0.38,
   popUpBias: 2,              // pop direction leans from the surface normal towards straight up as the surface steepens (n.y^this)
 
+  // Flips: the flip button in the air plus the stick left (kickflip) or right (heelflip), one full turn of the board.
+  flipTime: 0.46,            // seconds for the board to turn all the way round
+  flipArmWindow: 0.3,        // the stick may come this long after the button (or the button this long before leaving the ground)
+  flipStick: 0.45,           // how far the stick has to go to pick a direction
+  flipMinAir: 0.05,          // seconds in the air before a flip can start
+  flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
+  flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
+  flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
+
   // Ground following
   maxStep: 0.08,             // free rise allowed per step before it counts as a wall
   maxSlopeTan: 1.7,          // plus this × horizontal travel (≈60°) beyond what the board's own climb explains
