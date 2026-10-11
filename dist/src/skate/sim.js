@@ -844,6 +844,10 @@ export class Skater {
       _P.set(seg.dir.x, 0, seg.dir.z).normalize();
       _tmp.addScaledVector(_P, -_tmp.dot(_P));
       if (_tmp.lengthSq() > 1e-4) { _tmp.normalize(); backX = -_tmp.x; backZ = -_tmp.z; }
+      // On a ramp lip the way back in is down into the pit, whichever way we were drifting when it caught (catching it already
+      // rolling back would otherwise rock you out over the deck).
+      const pit = this.pitDirection(seg);
+      if (pit) { backX = pit.x; backZ = pit.y; }
     }
     // Pick the board orientation on the rail closest to how we arrived, then see how sloppy the entry was.
     const pathYaw = yawOf(seg.dir.x, seg.dir.z);
@@ -961,6 +965,13 @@ export class Skater {
       const speed = (T.popMin + (T.popMax - T.popMin) * this.popRequest) * (g.stall ? T.stallPopScale : 0.9);
       this.popRequest = null;
       this.endGrind('pop', speed);
+      return;
+    }
+
+    // Rolled up to the top of a ramp and stopped on the coping: a held stall rocks back in by itself rather than freezing until the
+    // balance meter dumps you.
+    if (g.stall && g.time > T.stallAutoRock) {
+      this.endGrind('rock', T.popMin * T.stallPopScale);
       return;
     }
 

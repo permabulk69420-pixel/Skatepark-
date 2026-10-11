@@ -162,6 +162,7 @@ export const TUNING = Object.freeze({
   stallBackSpeed: 1.9,
   stallBlockHold: 0.5,       // holding forward this long means you are going over, so no stall catch       // pop off a stall and you roll back down the way you came, this fast
   stallPopScale: 0.55,
+  stallAutoRock: 0.8,        // a stall held this long rocks back in by itself (no pop needed), instead of ending in a balance bail
 
   // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
   // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.

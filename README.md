@@ -67,7 +67,7 @@ fast is a bail: the board tumbles, the view fades, and you are put back where yo
 you get out (roll up to the lip, hang, and come back down fakie). Drop in by rolling slowly off the deck over the coping;
 you lean into the wall and ride it down. Faster than the lip and you air out over it and land back in. Reach the coping
 square-on almost stopped and you catch an **axle stall**: balance it like a grind, then release the ollie button to rock
-back in fakie (it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Ollie at the lip, or just fly out of it, and you are held over the
+back in fakie (leave it and it rocks back in by itself after about 0.8 s, always down into the pipe; it only catches when you come up from the pit, never when you drop in). **Airs stay in the pipe unless you mean to go over.** Ollie at the lip, or just fly out of it, and you are held over the
 pit and ride back down the wall, however fast you are going. To pass over the top you have to hold forward on the stick
 for a decent while (about 2 s of it; a tap doesn't build it and letting go drains it fast), and it's decided when you
 launch, so you can let go in the air, *and* have enough speed to

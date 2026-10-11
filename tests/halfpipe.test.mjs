@@ -104,13 +104,15 @@ test('axle stall: reaching the coping almost stopped and square-on catches it; p
   assert.ok(found.s.pos.x > -PIPE.lip + 0.2, `ended up outside the pipe (x ${found.s.pos.x.toFixed(2)})`);
 });
 
-test('an unattended axle stall falls off the balance meter rather than hanging there forever', () => {
+test('an unattended axle stall rocks back into the pipe by itself rather than hanging there or bailing', () => {
   const events = [];
   const s = pipeSkater({ events });
   rollFrom(s, 0, 7.0, -1);
   run(s, {}, 8);
   assert.ok(events.some((e) => e.type === 'grindStart' && e.data.name === 'Axle Stall'));
-  assert.ok(bails(events).includes('balance'));
+  assert.ok(events.some((e) => e.type === 'grindEnd' && e.data.reason === 'rock'), 'did not rock back in');
+  assert.deepEqual(bails(events), []);
+  assert.ok(s.pos.x > -PIPE.lip + 0.2, `ended up outside the pipe (x ${s.pos.x.toFixed(2)})`);
 });
 
 test('rolling off the deck over the coping is a drop-in, never a stall', () => {
