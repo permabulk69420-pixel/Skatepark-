@@ -1,6 +1,7 @@
 // The levels the game can load, picked with ?level=<id> (default: the first one). Each entry says where its model is and the few
 // things that differ per level: how far the static sun shadow has to reach (around `center`, default the origin), which meshes
-// are left out of it, `decals` (an optional regex of material names that are drawn flat on other surfaces), and the intro text.
+// are left out of it, `decals` (an optional regex of material names that are drawn flat on other surfaces), `doubleSided` (material names to draw on both sides)
+// and the intro text.
 export const LEVELS = {
   breakwater: {
     name: 'Breakwater',
@@ -20,6 +21,8 @@ export const LEVELS = {
     center: { x: 7, z: -8 },
     // Thin joint and marking lines lie flat on the floor at the same height; pull them a touch towards the camera so they never z-fight.
     decals: /Construction|Paint|ochre line/,
+    // Walls and roofs here are thin shells with small gaps at the joints; drawing both sides means a gap shows the far wall, not the sky.
+    doubleSided: /^(Brick|Concrete \| warm|School \| (opaque|ochre|oxidised|worn))/,   // not the cream enamel: that is the lettering, which must only read from the front
     // Ground slabs and terrain do not cast; trees, buildings and props do.
     noShadow: /Landscape_Landscape|Site_Concrete|Site_Asphalt|Asphalt/
   }

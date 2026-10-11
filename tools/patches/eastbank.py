@@ -10,6 +10,8 @@
 #   4. The ground around the campus is concrete rather than a dark loam that read as a void.
 #   5. One brick pier (UpperTerrace_SupportPier4) held nothing up and stuck out through the mid landing: removed.
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
+#   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
+#      turn them round.
 #   7. The dock stairs ran straight into a ledge block sitting across the top step: slide the ledge (and its grind lines) along
 #      the landing so the stairs open onto it.
 import bpy
@@ -50,6 +52,18 @@ def copy_as_collision(name, new_name):
     new['role'] = 'collision'
     for c in src.users_collection:
         c.objects.link(new)
+
+
+def turn_round(name):
+    """Rotate an object 180 degrees about the vertical axis through the middle of its bounding box (a flat sign that faced the wrong way)."""
+    o = bpy.data.objects.get(name)
+    if o is None:
+        return
+    import mathutils
+    corners = [o.matrix_world @ mathutils.Vector(c) for c in o.bound_box]
+    centre = sum(corners, mathutils.Vector()) / len(corners)
+    t = mathutils.Matrix.Translation(centre)
+    o.matrix_world = t @ mathutils.Matrix.Rotation(math.pi, 4, 'Z') @ t.inverted() @ o.matrix_world
 
 
 def replace_material(obj_name, old_part, new_name):
@@ -122,6 +136,9 @@ def apply():
     for name in ('ServiceDock_LandingLedge', 'COL_ServiceDock_LandingLedge', 'PATH_ServiceDock_LandingLedge_Edge0', 'PATH_ServiceDock_LandingLedge_Edge1',
                  'PATH_ServiceDock_LandingLedge_Edge2', 'PATH_ServiceDock_LandingLedge_Edge3'):
         shift_x(name, -4.0)
+    # signs that faced into their buildings
+    for name in ('Admin_Sign', 'Canteen_Sign', 'Gym_FrontSign', 'LedgePlaza_Sign'):
+        turn_round(name)
     # rideable ground outside the campus (and under it, so nothing can drop through a gap)
     for name in ('Surrounding_Ground_West', 'Surrounding_Ground_East', 'Surrounding_Ground_North', 'Surrounding_Ground_South', 'Surrounding_Earth'):
         copy_as_collision(name, f'COL_Landscape_Outer_{name.split("_", 1)[1]}')
