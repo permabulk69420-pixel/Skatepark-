@@ -88,6 +88,15 @@ tests/                     simulation tests
 The board's origin is where the wheels meet the ground and the nose points down −Z. Heading `h` points the nose along
 (−sin h, 0, −cos h). Rails have no collision of their own; they only exist as grind paths.
 
+## Cache busting (so you always test the latest)
+
+`dist/manifest.json` holds a short content hash for every script and model the game loads, and one **build id** for the whole
+set. `index.html` fetches it fresh on every visit and loads each file as `?v=<hash>` (plus an import map so the modules that
+import each other are versioned too), so a changed file always has a new URL and Quest cannot run a stale copy, while
+unchanged files stay cached. The build id is shown in the info panel on a flat screen and flashes in the view at the start of a
+VR session; compare it with the build id in the deploy message. After changing anything in `dist/` run `npm run manifest`
+(`npm test` fails if the committed manifest is out of date).
+
 ## Tests
 
 ```

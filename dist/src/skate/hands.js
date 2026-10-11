@@ -4,8 +4,8 @@ import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
 // The skinned hands from Oasis/Sandboarding (Open, Grip, Point, Pinch and Fist poses as animation clips).
 // Skateboarding needs no held objects, so this is just the rigs following the controllers and closing with grip and trigger.
-const bust = window.__skateparkCacheKey ? `?fresh=${encodeURIComponent(window.__skateparkCacheKey)}` : '';
-const ASSETS = Object.freeze({ left: `./models/hands/LeftHand.glb${bust}`, right: `./models/hands/RightHand.glb${bust}` });
+const assetUrl = window.__skateparkUrl || ((file) => `./${file}?t=${Date.now()}`);
+const ASSETS = Object.freeze({ left: assetUrl('models/hands/LeftHand.glb'), right: assetUrl('models/hands/RightHand.glb') });
 // The meshes are authored with fingers along -Z and palms along -Y; these are the mirrored grip-space offsets.
 const GRIP_ROTATION = Object.freeze({ left: Math.PI / 2, right: -Math.PI / 2 });
 const loader = new GLTFLoader();
