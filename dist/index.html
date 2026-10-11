@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#193d40">
+  <link rel="icon" href="data:,">
+  <title>Skate Park — Breakwater</title>
+  <link rel="canonical" href="https://breakwater-skatepark.permabulk69420.chatgpt.site">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#b4c9d0;color:#f8f4e8;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}
+    .identity{position:fixed;top:max(24px,env(safe-area-inset-top));left:24px;pointer-events:none;text-shadow:0 1px 12px #10262780}.identity span{display:block;font-size:10px;letter-spacing:.22em;font-weight:600;margin-bottom:5px}.identity strong{font-size:24px;letter-spacing:-.04em;font-weight:600}
+    .entry{position:fixed;left:24px;right:24px;bottom:max(24px,env(safe-area-inset-bottom));padding:18px 22px;background:#163336ed;border:1px solid #fff2;border-radius:10px;max-width:440px;backdrop-filter:blur(10px)}.entry p{font-size:13px;line-height:1.7;margin:0;color:#e2e4db}.entry small{display:block;color:#b2c5c0;font-size:11px;margin-top:9px}.entry #status{font-size:14px;color:#fff;margin-bottom:6px}.progress{height:2px;background:#ffffff25;margin:12px 0 0}.progress div{height:100%;width:0;background:#d9a779;transition:width .2s}button{font:600 12px system-ui;cursor:pointer}#reset{position:fixed;top:24px;right:24px;padding:10px 14px;background:#163336cc;border:1px solid #fff3;color:#f8f4e8;border-radius:6px}#VRButton{right:24px!important;left:auto!important;bottom:24px!important;width:168px!important;padding:16px!important;border-radius:8px!important;background:#e8e3d5!important;color:#153b3e!important;border:0!important;font:600 13px system-ui!important;opacity:1!important}body.in-vr .identity,body.in-vr .entry,body.in-vr #reset{display:none}
+    @media(max-width:650px){.entry{bottom:88px;left:16px;right:16px;padding:14px 16px;max-width:none}.identity{left:16px;top:18px}.identity strong{font-size:21px}#reset{right:16px;top:18px}#VRButton{bottom:18px!important;right:16px!important;left:16px!important;width:calc(100% - 32px)!important}}
+  </style>
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
+</head>
+<body>
+  <div class="identity"><span>SKATE PARK</span><strong>Breakwater</strong></div>
+  <div class="entry"><p id="status">Loading the park…</p><p>104 × 88 metres · Street, bowl and transition</p><small id="controls">Quest: left stick move · right stick smooth turn.<br>Hold right grip + right stick up/down to fly for inspection.</small><div class="progress"><div id="progress"></div></div></div>
+  <button id="reset" type="button" aria-label="Return to the park entrance">Return to entrance</button>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
