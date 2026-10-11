@@ -2,7 +2,7 @@ name: Build Eastbank school assets once
 on:
   push:
     branches: [level/eastbank-school]
-    paths: [.eastbank-build.zip, .github/workflows/build-school-once.yml]
+    paths: [.eastbank-build.zip]
 permissions:
   contents: write
 jobs:
@@ -11,9 +11,18 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Build the editable Blender campus
+      - name: Prepare inspection and preserve the saved assets
+        id: assets
         run: |
           python3 -m zipfile -e .eastbank-build.zip .eastbank-work
+          if test -f source/levels/eastbank-school.blend && test -f dist/assets/levels/eastbank-school.glb; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build the editable Blender campus
+        if: steps.assets.outputs.ready != 'true'
+        run: |
           curl -fL https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz -o /tmp/eastbank-blender.tar.xz
           tar -xJf /tmp/eastbank-blender.tar.xz -C /tmp
           EASTBANK_REPO="$GITHUB_WORKSPACE" /tmp/blender-4.5.3-linux-x64/blender -b --factory-startup -t 2 --python .eastbank-work/build_eastbank.py > .eastbank-work/build.log 2>&1
@@ -22,6 +31,7 @@ jobs:
         with:
           node-version: '22'
       - name: Pack and validate the GLB without reducing geometry
+        if: steps.assets.outputs.ready != 'true'
         run: |
           npm install --prefix .eastbank-work/gltf-tools @gltf-transform/core@4.5.1 @gltf-transform/extensions@4.5.1 @gltf-transform/functions@4.5.1 meshoptimizer@0.25.0 gltf-validator@2.0.0-dev.3.10
           mkdir -p dist/assets/levels
@@ -29,6 +39,7 @@ jobs:
           node .eastbank-work/validate.mjs dist/assets/levels/eastbank-school.glb
           rm dist/assets/levels/eastbank-school.glb.stats.json
       - name: Save the source and asset on the school branch
+        if: steps.assets.outputs.ready != 'true'
         run: |
           git config user.name 'Codex'
           git config user.email 'codex@users.noreply.github.com'
