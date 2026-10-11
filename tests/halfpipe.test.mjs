@@ -191,19 +191,40 @@ test('an air out of the lip with ordinary speed comes back down into the pipe, p
   }
 });
 
-test('carrying real speed to the lip takes you out over the top, with or without a pop', () => {
+test('real speed alone is not enough: without holding forward you stay in the pipe, even at 10 m/s', () => {
+  for (const [label, drive] of [['not touching the stick', () => 0], ['tapping forward', (t) => ((t * 3) % 1 < 0.4 ? 1 : 0)]]) {
+    const events = [];
+    const s = pipeSkater({ events });
+    rollFrom(s, 0, 10.5, -1);
+    const r = airOverLip(s, (t) => ({ drive: drive(t) }), 4);
+    assert.ok(r.maxOut < 0.45, `${label}: went ${r.maxOut.toFixed(2)} m out over the lip`);
+    assert.ok(r.apex > PIPE.height + 1.5, `${label}: no real air (apex ${r.apex.toFixed(2)})`);
+    assert.deepEqual(bails(events), []);
+  }
+});
+
+test('holding forward with the speed to clear the lip takes you out over the top, with or without a pop', () => {
   for (const pop of [false, true]) {
     const events = [];
-    const s = pipeSkater({ events, withCoping: true });
-    rollFrom(s, 0, 10.2, -1);
+    const s = pipeSkater({ events });
+    rollFrom(s, 0, 9.5, -1);
+    s.holdFwd = 4;                       // forward has been held a good while
     let t0 = -1;
     const r = airOverLip(s, (t, sk) => {
       if (pop && t0 < 0 && Math.abs(sk.pos.x) > PIPE.halfFlat + 1 && sk.pos.y > 1.0 && sk.vel.y > 0) t0 = t;
-      return { jump: t0 >= 0 && t - t0 < 0.05 };
+      return { drive: 1, jump: t0 >= 0 && t - t0 < 0.05 };
     }, 2.5);
     assert.ok(r.maxOut > 1.2, `${pop ? 'pop' : 'no pop'}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
     assert.deepEqual(bails(events), []);
   }
+});
+
+test('holding forward without the speed to clear the lip still stays in', () => {
+  const s = pipeSkater({});
+  rollFrom(s, 0, 6.2, -1);
+  s.holdFwd = 4;
+  const r = airOverLip(s, { drive: 1 }, 3);
+  assert.ok(r.maxOut < 0.45, `went ${r.maxOut.toFixed(2)} m out over the lip`);
 });
 
 test('holding forward: early airs stay in the pipe, and a decent while later you pass over', () => {
@@ -212,6 +233,6 @@ test('holding forward: early airs stay in the pipe, and a decent while later you
   const r = airOverLip(s, { drive: 1 }, 25);
   assert.ok(r.air > 0 && r.over > 0, `air at ${r.air}, over at ${r.over}`);
   assert.ok(r.air < r.over, 'passed over before ever airing in the pipe');
-  assert.ok(r.over > 6, `passed over after only ${r.over.toFixed(1)} s`);
+  assert.ok(r.over > 3.5, `passed over after only ${r.over.toFixed(1)} s`);
   assert.ok(r.over < 22, `still had not passed over after ${r.over.toFixed(1)} s`);
 });
