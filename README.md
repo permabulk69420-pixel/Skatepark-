@@ -106,6 +106,10 @@ tools/optimise-level.mjs   raw level GLB -> merged, chunked, LOD'd, compressed g
 tools/measure-level.mjs    triangles / draw calls per view over a grid of ground positions, with and without LODs
 tools/check-level.mjs      drives the real skater on a level: spawns, ground grid, every grind path
 tools/shoot-level.mjs      screenshots a level from chosen spots
+tools/plan-level.mjs       top-down plan of a level;  plan-collision.mjs: the same for its collision, coloured by height
+tools/audit-level.mjs      compares what is drawn with what can be ridden (visible floor with no collision and the reverse)
+tools/check-stairs.mjs     rolls the skater off the top of every stair set, with and without an ollie
+tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
 tests/                     simulation tests
 ```
 
@@ -131,6 +135,13 @@ current one is a 7.7 MB game file. The optimiser:
   borders so chunks do not crack apart; leaf cards are thinned (whole leaves dropped, the rest scaled up) instead;
 - quantises positions, normals and colours, resizes textures (base/normal 1024², ORM 512²) to WebP, and meshopt-compresses
   the buffers.
+
+**Fixes to the model (`tools/patches/<level>.py`).** `export-blend.py` can run a patch file inside Blender just before exporting,
+so fixes survive each new version of the `.blend`. The school's patch (1) digs pockets out of the terrain slab, which was
+drawn over everything below −0.4 m and buried the drainage basin and the Forum plaza, (2) moves surfaces that were modelled at
+exactly the same height on top of each other 2 cm apart (roads over the concrete extension, and so on) so they stop z-fighting,
+and (3) copies the grass outside the campus to collision, so it can be ridden. Thin joint and marking lines are decals: the game
+gives them a depth offset (`decals` in `levels.js`). `audit-level.mjs` is how to find this sort of thing.
 
 `node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
 without LODs); `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
