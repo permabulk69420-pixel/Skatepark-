@@ -206,21 +206,77 @@ function positionArray(q, n) {
   return out;
 }
 
-// ---------------------------------------------------------------- main pass
-const stats = { before: 0, after: 0, chunks: 0, lodChunks: 0 };
-const perMaterial = new Map();
-const originals = root.listNodes().filter((n) => n.getMesh() && !isCollision(n) && n.getExtras()?.role !== 'collision');
+// ---------------------------------------------------------------- merging
+// A level can arrive as thousands of separate objects. Bake each object's transform and merge everything that shares a material
+// into one mesh before chunking, so draw calls depend on the chunking and not on how the scene was split up in the editor.
+function worldPrimitive(node, prim) {
+  const src = readPrimitive(prim);
+  const m = node.getWorldMatrix();
+  if (m.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-6)) return src;
+  for (let i = 0; i < src.n; i++) {
+    const x = src.pos[i * 3], y = src.pos[i * 3 + 1], z = src.pos[i * 3 + 2];
+    src.pos[i * 3] = m[0] * x + m[4] * y + m[8] * z + m[12];
+    src.pos[i * 3 + 1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+    src.pos[i * 3 + 2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+  }
+  // Normals follow the inverse transpose of the upper 3x3 (the cofactor matrix over the determinant).
+  const a = [m[0], m[4], m[8]], b = [m[1], m[5], m[9]], c = [m[2], m[6], m[10]];
+  const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  const rows = [cross(b, c), cross(c, a), cross(a, b)];
+  const det = a[0] * rows[0][0] + a[1] * rows[0][1] + a[2] * rows[0][2];
+  if (src.nor) {
+    for (let i = 0; i < src.n; i++) {
+      const x = src.nor[i * 3], y = src.nor[i * 3 + 1], z = src.nor[i * 3 + 2];
+      const nx = rows[0][0] * x + rows[0][1] * y + rows[0][2] * z;
+      const ny = rows[1][0] * x + rows[1][1] * y + rows[1][2] * z;
+      const nz = rows[2][0] * x + rows[2][1] * y + rows[2][2] * z;
+      const len = Math.hypot(nx, ny, nz) * Math.sign(det) || 1;
+      src.nor[i * 3] = nx / len; src.nor[i * 3 + 1] = ny / len; src.nor[i * 3 + 2] = nz / len;
+    }
+  }
+  // A mirrored object turns its triangles inside out.
+  if (det < 0) for (let t = 0; t < src.idx.length; t += 3) { const tmp = src.idx[t + 1]; src.idx[t + 1] = src.idx[t + 2]; src.idx[t + 2] = tmp; }
+  return src;
+}
 
-for (const node of originals) {
-  const mesh = node.getMesh();
-  const matrix = node.getWorldMatrix();
-  const identity = matrix.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-6);
-  if (!identity) throw new Error(`${node.getName()} has a transform; bake it first`);
-  for (const prim of mesh.listPrimitives()) {
-    const material = prim.getMaterial();
-    const materialName = material?.getName() ?? '';
-    const klass = /foliage/i.test(materialName) ? CLASSES.foliage : /bark/i.test(materialName) ? CLASSES.bark : CLASSES.general;
-    const src = readPrimitive(prim);
+function mergePrimitives(list) {
+  if (list.length === 1) return list[0];
+  const n = list.reduce((sum, p) => sum + p.n, 0);
+  const idx = new Uint32Array(list.reduce((sum, p) => sum + p.idx.length, 0));
+  const out = { n, idx, pos: new Float32Array(n * 3), nor: null, uv: null, col: null };
+  const attrs = [['nor', 3, 0], ['uv', 2, 0], ['col', 4, 1]];       // [name, size, fill for parts that lack it]
+  for (const [name, size, fill] of attrs) if (list.some((p) => p[name])) out[name] = new Float32Array(n * size).fill(fill);
+  let vo = 0, io2 = 0;
+  for (const p of list) {
+    out.pos.set(p.pos, vo * 3);
+    for (const [name, size] of attrs) if (p[name]) out[name].set(p[name], vo * size);
+    if (!p.nor && out.nor) for (let i = 0; i < p.n; i++) out.nor[(vo + i) * 3 + 1] = 1;
+    for (let i = 0; i < p.idx.length; i++) idx[io2 + i] = p.idx[i] + vo;
+    vo += p.n; io2 += p.idx.length;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- main pass
+const stats = { before: 0, after: 0, chunks: 0, lodChunks: 0, collision: 0 };
+const perMaterial = new Map();
+const renderNodes = root.listNodes().filter((n) => n.getMesh() && !isCollision(n));
+const collisionNodes = root.listNodes().filter((n) => n.getMesh() && isCollision(n));
+
+const groups = new Map();
+for (const node of renderNodes) for (const prim of node.getMesh().listPrimitives()) {
+  const material = prim.getMaterial();
+  if (!groups.has(material)) groups.set(material, []);
+  groups.get(material).push(worldPrimitive(node, prim));
+}
+
+for (const [material, parts] of groups) {
+  const materialName = material?.getName() ?? '';
+  const meshName = `ENV_${materialName.split('|')[0].trim().replace(/\W+/g, '_')}_${materialName.split('|')[1]?.trim().split(/\W+/)[0] ?? 'Mesh'}`;
+  const klass = /foliage/i.test(materialName) ? CLASSES.foliage : /bark/i.test(materialName) ? CLASSES.bark : CLASSES.general;
+  {
+    const src = mergePrimitives(parts);
+    const mesh = { getName: () => meshName };
     const triCount = src.idx.length / 3;
     stats.before += triCount;
 
@@ -268,9 +324,24 @@ for (const node of originals) {
       });
     }
   }
-  node.dispose();
-  mesh.dispose();
 }
+
+// Collision: bake transforms and merge by area (COL_<Area>_…), exactly as exported otherwise: float positions, no quantising.
+const collisionGroups = new Map();
+for (const node of collisionNodes) {
+  const area = node.getName().split('_')[1] ?? 'Level';
+  if (!collisionGroups.has(area)) collisionGroups.set(area, { material: node.getMesh().listPrimitives()[0].getMaterial(), parts: [] });
+  for (const prim of node.getMesh().listPrimitives()) collisionGroups.get(area).parts.push(worldPrimitive(node, prim));
+}
+for (const [area, { material, parts }] of collisionGroups) {
+  const merged = mergePrimitives(parts.map((p) => ({ n: p.n, idx: p.idx, pos: p.pos })));
+  const prim = doc.createPrimitive().setMaterial(material)
+    .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(merged.pos).setBuffer(buffer))
+    .setIndices(doc.createAccessor().setType('SCALAR').setArray(merged.n > 65535 ? merged.idx : Uint16Array.from(merged.idx)).setBuffer(buffer));
+  scene.addChild(doc.createNode(`COL_${area}`).setMesh(doc.createMesh(`COL_${area}`).addPrimitive(prim)).setExtras({ role: 'collision' }));
+  stats.collision += merged.idx.length / 3;
+}
+for (const node of [...renderNodes, ...collisionNodes]) { const mesh = node.getMesh(); node.dispose(); mesh.dispose(); }
 
 // Textures: resize and store as WebP.
 for (const t of TEXTURES) {
@@ -281,4 +352,4 @@ await doc.transform(prune({ keepExtras: true }), reorder({ encoder: MeshoptEncod
 doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.FILTER });
 await io.write(output, doc);
 for (const [name, row] of [...perMaterial].sort((a, b) => b[1][0] - a[1][0])) console.log(`  ${name.slice(0, 44).padEnd(44)} LOD0 ${String(row[0]).padStart(7)}  LOD1 ${String(row[1]).padStart(7)}  LOD2 ${String(row[2]).padStart(7)}`);
-console.log(`chunks ${stats.chunks} (${stats.lodChunks} with LODs), render triangles ${stats.before} -> LOD0 ${stats.after}`);
+console.log(`chunks ${stats.chunks} (${stats.lodChunks} with LODs), render triangles ${stats.before} -> LOD0 ${stats.after}, collision triangles ${stats.collision} in ${collisionGroups.size} meshes`);

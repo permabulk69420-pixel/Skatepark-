@@ -17,7 +17,7 @@ try {
     camera.position.set(0, 1.65, 0);
     const out = { y: 0 };
     const points = [];
-    for (let x = -90; x <= 90; x += step) for (let z = -76; z <= 76; z += step) {
+    for (let x = -100; x <= 112; x += step) for (let z = -88; z <= 72; z += step) {
       const g = world.ground(x, z, 20, out);
       if (g) points.push([x, g.y, z]);
     }
