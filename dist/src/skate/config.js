@@ -15,11 +15,11 @@ export const TUNING = Object.freeze({
   maxSubstep: 1 / 120,
 
   // Rolling and pushing
-  rollFriction: 0.22,        // m/s² of constant bearing drag
-  airDrag: 0.0045,           // × speed² deceleration
+  rollFriction: 0.16,        // m/s² of constant bearing drag
+  airDrag: 0.003,            // × speed² deceleration
   lateralGrip: 11,           // 1/s, how fast sideways slip dies on the ground
   pushImpulse: 1.9,          // m/s per kick at standstill
-  pushMaxSpeed: 6.8,         // kicks fade out as you approach this
+  pushMaxSpeed: 7.4,         // kicks fade out as you approach this
   pushInterval: 0.62,
   pushDrain: 14,             // m/s² the kick is applied at
   brakeDecel: 5.2,
@@ -40,6 +40,7 @@ export const TUNING = Object.freeze({
   popChargeTime: 0.42,
   popBodyHold: 0.55,         // how long a hold keeps charging the crouch visual
   popAnimTime: 0.38,
+  popUpBias: 2,              // pop direction leans from the surface normal towards straight up as the surface steepens (n.y^this)
 
   // Ground following
   maxStep: 0.08,             // free rise allowed per step before it counts as a wall
@@ -93,6 +94,11 @@ export const TUNING = Object.freeze({
   balMaxTilt: 0.34,          // board lean at the edge of the meter
   railTopOffset: Object.freeze({ rail: 1, coping: 1, ledge: -0.9 }), // × path radius above the stored line (ledge lines sit just above their surface)
 
+  // Pumping with the stick: holding forward on a curved surface (a transition, a bank) pumps it, the same way forward pushes
+  // on the flat. This is how you build the speed to reach a lip and air out of it.
+  autoPump: 2.6,             // m/s² of speed at full curvature
+  autoPumpMaxSpeed: 10.5,    // no more pumping beyond this
+
   // Pumping: standing up out of a squat while on a curved surface adds speed (VR: your real knees do it)
   pumpGain: 3.2,             // m/s² of speed per m/s of extension, on a fully curved surface
   pumpMaxAccel: 4.5,
@@ -114,6 +120,13 @@ export const TUNING = Object.freeze({
 
 // How the player is placed on the board.
 export const RIDER = Object.freeze({
+  // How much the view eases into a change of surface angle. Small tilts (a fun box, a bank edge) are smoothed so they do
+  // not snap the camera; steep ones (a half-pipe wall) are followed almost rigidly so the world still swings with you.
+  tiltRateGentle: 7,         // 1/s for slopes under ~20°
+  tiltRateSteep: 90,         // 1/s for walls past ~50°
+  tiltGentleAngle: 0.35,     // rad
+  tiltSteepAngle: 0.87,      // rad
+  tiltRateGrind: 30,
   crouchPress: 0.07,         // instant dip on press
   crouchHold: 0.13,          // settles to this while held
   crouchSettle: 18,

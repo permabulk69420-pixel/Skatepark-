@@ -145,14 +145,16 @@ export class Skater {
     // Pushing and braking
     this.pushCool -= h;
     this.braking = false;
-    if (this.drive > T.driveThreshold && this.pushCool <= 0 && s < T.pushMaxSpeed) {
-      this.pushPending += T.pushImpulse * clamp(1 - Math.max(s, 0) / T.pushMaxSpeed, 0.12, 1);
+    // Kicks go the way you are already rolling (rolling fakie, forward on the stick keeps you going, it does not brake you).
+    const rolling = s < -0.3 ? -1 : 1;
+    if (this.drive > T.driveThreshold && this.pushCool <= 0 && Math.abs(s) < T.pushMaxSpeed && u.y > 0.97) {
+      this.pushPending += T.pushImpulse * clamp(1 - Math.abs(s) / T.pushMaxSpeed, 0.12, 1);
       this.pushCool = T.pushInterval;
       this.onEvent('push', { speed: s });
     }
     if (this.pushPending > 0) {
       const give = Math.min(this.pushPending, T.pushDrain * h);
-      s += give;
+      s += give * rolling;
       this.pushPending -= give;
     }
     if (this.drive < -T.driveThreshold && Math.abs(s) > 0.05) {
@@ -161,6 +163,14 @@ export class Skater {
     }
     const sp = Math.abs(s);
     if (sp > 0) s -= Math.sign(s) * Math.min(sp, (T.rollFriction + T.airDrag * sp * sp) * h);
+
+    // Forward on the stick pumps a curved surface (the same input that pushes on the flat).
+    const bend = clamp((1 - u.y) / T.pumpCurve, 0, 1);
+    if (this.drive > T.driveThreshold && bend > 0 && sp > 1.2 && sp < T.autoPumpMaxSpeed) {
+      const before = s;
+      s += Math.sign(s) * T.autoPump * bend * h;
+      this.pumpAcc += Math.abs(s) - Math.abs(before);
+    }
 
     // Pumping a transition: standing up out of a squat while on a curved surface adds speed along the way you are rolling.
     const curve = clamp((1 - u.y) / T.pumpCurve, 0, 1);
@@ -268,7 +278,12 @@ export class Skater {
 
   pop(charge) {
     const speed = T.popMin + (T.popMax - T.popMin) * clamp(charge, 0, 1);
-    this.vel.addScaledVector(this.groundNormal, speed);
+    // Straight off the surface on flat ground, but leaning towards straight up as it steepens: popping off a wall along
+    // its normal would throw you backwards into the pit.
+    const n = this.groundNormal;
+    const lean = Math.pow(clamp(n.y, 0, 1), T.popUpBias);
+    _tmp.copy(UP).multiplyScalar(1 - lean).addScaledVector(n, lean).normalize();
+    this.vel.addScaledVector(_tmp, speed);
     this.popRequest = null;
     this.popTimer = 0;
     this.crouch = -RIDER.popRebound;
@@ -796,13 +811,13 @@ export class Skater {
 
   // The board's orientation. With `flair` the pop pitch and carve roll are included (the model); without it this is the
   // frame the rider is bolted to: heading plus whatever surface (or grind tilt) the board is lying on.
-  boardQuaternion(out, flair = true) {
+  boardQuaternion(out, flair = true, up = this.up) {
     headingVec(this.heading, _H);
-    _R.crossVectors(_H, this.up);
+    _R.crossVectors(_H, up);
     if (_R.lengthSq() < 1e-8) _R.set(Math.cos(this.heading), 0, -Math.sin(this.heading));
     _R.normalize();
-    _f.crossVectors(this.up, _R);
-    _basisM.makeBasis(_R, this.up, _f.negate());
+    _f.crossVectors(up, _R);
+    _basisM.makeBasis(_R, up, _f.negate());
     out.setFromRotationMatrix(_basisM);
     if (flair) {
       out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
