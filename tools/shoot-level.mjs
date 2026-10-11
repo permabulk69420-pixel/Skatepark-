@@ -1,4 +1,6 @@
 // Screenshots a level from a few viewpoints:  node tools/shoot-level.mjs <levelId> <outDir> [x,z,headingDeg ...]
+// With OVERLAY=collision in the environment the collision meshes are drawn over the scene as magenta wireframe, so a wall you cannot
+// see (collision with nothing drawn there) stands out.
 import fs from 'node:fs';
 import { serveDist, openPage } from './browser.mjs';
 
@@ -9,7 +11,14 @@ const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`, { width: 1100, height: 700 });
 try {
   await page.waitForFunction(() => window.__skate?.sim && document.querySelector('#status')?.textContent.includes('ready'), null, { timeout: 240000 });
-  await page.evaluate(() => { document.querySelector('.entry').style.display = 'none'; document.querySelector('#reset').style.display = 'none'; window.__skate.renderer.setAnimationLoop(null); });
+  await page.evaluate(async (overlay) => {
+    document.querySelector('.entry').style.display = 'none'; document.querySelector('#reset').style.display = 'none'; window.__skate.renderer.setAnimationLoop(null);
+    if (overlay === 'collision') {
+      const THREE = await import('three');
+      const material = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true, transparent: true, opacity: 0.55, depthTest: true });
+      for (const mesh of window.__skate.collision) { mesh.material = material; mesh.visible = true; mesh.renderOrder = 10; }
+    }
+  }, process.env.OVERLAY || '');
   for (const [i, [x, z, heading]] of spots.entries()) {
     await page.evaluate(({ x, z, heading }) => {
       const { renderer, scene, camera, rig, lods, sim } = window.__skate;

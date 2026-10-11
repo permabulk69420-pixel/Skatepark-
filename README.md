@@ -153,7 +153,8 @@ exactly the same height on top of each other 2 cm apart (roads over the concrete
 (7) slides the ledge that blocked the top of the dock stairs along the landing. A small tweaks file next to it
 (`eastbank.materials.json`) corrects materials in the optimiser: the asphalt used the dark green loam texture, so it is
 re-pointed at the concrete set and tinted grey. Thin joint and marking lines are decals: the game
-gives them a depth offset (`decals` in `levels.js`). `audit-level.mjs` is how to find this sort of thing.
+gives them a depth offset (`decals` in `levels.js`), and the walls, glazing and roofs, which are thin shells with small gaps at the joints, are drawn on both sides
+(`doubleSided`) so a gap shows the far wall instead of the sky; the cream enamel is left single-sided because that is the lettering. `audit-level.mjs` is how to find this sort of thing.
 
 `node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
 without LODs); `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
