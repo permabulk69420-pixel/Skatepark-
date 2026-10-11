@@ -118,6 +118,7 @@ tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then 
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
+tools/patches/eastbank_details.py  frames round windows and doors, door handles (built in Blender during the same export)
 tests/                     simulation tests
 ```
 

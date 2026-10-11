@@ -12,6 +12,7 @@
 #   6. The Locker Hall floor slab hovered 0.5 m above the ground with nothing under it: give it a base (and collision).
 #   8. Four signs (Admin, Canteen, Gym, LedgePlaza) faced into their buildings, so their letters were only ever seen mirrored from behind:
 #      turn them round.
+#   9. Real frames round the windows and doors, and handles (eastbank_details.py).
 #   7. The dock stairs ran straight into a ledge block sitting across the top step: slide the ledge (and its grind lines) along
 #      the landing so the stairs open onto it.
 import bpy
@@ -142,3 +143,9 @@ def apply():
     # rideable ground outside the campus (and under it, so nothing can drop through a gap)
     for name in ('Surrounding_Ground_West', 'Surrounding_Ground_East', 'Surrounding_Ground_North', 'Surrounding_Ground_South', 'Surrounding_Earth'):
         copy_as_collision(name, f'COL_Landscape_Outer_{name.split("_", 1)[1]}')
+    # frames and handles (separate module, same patch run)
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location('eastbank_details', os.path.join(os.path.dirname(__file__), 'eastbank_details.py'))
+    details = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(details)
+    details.apply()
