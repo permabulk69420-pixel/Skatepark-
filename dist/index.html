@@ -19,7 +19,7 @@
     })();
   </script>
   <link rel="icon" href="data:,">
-  <title>Skate Park — Breakwater</title>
+  <title>Skate Park</title>
   <link rel="canonical" href="https://breakwater-skatepark.permabulk69420.chatgpt.site">
   <style>
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#b4c9d0;color:#f8f4e8;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}
@@ -30,8 +30,8 @@
   </style>
 </head>
 <body>
-  <div class="identity"><span>SKATE PARK</span><strong>Breakwater</strong></div>
-  <div class="entry"><p id="status">Loading the park…</p><p>104 × 88 metres · Street, bowl and transition · RIFT board</p><p id="build" style="font-size:11px;opacity:.7;margin-top:4px"></p><small id="controls">Quest — left stick: up pushes, down brakes, sideways steers. Balance grinds and manuals with your hands: right hand up pushes the meter right, left hand up pushes it left.<br>Right A: hold to crouch, release to ollie. Quick up-down flick of the left stick: manual (flick in the air after an ollie to land in one). Left Y: switch stance. Hold both grips: stand on the board where you are. Hold left X: back to the entrance.</small><template id="controls-desktop">W push · S brake · A/D steer &amp; balance · hold Space to crouch, release to ollie · flick W-S for a manual · drag to look · R back to the entrance · Z stance</template><div class="progress"><div id="progress"></div></div></div>
+  <div class="identity"><span>SKATE PARK</span><strong id="level-name">Breakwater</strong></div>
+  <div class="entry"><p id="status">Loading the park…</p><p id="blurb">104 × 88 metres · Street, bowl and transition · RIFT board</p><p id="levels" style="font-size:12px;margin-top:6px"></p><p id="build" style="font-size:11px;opacity:.7;margin-top:4px"></p><small id="controls">Quest — left stick: up pushes, down brakes, sideways steers. Balance grinds and manuals with your hands: right hand up pushes the meter right, left hand up pushes it left.<br>Right A: hold to crouch, release to ollie. Quick up-down flick of the left stick: manual (flick in the air after an ollie to land in one). Left Y: switch stance. Hold both grips: stand on the board where you are. Hold left X: back to the entrance.</small><template id="controls-desktop">W push · S brake · A/D steer &amp; balance · hold Space to crouch, release to ollie · flick W-S for a manual · drag to look · R back to the entrance · Z stance</template><div class="progress"><div id="progress"></div></div></div>
   <button id="reset" type="button" aria-label="Return to the park entrance">Return to entrance</button>
   <div id="hud" aria-hidden="true"><div class="trick" data-trick></div><div class="balance" data-balance><i></i></div><div class="speed" data-speed></div></div>
   <script>

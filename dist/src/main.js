@@ -14,9 +14,19 @@ import { BoardView } from './skate/board-view.js';
 import { Rider } from './skate/rider.js';
 import { createHud } from './skate/hud.js';
 import { HandBalance } from './skate/hand-balance.js';
+import { LodSet } from './skate/lod.js';
+import { LEVELS, pickLevel } from './skate/levels.js';
 
+const levelId = pickLevel(location.search);
+const level = LEVELS[levelId];
 const status = document.querySelector('#status');
 const progress = document.querySelector('#progress');
+document.querySelector('#blurb').textContent = level.blurb;
+document.querySelector('#level-name').textContent = level.name;
+document.title = `Skate Park — ${level.name}`;
+document.querySelector('#levels').innerHTML = Object.entries(LEVELS)
+  .map(([id, entry]) => (id === levelId ? `<b>${entry.name}</b>` : `<a href="?level=${id}" style="color:#d9a779">${entry.name}</a>`))
+  .join(' &nbsp;·&nbsp; ');
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(new THREE.Color('#b8c6c5'), 130, 290);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -65,7 +75,7 @@ sun.position.copy(sunDirection).multiplyScalar(110);
 sun.target.position.set(0, 0, 0);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, { left: -85, right: 85, top: 85, bottom: -85, near: 0.5, far: 245 });
+Object.assign(sun.shadow.camera, { left: -level.shadowHalf, right: level.shadowHalf, top: level.shadowHalf, bottom: -level.shadowHalf, near: 0.5, far: 245 });
 sun.shadow.normalBias = 0.035;
 sun.shadow.bias = -0.00006;
 scene.add(sun, sun.target);
@@ -73,9 +83,10 @@ scene.add(sun, sun.target);
 const collision = [];
 const grindNodes = [];
 const renderMeshes = [];
-let park, ready = false;
+let park, lods, ready = false;
 const spawn = new THREE.Vector3(0, 0.045, 40);
 const clock = new THREE.Clock();
+const lodEye = new THREE.Vector3();
 
 const haptics = createHaptics(renderer);
 const input = createInput(renderer);
@@ -118,11 +129,11 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 const assetUrl = window.__skateparkUrl || ((file) => `./${file}?t=${Date.now()}`);
 try {
   const [gltf, boardGltf] = await Promise.all([
-    loader.loadAsync(assetUrl('assets/skatepark.glb'), (event) => {
+    loader.loadAsync(assetUrl(level.file), (event) => {
       if (event.total) {
         const percent = Math.round(event.loaded / event.total * 100);
         progress.style.width = `${percent}%`;
-        status.textContent = percent < 100 ? `Loading the park… ${percent}%` : 'Preparing materials…';
+        status.textContent = percent < 100 ? `Loading ${level.name}… ${percent}%` : 'Preparing materials…';
       }
     }),
     loader.loadAsync(assetUrl('assets/skateboard.glb'))
@@ -148,7 +159,7 @@ try {
       return;
     }
     renderMeshes.push(object);
-    object.castShadow = !object.name.includes('Landscape') && !object.name.includes('Asphalt');
+    object.castShadow = !level.noShadow.test(object.name);
     object.receiveShadow = true;
     object.frustumCulled = true;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -161,11 +172,14 @@ try {
   });
   const spawnNode = park.getObjectByName('Spawn_Entrance');
   if (spawnNode) spawnNode.getWorldPosition(spawn);
+  const spawnHeading = spawnNode?.userData.heading_radians ?? 0;
+  lods = new LodSet(park);
+  lods.update(spawn);
 
   const world = new SkateWorld(collision);
   const paths = parseGrindPaths(grindNodes);
-  sim = new Skater({ world, paths, onEvent: (type, data) => feel(type, data) });
-  sim.setSpawn(spawn, 0);
+  sim = new Skater({ world, paths, bounds: level.bounds, onEvent: (type, data) => feel(type, data) });
+  sim.setSpawn(spawn, spawnHeading);
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);
   hud = createHud({ rig, rider, sim });
@@ -179,7 +193,7 @@ try {
   ready = true;
   progress.style.width = '100%';
   document.querySelector('.progress').style.display = 'none';
-  status.textContent = `Park ready · ${paths.length} grindable lines`;
+  status.textContent = `${level.name} ready · ${paths.length} grindable lines`;
   const button = VRButton.createButton(renderer, { optionalFeatures: ['local-floor'] });
   document.body.append(button);
   if (!navigator.xr) document.querySelector('#controls').innerHTML = document.querySelector('#controls-desktop').innerHTML;
@@ -249,6 +263,7 @@ function frame(dt) {
   if (command.toSpawn) sim.respawn(sim.spawn);
   sim.update(command, dt);
   rider.update(dt);
+  lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);
   hands.update(dt);
   hud.update(dt);
@@ -262,5 +277,5 @@ renderer.setAnimationLoop(() => {
 });
 
 // Handles for the console and the automated checks.
-window.__skate = { hands, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes };
+window.__skate = { hands, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes, get lods() { return lods; }, level: levelId };
 export { scene, renderer, camera, rig, collision, renderMeshes, park, spawn };

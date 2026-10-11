@@ -28,8 +28,9 @@ const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
 // The skater is the board: position is where the wheels meet the ground, heading is which way the nose points.
 // The rider is placed over it by the view layer. Everything runs in fixed-ish substeps so frame rate does not change the feel.
 export class Skater {
-  constructor({ world, paths = [], onEvent = () => {}, random = Math.random }) {
+  constructor({ world, paths = [], onEvent = () => {}, random = Math.random, bounds = T.bounds }) {
     this.world = world;
+    this.bounds = bounds;                        // the level's play area: half-extents x/z around an optional centre cx/cz
     this.paths = paths;
     this.onEvent = onEvent;
     this.random = random;
@@ -575,11 +576,12 @@ export class Skater {
   }
 
   clampBounds(np) {
-    const b = T.bounds;
-    if (np.x > b.x) { np.x = b.x; if (this.vel.x > 0) this.vel.x = 0; }
-    if (np.x < -b.x) { np.x = -b.x; if (this.vel.x < 0) this.vel.x = 0; }
-    if (np.z > b.z) { np.z = b.z; if (this.vel.z > 0) this.vel.z = 0; }
-    if (np.z < -b.z) { np.z = -b.z; if (this.vel.z < 0) this.vel.z = 0; }
+    const b = this.bounds;
+    const cx = b.cx || 0, cz = b.cz || 0;
+    if (np.x > cx + b.x) { np.x = cx + b.x; if (this.vel.x > 0) this.vel.x = 0; }
+    if (np.x < cx - b.x) { np.x = cx - b.x; if (this.vel.x < 0) this.vel.x = 0; }
+    if (np.z > cz + b.z) { np.z = cz + b.z; if (this.vel.z > 0) this.vel.z = 0; }
+    if (np.z < cz - b.z) { np.z = cz - b.z; if (this.vel.z < 0) this.vel.z = 0; }
   }
 
   insideSolid(p) {
