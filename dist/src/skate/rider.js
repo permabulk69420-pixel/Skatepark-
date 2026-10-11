@@ -79,10 +79,10 @@ export class Rider {
     const tilt = Math.acos(clamp(sim.up.y, -1, 1));
     const steep = THREE.MathUtils.smoothstep(tilt, RIDER.tiltGentleAngle, RIDER.tiltSteepAngle);
     let rate = RIDER.tiltRateGentle + (RIDER.tiltRateSteep - RIDER.tiltRateGentle) * steep;
-    if (sim.mode === Mode.GRIND || sim.mode === Mode.BAIL) rate = RIDER.tiltRateGrind;
+    if (sim.mode === Mode.GRIND || sim.mode === Mode.BAIL || sim.manual) rate = RIDER.tiltRateGrind;
     if (dt > 1) this.up.copy(sim.up);
     this.up.lerp(sim.up, 1 - Math.exp(-rate * dt)).normalize();
-    _pivot.copy(sim.pos).addScaledVector(this.up, BOARD.deckTop - drop);
+    _pivot.copy(sim.pos).addScaledVector(this.up, BOARD.deckTop - drop + sim.manualLift);
 
     // Rig attitude = the board's frame (heading + eased up), then turned so the player's calibrated gaze is the stance
     // direction (side-on in VR, down the board on a flat screen).

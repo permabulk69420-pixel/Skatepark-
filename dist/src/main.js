@@ -91,6 +91,8 @@ const feel = (type, data = {}) => {
     case 'land': if (data.impact < 0.9) break; haptics.pulse(THREE.MathUtils.clamp(0.2 + data.impact * 0.09, 0.2, 1), Math.min(120, 30 + data.impact * 7)); break;
     case 'wall': haptics.pulse(THREE.MathUtils.clamp(0.3 + data.impact * 0.14, 0.3, 1), 70); break;
     case 'grindStart': haptics.pulse(0.85, 32); break;
+    case 'manualStart': haptics.pulse(0.45, 28); break;
+    case 'manualEnd': if (data.reason !== 'bail' && data.time > 0.5) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'grindEnd': if (data.reason !== 'bail' && data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'bail': haptics.pulse(1, 240); hud?.say('BAIL', 1.2); break;
     default: break;
@@ -99,7 +101,8 @@ const feel = (type, data = {}) => {
 
 function continuousFeedback() {
   if (sim.mode === Mode.GROUND) {
-    if (sim.braking) haptics.rumble(0.3, 'both', 40);
+    if (sim.manual) haptics.rumble(0.12 + 0.45 * sim.manual.bal * sim.manual.bal, 'both', 40);
+    else if (sim.braking) haptics.rumble(0.3, 'both', 40);
     else if (sim.speed > 0.4) haptics.rumble(0.03 + 0.06 * Math.min(sim.speed / 10, 1), 'both', 60);
   } else if (sim.mode === Mode.GRIND && sim.grind) {
     // The closer to falling off, the harder the rail shakes the board.
