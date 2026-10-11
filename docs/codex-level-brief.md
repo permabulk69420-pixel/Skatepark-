@@ -1,6 +1,6 @@
 # Brief for Codex: building skate levels for the Skatepark game
 
-Paste this at the start of a level task.
+Paste this at the start of a level task, new level or more work on an existing one.
 
 ---
 
@@ -25,14 +25,20 @@ You are building a skate level for a Quest 3 browser (WebXR) skateboarding game 
 - Check your own work before committing: open the level and ride every line. If you cannot ride it, I cannot ride it.
 
 ## Design critique of the first school, and what to do instead
-It is one big flat square courtyard with buildings round the edge and furniture scattered on it. The overall scale is fine and feels good in the headset: do not shrink it, and a new level can be the same size or bigger. What is missing is variety. Large parts are flat concrete with nothing to carve, ride up or grind, and the features are scattered rather than designed. Several details were lazy: classroom doors, and a lone locker in the middle of nowhere.
+It is one big flat square courtyard with buildings round the edge and furniture scattered on it, and it is too small for the game we want: it should grow, with more sections and more places to go beyond what is there now. Do not shrink or compress anything that already works. Large parts are flat concrete with nothing to carve, ride up or grind, and the features are scattered rather than designed. Several details were lazy: classroom doors, and a lone locker in the middle of nowhere.
 
 Build it like a Tony Hawk level, from designed sections with lines through them:
 1. **Sections, not a square.** Make 5 to 7 distinct areas with their own character, for example: a quad with banks and a fun box, a stair set with a rail, a covered walkway or hall, a loading dock with a gap, a drainage bowl or half-pipe, a rooftop or upper level, a plaza with ledges and manual pads. Each one should hold a clear line of 3 to 5 tricks, such as bank to ledge to rail to gap.
-2. **Flow.** Connect the sections into loops you can ride continuously, with no dead ends. Keep the overall size and the room to build speed: long open runs are good, because they give you speed for the next line. The aim is that no large area is only flat concrete. Give the open areas something to carve, such as banks, curbs, planters, small hips or a line of manual pads. Do not compress the level or pack features shoulder to shoulder to fix this. Add sections and height instead.
+2. **Flow.** Connect the sections into loops you can ride continuously, with no dead ends. Open runs for building speed are good, so keep some, but no large area should be only flat concrete: give it banks, curbs, planters, small hips or a line of manual pads to carve. Grow the level outward and upward with new sections rather than packing the existing space tighter.
 3. **Vertical variety.** Use at least three elevations, joined by ramps, banks, stairs and drop-ins. Include quarter-pipes against walls, a hip or spine, a bowl or pool, and a wallride. Put gaps and transfers between levels. Give a loop to ride at the top.
 4. **Interiors and details.** Include a corridor or hall that can be ridden through, with open doorways, rows of lockers you can ledge along, benches, handrails and window ledges. Do real doors and real lockers instead of one placed in the middle. Keep the triangle count low.
 5. **Readability.** Give each section a landmark (a clock tower, a gym, a stand of tall trees) so a player in a headset knows where they are. Keep the first 20 seconds from the spawn easy, with a gentle bank and an obvious first line.
 6. **Surfaces.** Vary them: smooth concrete, brick, timber, asphalt. Keep signage readable from the front, not mirrored.
 
 When you are done, list the lines you built and every spawn, so I can test them.
+
+## Continuing an existing level (the Eastbank school)
+- Build on what is there instead of restarting. Keep the names of nodes that already exist (`ENV_*`, `COL_*`, `PATH_*`, `Spawn_*`) so the game and my checks keep working, and add new ones with the same conventions.
+- Start from the latest `main` (merge `origin/main` into your branch first). On `main`, `dist/assets/levels/eastbank-school.glb` is my optimised version of the level. **Never overwrite it and never commit your raw export to that path.** If your branch carries a raw GLB there, merging it would replace the optimised file and the level would load as the heavy 80 MB original.
+- Put your work here instead: the Blender file at `source/levels/eastbank-school.blend` and the raw export at `source/levels/eastbank-school.raw.glb`. I run the optimiser on the raw export and publish the result.
+- Make a few large commits instead of many small ones. Each one stores another copy of the binaries for good.
