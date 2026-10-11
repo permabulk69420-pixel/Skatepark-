@@ -129,6 +129,8 @@ export class Skater {
 
   // Forward then back (or back then forward) on the stick, quickly, starts a manual.
   detectFlick() {
+    // On a rail the stick up and down picks nosegrind / 5-0; it must not read as a manual flick.
+    if (this.mode === Mode.GRIND) { this.stickExtreme = 0; this.stickExtremeT = this.clock; return; }
     const d = this.drive;
     const sign = d > T.flickThreshold ? 1 : d < -T.flickThreshold ? -1 : 0;
     if (sign !== 0 && sign !== this.stickExtreme) {
@@ -830,8 +832,11 @@ export class Skater {
       path, mode, s, gs, time: 0, yawOffset: offset, stall,
       back: new THREE.Vector3(),
       bal: 0, balVel: 0, p1: this.random() * TAU, p2: this.random() * TAU,
+      variant: 0, vb: 0, vTime: { nose: 0, tail: 0 },
       snap: new THREE.Vector3(), name: ''
     };
+    // The stick held up or down as you land on the rail starts you in the nosegrind or 5-0.
+    if (mode === 'truck' && !stall) g.variant = g.vb = this.variantFor(0);
     this.mode = Mode.GRIND;
     this.grind = g;
     if (this.flip) {
@@ -879,6 +884,7 @@ export class Skater {
 
     // Board attitude: lie along the rail's slope for a 50-50, stay level for a boardslide.
     _F.set(-Math.sin(this.facingYaw), 0, -Math.cos(this.facingYaw));
+    let truckShift = 0;
     if (g.mode === 'truck') {
       const phi = Math.atan2(seg.dir.y, Math.max(seg.hLen, 1e-6));
       const forwardSign = Math.abs(wrap(yawOf(seg.dir.x, seg.dir.z) - this.heading)) < Math.PI / 2 ? 1 : -1;
@@ -886,6 +892,14 @@ export class Skater {
       _R.crossVectors(_f, UP).normalize();
       _u.crossVectors(_R, _f).normalize();
       g.tilt = (g.tilt || new THREE.Vector3()).copy(_R).multiplyScalar(Math.sign(_R.dot(_F)) || 1);
+      // Nosegrind (vb > 0): pitched nose-down onto the front truck; 5-0 (vb < 0): nose up onto the back one.
+      const a = g.vb * T.variantTilt;
+      if (a) {
+        _a.copy(_u).multiplyScalar(Math.cos(a)).addScaledVector(_f, Math.sin(a));
+        _b.copy(_f).multiplyScalar(Math.cos(a)).addScaledVector(_u, -Math.sin(a));
+        _u.copy(_a); _f.copy(_b);
+        truckShift = g.vb * BOARD.wheelHalfBase;
+      }
     } else {
       _u.copy(UP);
       const playerRight = _t.crossVectors(_F, UP);
@@ -895,6 +909,22 @@ export class Skater {
     g.u = (g.u || new THREE.Vector3()).copy(_u).multiplyScalar(Math.cos(rho)).addScaledVector(g.tilt, Math.sin(rho)).normalize();
     const contact = g.mode === 'truck' ? BOARD.truckBottom : path.slideContact;
     this.pos.copy(_P).addScaledVector(g.u, -contact);
+    // The rail is under one truck, so the middle of the board is behind it (nosegrind) or ahead of it (5-0).
+    if (truckShift) this.pos.addScaledVector(_f, -truckShift);
+  }
+
+  // Stick up is the nose on the rail, down is the tail; between the two thresholds it stays as it was.
+  variantFor(current) {
+    if (this.drive > T.variantStick) return 1;
+    if (this.drive < -T.variantStick) return -1;
+    return Math.abs(this.drive) < T.variantRelease ? 0 : current;
+  }
+
+  grindName(g) {
+    const { nose, tail } = g.vTime;
+    const prefix = g.path.kind === 'coping' ? 'Coping ' : '';
+    if (Math.max(nose, tail) < T.variantMinTime) return `${prefix}50-50`;
+    return `${prefix}${nose >= tail ? 'Nosegrind' : '5-0 Grind'}`;
   }
 
   grindStep(h) {
@@ -909,11 +939,18 @@ export class Skater {
       return;
     }
 
+    if (g.mode === 'truck' && !g.stall) {
+      g.variant = this.variantFor(g.variant);
+      g.vb += (g.variant - g.vb) * (1 - Math.exp(-T.variantResponse * h));
+      if (g.variant) g.vTime[g.variant > 0 ? 'nose' : 'tail'] += h;
+      g.name = this.grindName(g);
+    }
+
     // Speed along the rail: gravity on sloped rails, friction on everything.
     const seg = path.segmentAt(g.s);
     if (!g.stall) {
       g.gs += -T.gravity * seg.dir.y * h;
-      const fric = path.friction * h;
+      const fric = path.friction * (1 + T.variantDrag * Math.abs(g.vb)) * h;
       g.gs -= Math.sign(g.gs) * Math.min(Math.abs(g.gs), fric);
       g.s += g.gs * h;
     }
@@ -933,7 +970,7 @@ export class Skater {
     }
 
     // Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
-    const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax);
+    const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax) * (1 + (T.variantHard - 1) * Math.abs(g.vb));
     const wobble = T.balWobble * (0.6 * Math.sin(2.3 * g.time + g.p1) + 0.4 * Math.sin(5.7 * g.time + g.p2));
     const acc = instab * g.bal + wobble + T.balControl * this.lean - T.balDamp * g.balVel;
     g.balVel += acc * h;
