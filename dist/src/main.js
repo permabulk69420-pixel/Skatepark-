@@ -4,6 +4,15 @@ import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { acceleratedRaycast, computeBoundsTree } from '../vendor/mesh-bvh.js';
 import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
+import { SkateWorld } from './skate/world.js';
+import { parseGrindPaths } from './skate/rails.js';
+import { Skater, Mode } from './skate/sim.js';
+import { createInput } from './skate/input.js';
+import { createHaptics } from './skate/haptics.js';
+import { createVRHands } from './skate/hands.js';
+import { BoardView } from './skate/board-view.js';
+import { Rider } from './skate/rider.js';
+import { createHud } from './skate/hud.js';
 
 const status = document.querySelector('#status');
 const progress = document.querySelector('#progress');
@@ -24,13 +33,13 @@ renderer.xr.setFramebufferScaleFactor(1);
 renderer.xr.setFoveation(0);
 document.body.prepend(renderer.domElement);
 
+// The rig is the player's play space: the skater moves and turns it, the headset moves freely inside it.
 const rig = new THREE.Group();
 scene.add(rig);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.06, 280);
 camera.position.y = 1.65;
 camera.rotation.order = 'YXZ';
 rig.add(camera);
-const spawn = new THREE.Vector3(0, 0.045, 40);
 
 const sky = new Sky();
 sky.scale.setScalar(1500);
@@ -60,154 +69,63 @@ sun.shadow.normalBias = 0.035;
 sun.shadow.bias = -0.00006;
 scene.add(sun, sun.target);
 
-// Minimal original controller silhouettes stay attached to tracked grips.
-for (let i = 0; i < 2; i++) {
-  const grip = renderer.xr.getControllerGrip(i);
-  const handle = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, 0.082, 5, 10), new THREE.MeshStandardMaterial({ color: 0x364b4e, roughness: 0.68 }));
-  handle.rotation.x = 0.25;
-  handle.position.y = -0.025;
-  grip.add(handle);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.004, 6, 20), new THREE.MeshStandardMaterial({ color: 0xbcc6c5, metalness: 0.4, roughness: 0.5 }));
-  ring.rotation.x = -0.75;
-  ring.position.set(0, 0.042, -0.025);
-  grip.add(ring);
-  rig.add(grip);
-}
-
 const collision = [];
-const grindPaths = [];
+const grindNodes = [];
 const renderMeshes = [];
-let ready = false;
-let park;
-let verticalVelocity = 0;
-let wasFlying = false;
-const floorRay = new THREE.Raycaster();
-floorRay.firstHitOnly = true;
-floorRay.ray.direction.set(0, -1, 0);
-floorRay.far = 15;
-const floorNormal = new THREE.Vector3();
-const headPosition = new THREE.Vector3();
-const forward = new THREE.Vector3();
-const right = new THREE.Vector3();
-const move = new THREE.Vector3();
-const headBeforeTurn = new THREE.Vector3();
-const headAfterTurn = new THREE.Vector3();
+let park, ready = false;
+const spawn = new THREE.Vector3(0, 0.045, 40);
 const clock = new THREE.Clock();
-const keys = new Set();
-let pitch = 0;
-let yaw = 0;
 
-function reset() {
-  rig.position.copy(spawn);
-  rig.rotation.set(0, 0, 0);
-  verticalVelocity = 0;
-  pitch = yaw = 0;
-  if (!renderer.xr.isPresenting) {
-    camera.position.set(0, 1.65, 0);
-    camera.rotation.set(0, 0, 0, 'YXZ');
-  }
-}
-reset();
-document.querySelector('#reset').addEventListener('click', reset);
+const haptics = createHaptics(renderer);
+const input = createInput(renderer);
+const hands = createVRHands({ renderer, parent: rig });
 
-function floorAt(x, z, fromY) {
-  floorRay.ray.origin.set(x, fromY + 6, z);
-  const hits = floorRay.intersectObjects(collision, false);
-  if (!hits.length) return { y: -0.025, slope: 1 };
-  const hit = hits[0];
-  floorNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld);
-  return { y: hit.point.y, slope: floorNormal.y };
-}
+// The skater is created once the park's collision is loaded; events from it drive haptics and messages.
+let sim, rider, boardView, hud;
+const feel = (type, data = {}) => {
+  switch (type) {
+    case 'crouch': haptics.pulse(0.22, 18); break;
+    case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
+    case 'push': haptics.pulse(0.3, 28); break;
+    case 'land': haptics.pulse(THREE.MathUtils.clamp(0.2 + data.impact * 0.09, 0.2, 1), Math.min(120, 30 + data.impact * 7)); break;
+    case 'wall': haptics.pulse(THREE.MathUtils.clamp(0.3 + data.impact * 0.14, 0.3, 1), 70); break;
+    case 'grindStart': haptics.pulse(0.85, 32); break;
+    case 'grindEnd': if (data.reason !== 'bail' && data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
+    case 'bail': haptics.pulse(1, 240); hud?.say('BAIL', 1.2); break;
+    default: break;
+  }
+};
 
-function deadzone(v) { return Math.abs(v) > 0.15 ? (Math.abs(v) - 0.15) / 0.85 * Math.sign(v) : 0; }
-
-function explore(dt) {
-  let lateral = 0, longitudinal = 0, turn = 0, climb = 0;
-  let flying = false, speed = 3.7;
-  if (renderer.xr.isPresenting) {
-    rig.updateMatrixWorld(true);
-    renderer.xr.updateCamera(camera);
-    const session = renderer.xr.getSession();
-    for (const source of session.inputSources) {
-      if (!source.gamepad) continue;
-      const { axes, buttons } = source.gamepad;
-      const a = axes.length >= 4 ? 2 : 0;
-      if (source.handedness === 'left') {
-        lateral = deadzone(axes[a] || 0);
-        longitudinal = deadzone(axes[a + 1] || 0);
-        if (buttons[3]?.pressed) speed = 7;
-      } else if (source.handedness === 'right') {
-        turn = deadzone(axes[a] || 0);
-        flying = !!buttons[1]?.pressed;
-        if (flying) climb = -deadzone(axes[a + 1] || 0);
-      }
-    }
-    if (turn) {
-      camera.getWorldPosition(headBeforeTurn);
-      rig.rotation.y -= turn * 1.85 * dt;
-      rig.updateMatrixWorld(true);
-      camera.getWorldPosition(headAfterTurn);
-      rig.position.x += headBeforeTurn.x - headAfterTurn.x;
-      rig.position.z += headBeforeTurn.z - headAfterTurn.z;
-      rig.updateMatrixWorld(true);
-    }
-  } else {
-    lateral = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
-    longitudinal = Number(keys.has('KeyS')) - Number(keys.has('KeyW'));
-    climb = Number(keys.has('KeyE')) - Number(keys.has('KeyQ'));
-    flying = climb !== 0;
-    if (keys.has('ShiftLeft') || keys.has('ShiftRight')) speed = 8;
+function continuousFeedback() {
+  if (sim.mode === Mode.GROUND) {
+    if (sim.braking) haptics.rumble(0.3, 'both', 40);
+    else if (sim.speed > 0.4) haptics.rumble(0.03 + 0.06 * Math.min(sim.speed / 10, 1), 'both', 60);
+  } else if (sim.mode === Mode.GRIND && sim.grind) {
+    // The closer to falling off, the harder the rail shakes the board.
+    haptics.rumble(0.28 + 0.5 * sim.grind.bal * sim.grind.bal, 'both', 35);
   }
-  const head = camera;
-  head.getWorldDirection(forward);
-  forward.y = 0;
-  forward.normalize();
-  right.crossVectors(forward, THREE.Object3D.DEFAULT_UP).normalize();
-  move.copy(right).multiplyScalar(lateral).addScaledVector(forward, -longitudinal);
-  if (move.lengthSq() > 1) move.normalize();
-  move.multiplyScalar(speed * dt);
-  head.getWorldPosition(headPosition);
-  const currentFloor = rig.position.y;
-  const nextX = THREE.MathUtils.clamp(headPosition.x + move.x, -54.8, 54.8);
-  const nextZ = THREE.MathUtils.clamp(headPosition.z + move.z, -46.5, 46.5);
-  const nextFloor = floorAt(nextX, nextZ, currentFloor);
-  const rise = nextFloor.y - currentFloor;
-  if (flying || (rise < 0.30 && (nextFloor.slope > 0.48 || rise < -0.04))) {
-    rig.position.x += nextX - headPosition.x;
-    rig.position.z += nextZ - headPosition.z;
-  }
-  if (flying) {
-    rig.position.y = THREE.MathUtils.clamp(rig.position.y + climb * 4 * dt, -4.2, 30);
-    verticalVelocity = 0;
-  } else {
-    head.getWorldPosition(headPosition);
-    const ground = floorAt(headPosition.x, headPosition.z, rig.position.y);
-    if (ground.y - rig.position.y < 0.31 || wasFlying) {
-      if (rig.position.y > ground.y + 0.03) {
-        verticalVelocity -= 9.8 * dt;
-        rig.position.y = Math.max(ground.y + 0.025, rig.position.y + verticalVelocity * dt);
-      } else { rig.position.y = ground.y + 0.025; verticalVelocity = 0; }
-    }
-  }
-  wasFlying = flying;
 }
 
 const manager = new THREE.LoadingManager();
 const loader = new GLTFLoader(manager);
 loader.setMeshoptDecoder(MeshoptDecoder);
+const bust = encodeURIComponent(window.__skateparkCacheKey || Date.now());
 try {
-  const gltf = await loader.loadAsync(`./assets/skatepark.glb?fresh=${encodeURIComponent(window.__skateparkCacheKey || Date.now())}`, event => {
-    if (event.total) {
-      const percent = Math.round(event.loaded / event.total * 100);
-      progress.style.width = `${percent}%`;
-      status.textContent = percent < 100 ? `Loading the park… ${percent}%` : 'Preparing materials…';
-    }
-  });
+  const [gltf, boardGltf] = await Promise.all([
+    loader.loadAsync(`./assets/skatepark.glb?fresh=${bust}`, (event) => {
+      if (event.total) {
+        const percent = Math.round(event.loaded / event.total * 100);
+        progress.style.width = `${percent}%`;
+        status.textContent = percent < 100 ? `Loading the park… ${percent}%` : 'Preparing materials…';
+      }
+    }),
+    loader.loadAsync(`./assets/skateboard.glb?fresh=${bust}`)
+  ]);
   park = gltf.scene;
   scene.add(park);
   park.updateMatrixWorld(true);
-  park.traverse(object => {
-    if (object.userData.role === 'grind_path') grindPaths.push(object);
+  park.traverse((object) => {
+    if (object.userData.role === 'grind_path') grindNodes.push(object);
     if (!object.isMesh) return;
     if (object.userData.role === 'collision' || object.name.startsWith('COL_')) {
       collision.push(object);
@@ -233,21 +151,36 @@ try {
     }
   });
   const spawnNode = park.getObjectByName('Spawn_Entrance');
-  if (spawnNode) { spawnNode.getWorldPosition(spawn); reset(); }
+  if (spawnNode) spawnNode.getWorldPosition(spawn);
+
+  const world = new SkateWorld(collision);
+  const paths = parseGrindPaths(grindNodes);
+  sim = new Skater({ world, paths, onEvent: (type, data) => feel(type, data) });
+  sim.setSpawn(spawn, 0);
+  rider = new Rider({ rig, camera, renderer, sim });
+  boardView = new BoardView(scene, boardGltf.scene);
+  hud = createHud({ rig, rider, sim });
+  boardGltf.scene.traverse((node) => {
+    if (!node.isMesh) return;
+    for (const m of [].concat(node.material)) for (const map of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap]) if (map) map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  });
+
   renderer.shadowMap.needsUpdate = true;
   await renderer.compileAsync(scene, camera);
   ready = true;
   progress.style.width = '100%';
   document.querySelector('.progress').style.display = 'none';
-  status.textContent = 'Park ready';
+  status.textContent = `Park ready · ${paths.length} grindable lines`;
   const button = VRButton.createButton(renderer, { optionalFeatures: ['local-floor'] });
   document.body.append(button);
-  if (!navigator.xr) document.querySelector('#controls').innerHTML = 'Drag to look · WASD move · Shift faster · Q/E fly';
+  if (!navigator.xr) document.querySelector('#controls').innerHTML = document.querySelector('#controls-desktop').innerHTML;
 } catch (error) {
   status.textContent = 'The park could not load.';
   document.querySelector('#controls').textContent = error.message;
   console.error('Skate Park loading failed', error);
 }
+
+document.querySelector('#reset').addEventListener('click', () => sim?.respawn(sim.spawn));
 
 renderer.xr.addEventListener('sessionstart', () => {
   renderer.xr.setFoveation(0);
@@ -256,43 +189,62 @@ renderer.xr.addEventListener('sessionstart', () => {
   document.body.classList.add('in-vr');
   camera.position.set(0, 0, 0);
   camera.rotation.set(0, 0, 0);
+  rider?.requestCalibration();
   const session = renderer.xr.getSession();
   if (session.supportedFrameRates?.includes(72) && session.updateTargetFrameRate) session.updateTargetFrameRate(72).catch(() => {});
 });
 renderer.xr.addEventListener('sessionend', () => {
   document.body.classList.remove('in-vr');
   camera.position.set(0, 1.65, 0);
-  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
+  rider?.requestCalibration();
 });
 
+// Flat-screen look-around (drag), for testing off the headset.
+const look = { pitch: 0, yaw: 0 };
 let dragging = false, previousX = 0, previousY = 0;
-renderer.domElement.addEventListener('pointerdown', event => {
+renderer.domElement.addEventListener('pointerdown', (event) => {
   dragging = true; previousX = event.clientX; previousY = event.clientY;
   renderer.domElement.setPointerCapture(event.pointerId);
 });
-renderer.domElement.addEventListener('pointerup', () => dragging = false);
-renderer.domElement.addEventListener('pointercancel', () => dragging = false);
-renderer.domElement.addEventListener('pointermove', event => {
+renderer.domElement.addEventListener('pointerup', () => { dragging = false; });
+renderer.domElement.addEventListener('pointercancel', () => { dragging = false; });
+renderer.domElement.addEventListener('pointermove', (event) => {
   if (!dragging || renderer.xr.isPresenting) return;
-  yaw -= (event.clientX - previousX) * 0.003;
-  pitch = THREE.MathUtils.clamp(pitch - (event.clientY - previousY) * 0.003, -1.45, 1.45);
-  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  look.yaw -= (event.clientX - previousX) * 0.003;
+  look.pitch = THREE.MathUtils.clamp(look.pitch - (event.clientY - previousY) * 0.003, -1.45, 1.45);
+  camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
   previousX = event.clientX; previousY = event.clientY;
 });
-addEventListener('keydown', event => { keys.add(event.code); if (['Space','ArrowUp','ArrowDown'].includes(event.code)) event.preventDefault(); });
-addEventListener('keyup', event => keys.delete(event.code));
-addEventListener('blur', () => keys.clear());
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
 
+function frame(dt) {
+  const command = input.poll(dt);
+  if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
+    sim.faceOffset = -sim.faceOffset;
+    hud.say(sim.faceOffset < 0 ? 'Regular' : 'Goofy', 1.0);
+    haptics.pulse(0.3, 25);
+  }
+  if (command.recenter) { rider.requestCalibration(); haptics.pulse(0.4, 40); hud.say('Recentred', 1.0); }
+  if (command.toSpawn) sim.respawn(sim.spawn);
+  sim.update(command, dt);
+  rider.update(dt);
+  boardView.update(sim, dt);
+  hands.update(dt);
+  hud.update(dt);
+  continuousFeedback();
+}
+
 renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.035);
-  if (ready) explore(dt);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (ready) frame(dt);
   renderer.render(scene, camera);
 });
 
-// Read-only scene access supports inspection and later skateboard integration.
-export { scene, renderer, camera, rig, collision, grindPaths, renderMeshes, park, floorAt, reset };
+// Handles for the console and the automated checks.
+window.__skate = { get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes };
+export { scene, renderer, camera, rig, collision, renderMeshes, park, spawn };
