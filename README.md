@@ -10,7 +10,8 @@ the skating itself is fun. Static files, no build step — `dist/` is what GitHu
 | Input | Does |
 | --- | --- |
 | Left stick up / down | Push (kicks repeat while held) / brake. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
-| Left stick sideways | Steer · spin in the air · **balance on a grind** |
+| Left stick sideways | Steer · spin in the air |
+| Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
 | Right **A** (or right trigger) | Hold to crouch, release to ollie. A longer hold pops higher |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |
@@ -22,9 +23,8 @@ so they don't snap the view; past about 50° (a half-pipe wall) it follows almos
 
 **Manuals.** Flick the left stick forward then back (a loose flick is fine, about half a second end to end) while rolling
 (about 1.5 m/s or more) for a manual: the nose comes up and the balance meter appears. Back then forward is a nose manual.
-Flick in the air after an ollie and you land in it. Balance it with forward/back on the stick
-(back leans a manual further over, forward brings it back; it gets harder the longer you hold it, and over-leaning is a
-bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
+Flick in the air after an ollie and you land in it. Balance it with your hands, like a grind (the marker drifts and gets
+harder the longer you hold it; push it back with the opposite hand; over-leaning is a bail). No pushing or braking while you are in one, and turning is weaker. Ollie to pop out of it, or it ends when you run
 out of speed. The camera tilts with the board. Tune it in the `manual*` and `flick*` values in `config.js`.
 
 **Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
@@ -35,7 +35,7 @@ You stand on the board the way you would on a real one: side-on to travel, facin
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.
 
-**Flat screen:** W push · S brake · A/D steer & balance · hold Space, release to ollie · drag to look · Z stance · R entrance.
+**Flat screen:** W push · S brake · A/D steer & balance (no hands on a flat screen) · hold Space, release to ollie · drag to look · Z stance · R entrance.
 
 **Grinding.** Be in the air, close to a rail, ledge or coping, with the board roughly parallel (50-50) or roughly
 square (boardslide) to it. It locks on, and the meter starts wherever your landing put it. Left unattended the board
@@ -109,3 +109,12 @@ Runs the simulation against a flat test floor: rolling, pushing, steering, ollie
 rail locking (50-50 and boardslide), balance, popping off, near-misses, respawn. `tests/halfpipe.test.mjs` builds a real
 half-pipe mesh (round transitions, vertical, deck, coping) and checks wall riding, drop-ins, airs, pumping and axle stalls
 through the same collision code the game uses.
+
+## Balancing with your hands (VR)
+
+Grinds and manuals are balanced with your hands, not the thumbstick. The difference in height between your hands, compared with
+how they were resting just before the balance began, is the push: right hand up moves the marker right, left hand up moves it
+left; about 22 cm of difference is a full push. The resting reference follows your hands whenever you are not balancing, so
+however you stand or hold your arms is "no push", and it freezes while a balance is running. Change the feel in `HANDS` in
+`config.js` (`range`, `deadzone`, `restTime`, `response`). The thumbstick still pushes, brakes, steers, spins you in the air
+and flicks for a manual.

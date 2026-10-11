@@ -182,3 +182,12 @@ export const RIDER = Object.freeze({
   landCompress: 0.09,
   eyeHeightDesktop: 1.65
 });
+
+// Balancing a grind or a manual with your hands (VR): raise your right hand (relative to the left) to push the meter right,
+// your left hand to push it left. "Relative" is to how your hands were resting a moment before the balance began.
+export const HANDS = Object.freeze({
+  range: 0.22,               // metres of difference from rest that is a full push on the meter
+  deadzone: 0.025,           // metres of difference that is ignored
+  restTime: 1.2,             // seconds the "resting" difference takes to follow your hands while you are not balancing
+  response: 25               // 1/s smoothing of the push
+});

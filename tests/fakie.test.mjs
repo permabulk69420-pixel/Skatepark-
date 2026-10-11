@@ -56,15 +56,15 @@ test('a manual lifts the end that leads: nose up going forward, tail up going fa
   assert.ok(noseTilt(fakieNose) < -0.15);
 });
 
-test('a fakie manual is balanced with the same stick moves as a forward one', () => {
+test('a fakie manual is balanced with the same hand moves as a forward one', () => {
   for (const forward of [true, false]) {
     const events = [];
     const s = rolling(forward, events);
     run(s, (t, sk) => {
       if (t < 0.5) return { drive: flick(0.3, 1)(t) };
       const m = sk.manual;
-      // Back on the stick leans a manual further over, forward brings it back, whichever way you are rolling.
-      return { drive: m ? THREE.MathUtils.clamp(m.kind * (m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0 };
+      // A push against the marker brings it back, whichever way you are rolling.
+      return { lean: m ? THREE.MathUtils.clamp(-(m.bal * 2.4 + m.balVel * 0.8), -1, 1) : 0 };
     }, 8);
     const end = events.find((e) => e.type === 'manualEnd');
     assert.ok(end && end.data.time > 2.5, `${forward ? 'forward' : 'fakie'}: manual lasted ${end?.data.time ?? 0}`);

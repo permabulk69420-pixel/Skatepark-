@@ -42,7 +42,7 @@ export class Skater {
     this.up = new THREE.Vector3(0, 1, 0);         // smoothed board up, for display
     this.faceOffset = -Math.PI / 2;               // rider's facing relative to the nose (regular stance faces the board's right)
 
-    this.steer = 0; this.drive = 0;
+    this.steer = 0; this.drive = 0; this.lean = 0;
     this.manual = null; this.manualQueue = null; this.manualLift = 0; this.clock = 0; this.stickExtreme = 0; this.stickExtremeT = -9; this.stickExtremeSpeed = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
@@ -84,6 +84,7 @@ export class Skater {
   update(input, dt) {
     if (!(dt > 0)) return;
     this.steer = damp(this.steer, clamp(input.steer || 0, -1, 1), 20, dt);
+    this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
     this.drive = clamp(input.drive || 0, -1, 1);
     // How long forward has been held; a tap does not build it and letting go drains it quickly.
     this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
@@ -170,8 +171,8 @@ export class Skater {
     m.time += h;
     const instab = Math.min(T.manualInstab0 + T.manualInstabGrow * m.time, T.manualInstabMax);
     const wobble = T.manualWobble * (0.6 * Math.sin(2.1 * m.time + m.p1) + 0.4 * Math.sin(4.9 * m.time + m.p2));
-    // Back on the stick leans a manual further over (a nose manual: forward does), whichever way you are rolling.
-    const acc = instab * m.bal + wobble - m.kind * T.manualControl * this.drive - T.manualDamp * m.balVel;
+    // The meter is the interface: a push to the right moves the marker right, whichever way the board is leaning.
+    const acc = instab * m.bal + wobble + T.manualControl * this.lean - T.manualDamp * m.balVel;
     m.balVel += acc * h;
     m.bal += m.balVel * h;
     if (Math.abs(m.bal) >= 1) { m.bal = Math.sign(m.bal); this.endManual('bail'); this.bail('manual'); return; }
@@ -863,10 +864,10 @@ export class Skater {
       return;
     }
 
-    // Balance: left unattended the board leans over and falls off; the stick pushes the lean back.
+    // Balance: left unattended the board leans over and falls off; a push from the hands pushes the lean back.
     const instab = Math.min(T.balInstab0 + T.balInstabGrow * g.time, T.balInstabMax);
     const wobble = T.balWobble * (0.6 * Math.sin(2.3 * g.time + g.p1) + 0.4 * Math.sin(5.7 * g.time + g.p2));
-    const acc = instab * g.bal + wobble + T.balControl * this.steer - T.balDamp * g.balVel;
+    const acc = instab * g.bal + wobble + T.balControl * this.lean - T.balDamp * g.balVel;
     g.balVel += acc * h;
     g.bal += g.balVel * h;
     if (Math.abs(g.bal) >= 1) {

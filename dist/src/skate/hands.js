@@ -104,8 +104,16 @@ export function createVRHands({ renderer, parent, onError = console.warn }) {
     }
   }
 
+  // Physical heights of the two grips (null for one that is not connected), for hand balancing.
+  function gripHeights() {
+    const out = { left: null, right: null };
+    for (const state of states) if (state.handedness && state.inputSource) out[state.handedness] = state.grip.position.y;
+    return out;
+  }
+
   return {
     update,
+    gripHeights,
     states,
     setVisible(value) {
       visible = !!value;

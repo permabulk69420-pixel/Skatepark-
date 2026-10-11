@@ -13,6 +13,7 @@ import { createVRHands } from './skate/hands.js';
 import { BoardView } from './skate/board-view.js';
 import { Rider } from './skate/rider.js';
 import { createHud } from './skate/hud.js';
+import { HandBalance } from './skate/hand-balance.js';
 
 const status = document.querySelector('#status');
 const progress = document.querySelector('#progress');
@@ -79,6 +80,7 @@ const clock = new THREE.Clock();
 const haptics = createHaptics(renderer);
 const input = createInput(renderer);
 const hands = createVRHands({ renderer, parent: rig });
+const handBalance = new HandBalance();
 
 // The skater is created once the park's collision is loaded; events from it drive haptics and messages.
 let sim, rider, boardView, hud;
@@ -233,6 +235,11 @@ addEventListener('resize', () => {
 function frame(dt) {
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
+  if (renderer.xr.isPresenting) {
+    // In VR the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left.
+    const grips = hands.gripHeights();
+    command.lean = handBalance.update(dt, grips.left, grips.right, !!sim.balance);
+  }
   if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
     sim.faceOffset = -sim.faceOffset;
     hud.say(sim.faceOffset < 0 ? 'Regular' : 'Goofy', 1.0);
@@ -255,5 +262,5 @@ renderer.setAnimationLoop(() => {
 });
 
 // Handles for the console and the automated checks.
-window.__skate = { get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes };
+window.__skate = { hands, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes };
 export { scene, renderer, camera, rig, collision, renderMeshes, park, spawn };

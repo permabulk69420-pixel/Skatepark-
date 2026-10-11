@@ -140,7 +140,7 @@ test('grinding with no input falls off; with corrective input it stays on to the
   const ev2 = [];
   const c = approachRail(longRail(), { events: ev2, speed: 6 });
   let maxBal = 0;
-  run(c, (t, sk) => ({ steer: sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.2 + sk.grind.balVel * 0.7) , -1, 1) : 0 }), 4, 1 / 72, (t, sk) => { if (sk.grind) maxBal = Math.max(maxBal, Math.abs(sk.grind.bal)); });
+  run(c, (t, sk) => ({ lean: sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.2 + sk.grind.balVel * 0.7) , -1, 1) : 0 }), 4, 1 / 72, (t, sk) => { if (sk.grind) maxBal = Math.max(maxBal, Math.abs(sk.grind.bal)); });
   assert.ok(!ev2.some((e) => e.type === 'bail'), 'controlled grind bailed');
   const end = ev2.find((e) => e.type === 'grindEnd');
   assert.ok(end && end.data.reason === 'end', `grind ended with ${end?.data.reason}`);
@@ -150,7 +150,7 @@ test('releasing the ollie button pops you off the rail', () => {
   const events = [];
   const s = approachRail(longRail(), { events, speed: 6 });
   run(s, (t, sk) => ({
-    steer: sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.2 + sk.grind.balVel * 0.7), -1, 1) : 0,
+    lean: sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.2 + sk.grind.balVel * 0.7), -1, 1) : 0,
     jump: t > 0.2 && t < 0.35
   }), 3);
   const end = events.find((e) => e.type === 'grindEnd');
