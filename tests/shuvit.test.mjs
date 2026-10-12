@@ -110,10 +110,10 @@ test('the stick going diagonal a moment after it goes down still counts as the v
   assert.deepEqual(names(events, 'flipStart'), ['Varial Heelflip']);
 });
 
-test('a plain left or right is still an instant kickflip or heelflip', () => {
+test('a plain left or right is still a kickflip or heelflip', () => {
   const events = [];
   const s = ollied(events);
-  run(s, { flip: true, steer: -1 }, 0.1);
+  run(s, { flip: true, steer: -1 }, 0.25);
   assert.deepEqual(names(events, 'flipStart'), ['Kickflip']);
   assert.equal(s.shuv, null);
 });
@@ -171,4 +171,20 @@ test('a board that has come round can catch a rail, and the credit is given', ()
   assert.ok(s.shuvResidual() > T.shuvClean);
   s.commitShuv();
   assert.equal(s.shuvResidual(), 0);
+});
+
+test('a thumb that goes sideways first and then down still makes the varial', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, steer: -1 }, 0.03);
+  run(s, { flip: true, steer: -0.7, drive: -0.7 }, 0.2);
+  assert.deepEqual(names(events, 'flipStart'), ['Varial Kickflip']);
+});
+
+test('a thumb that goes down first and only slightly sideways still makes the varial', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, drive: -1, steer: 0.35 }, 0.25);
+  assert.equal(names(events, 'flipStart').at(-1), 'Varial Heelflip');
+  assert.ok(s.flip && s.shuv && !s.shuv.bs, 'heelflip goes with a frontside shove');
 });
