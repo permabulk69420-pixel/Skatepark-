@@ -202,11 +202,29 @@ test('a thumb that goes down first and only slightly sideways still makes the va
   assert.ok(s.flip && s.shuv && !s.shuv.bs, 'heelflip goes with a frontside shove');
 });
 
-test('a thumb that pushes straight down and then swings onto the diagonal over about 0.1 s gets the varial', () => {
+test('a thumb that pushes straight down and then swings onto the diagonal over about 0.07 s gets the varial', () => {
   const events = [];
   const s = ollied(events);
-  run(s, { flip: true, drive: -1 }, 0.04);
-  for (let i = 0; i <= 6; i += 1) run(s, { flip: true, drive: -1, steer: -i / 6 * 0.9 }, 0.012); // swinging from down to down-left
+  run(s, { flip: true, drive: -1 }, 0.02);
+  for (let i = 0; i <= 6; i += 1) run(s, { flip: true, drive: -1, steer: -i / 6 * 0.9 }, 0.008); // swinging from down to down-left
   run(s, { flip: true, drive: -0.8, steer: -0.8 }, 0.15);
   assert.equal(names(events, 'flipStart').at(-1), 'Varial Kickflip');
+});
+
+test('a trick being picked is not cancelled when the button window runs out', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true }, 0.27);                         // button pressed, stick still in the middle, window nearly out
+  run(s, { flip: true, drive: -0.7, steer: 0.7 }, 0.2);  // stick arrives at the very end of it
+  assert.equal(names(events, 'flipStart').at(-1), 'Varial Heelflip');
+});
+
+test('a diagonal picked in a short hop still has time to come round', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, drive: -0.7, steer: -0.7 }, 0.05);
+  const started = s.airTime;
+  run(s, {}, 0.1);
+  assert.ok(s.flip && s.shuv, 'not started');
+  assert.ok(started < 0.2, `picked at ${started}`);
 });

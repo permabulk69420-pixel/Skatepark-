@@ -444,8 +444,9 @@ export class Skater {
     // A little stick drift while carving into a jump must not spin you; spin only starts past the dead zone.
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
     // Flips and shove-its take the stick for themselves: it picks the trick and must not also spin the board.
-    if (this.flipArm > 0 && !this.flip && !this.shuv && this.airTime > T.flipMinAir) this.pickTrick(h);
-    else if (!(this.flipArm > 0) || this.flip || this.shuv) this.trickWait = 0;
+    // The button's window only gates the stick leaving the middle; a trick that is already being picked carries on past it.
+    if (!this.flip && !this.shuv && this.airTime > T.flipMinAir && (this.flipArm > 0 || this.trickWait > 0)) this.pickTrick(h);
+    else if (this.flip || this.shuv) this.trickWait = 0;
     if (this.flip) {
       const f = this.flip;
       f.angle = clamp(f.angle + f.sign * (TAU / T.flipTime) * h, -TAU, TAU);

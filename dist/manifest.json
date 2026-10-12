@@ -1,11 +1,11 @@
 {
- "build": "b81e8e6",
+ "build": "eee0a54",
  "files": {
   "src/main.js": "5412baa1eb",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "743964a136",
   "src/skate/board-view.js": "77fa836db5",
-  "src/skate/config.js": "fbc4add744",
+  "src/skate/config.js": "835eff737d",
   "src/skate/grip-contact.js": "b88f95d5d7",
   "src/skate/grip-poses.js": "9b84251e00",
   "src/skate/hand-balance.js": "569e4a15e9",
@@ -19,7 +19,7 @@
   "src/skate/music.js": "dd250e57a9",
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
-  "src/skate/sim.js": "07ff95416a",
+  "src/skate/sim.js": "1e5f66d24d",
   "src/skate/world.js": "5df651f790",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
   "vendor/addons/math/ConvexHull.js": "04452fd4ef",
