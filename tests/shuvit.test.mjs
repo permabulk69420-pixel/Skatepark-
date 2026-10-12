@@ -62,16 +62,29 @@ test('goofy spins the other way', () => {
   assert.equal(regular.shuv.name, goofy.shuv.name);
 });
 
-test('up + flip is a frontside pop shove-it, spinning the other way to the backside one', () => {
-  const events = [];
-  const bs = ollied(), fs = ollied(events);
-  run(bs, { flip: true, drive: -1 }, 0.15);
-  run(fs, { flip: true, drive: 1 }, 0.15);
-  assert.deepEqual(names(events, 'flipStart'), ['Frontside Pop Shove-it']);
-  assert.equal(bs.shuv.sign, -fs.shuv.sign);
-  run(fs, {}, 1.2);
-  assert.deepEqual(names(events, 'flip'), ['Frontside Pop Shove-it']);
+test('up on its own does nothing (forward is the push); up-right is a plain heelflip', () => {
+  const events = [], e2 = [];
+  const a = ollied(events), b = ollied(e2);
+  run(a, { flip: true, drive: 1 }, 0.3);
+  assert.deepEqual(names(events, 'flipStart'), []);
+  run(b, { flip: true, drive: 0.7, steer: 0.7 }, 0.3);
+  assert.deepEqual(names(e2, 'flipStart'), ['Heelflip']);
+  assert.equal(b.shuv, null);
   assert.ok(!events.some((e) => e.type === 'manualStart'), 'the stick up read as a manual');
+});
+
+test('a lazy diagonal that only goes half way on both axes is still a varial', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, drive: -0.4, steer: 0.4 }, 0.25);
+  assert.deepEqual(names(events, 'flipStart'), ['Varial Heelflip']);
+});
+
+test('a stick that is mostly down with a little sideways is a plain pop shove-it', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, drive: -1, steer: 0.25 }, 0.25);
+  assert.deepEqual(names(events, 'flipStart'), ['Pop Shove-it']);
 });
 
 test('down-left is a varial kickflip: a kickflip and a backside shove-it together', () => {
@@ -184,7 +197,7 @@ test('a thumb that goes sideways first and then down still makes the varial', ()
 test('a thumb that goes down first and only slightly sideways still makes the varial', () => {
   const events = [];
   const s = ollied(events);
-  run(s, { flip: true, drive: -1, steer: 0.35 }, 0.25);
+  run(s, { flip: true, drive: -0.6, steer: 0.5 }, 0.25);
   assert.equal(names(events, 'flipStart').at(-1), 'Varial Heelflip');
   assert.ok(s.flip && s.shuv && !s.shuv.bs, 'heelflip goes with a frontside shove');
 });

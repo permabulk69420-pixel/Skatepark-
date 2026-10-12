@@ -23,7 +23,7 @@ const names = (events, type) => events.filter((e) => e.type === type).map((e) =>
 test('flip button + stick left in the air is a kickflip that comes round and lands clean', () => {
   const events = [];
   const s = ollied(events);
-  run(s, { flip: true, steer: -1 }, 0.05);
+  run(s, { flip: true, steer: -1 }, 0.15);
   assert.deepEqual(names(events, 'flipStart'), ['Kickflip']);
   run(s, {}, 1.2);
   assert.equal(s.mode, Mode.GROUND);
@@ -157,6 +157,6 @@ test('rolling backwards, the trick is named fakie', () => {
   s.vel.set(0, 0, 4);              // heading 0 points the nose at -Z, so this is fakie
   run(s, { jump: true }, 0.2);
   run(s, {}, 0.03);
-  run(s, { flip: true, steer: 1 }, 0.05);
+  run(s, { flip: true, steer: 1 }, 0.15);
   assert.deepEqual(names(events, 'flipStart'), ['Fakie Heelflip']);
 });

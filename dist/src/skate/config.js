@@ -50,11 +50,13 @@ export const TUNING = Object.freeze({
   flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
   flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
   flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
-  // Shove-its: the flip button with the stick down (pop shove-it), up (frontside), or down-left / down-right (varial kickflip / heelflip).
+  // Shove-its: the flip button with the stick down (pop shove-it) or down-left / down-right (varial kickflip / heelflip). The stick's
+  // direction is read as an angle once it leaves the middle, so a diagonal does not have to reach far on either axis.
   shuvTime: 0.32,            // seconds for the board to spin the half turn
-  shuvStick: 0.4,            // how far up or down the stick has to go to mean a shove-it
-  shuvDecide: 0.12,          // a stick with up or down in it waits this long for its diagonal to settle before the trick is picked
-  varialSide: 0.28,          // with the stick down, how far sideways it has to go to make it a varial
+  trickStick: 0.4,           // how far the stick has to leave the middle (of 1) to pick a trick
+  trickSettle: 0.06,         // seconds the thumb gets to land on its direction before the trick is picked
+  shuvCone: 0.45,            // within this many radians (~26°) of straight down is a pop shove-it...
+  varialCone: 1.2,           // ...out to this (~69°) from down is a varial; further round is a plain flip
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean
   shuvBail: 1.05,            // further than this (~60°) from straight and you bail; in between is sketchy
 

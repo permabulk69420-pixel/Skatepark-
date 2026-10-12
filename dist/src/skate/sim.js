@@ -51,7 +51,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
-    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.trickPrefix = ''; this.switched = false;
+    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -95,6 +95,8 @@ export class Skater {
     this.steer = damp(this.steer, clamp(input.steer || 0, -1, 1), 20, dt);
     this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
     this.drive = clamp(input.drive || 0, -1, 1);
+    this.rawSteer = clamp(input.steer || 0, -1, 1); // the stick as it is, for picking a trick (this.steer is smoothed)
+    this.rawDrive = this.drive;
     // How long forward has been held; a tap does not build it and letting go drains it quickly.
     this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
     this.clock += dt;
@@ -442,11 +444,8 @@ export class Skater {
     // A little stick drift while carving into a jump must not spin you; spin only starts past the dead zone.
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
     // Flips and shove-its take the stick for themselves: it picks the trick and must not also spin the board.
-    if (this.flipArm > 0 && !this.flip && !this.shuv && this.airTime > T.flipMinAir) this.pickTrick();
-    else if (this.trickWait > 0 && (this.flip || this.shuv)) {
-      this.trickWait += h;
-      if (this.trickWait < T.shuvDecide) this.upgradeTrick();
-    }
+    if (this.flipArm > 0 && !this.flip && !this.shuv && this.airTime > T.flipMinAir) this.pickTrick(h);
+    else if (!(this.flipArm > 0) || this.flip || this.shuv) this.trickWait = 0;
     if (this.flip) {
       const f = this.flip;
       f.angle = clamp(f.angle + f.sign * (TAU / T.flipTime) * h, -TAU, TAU);
@@ -488,19 +487,30 @@ export class Skater {
   }
 
   // ----- flips and shove-its ---------------------------------------------------------------------------------
-  // The flip button in the air, then the stick picks the trick:
-  //   left / right ........ kickflip / heelflip (the board rolls once about its length)
-  //   down ................ pop shove-it (the board spins 180° flat, backside)
-  //   down-left / down-right  varial kickflip / varial heelflip (a kickflip with a backside shove-it / a heelflip with a frontside one)
-  //   up .................. frontside pop shove-it
-  // A thumb rarely lands on a diagonal in one go, so the trick starts the moment either axis goes past its threshold (no waiting),
-  // and for a moment afterwards (shuvDecide) the other axis can still join it: a kickflip that the stick then goes down on becomes a
-  // varial kickflip, a pop shove-it that the stick then goes sideways on becomes a varial flip.
-  pickTrick() {
-    const wantsShuv = Math.abs(this.drive) >= T.shuvStick;
-    const wantsFlip = Math.abs(this.steer) >= T.flipStick;
-    if (wantsShuv) this.startTrick(this.drive, this.steer);
-    else if (wantsFlip) this.startTrick(0, this.steer);
+  // The flip button in the air, then the direction the stick is pushed picks the trick, measured as an angle (like an 8-way pad), not
+  // as separate left/right and up/down amounts, so a lazy diagonal that only reaches half way still reads as a diagonal:
+  //   down (±22°) ............ pop shove-it (the board spins 180° flat, backside)
+  //   down-left / down-right . varial kickflip / varial heelflip (a kickflip with a backside shove-it / a heelflip with a frontside one)
+  //   left / right ........... kickflip / heelflip (the board rolls once about its length)
+  //   up-left / up-right ..... the same flips (up on its own does nothing: forward is the push, and it is held a lot)
+  // The stick gets a moment (trickSettle) to land on its direction once it leaves the middle, because a thumb takes a few frames to get there.
+  pickTrick(h) {
+    const x = this.rawSteer, y = this.rawDrive, mag = Math.hypot(x, y);
+    if (this.trickWait === 0) {
+      if (mag < T.trickStick) return;
+      this.trickWait = 1e-6; this.bestStick = null;
+    }
+    this.trickWait += h;
+    if (mag >= T.trickStick) this.bestStick = { x, y };
+    if (this.trickWait < T.trickSettle) return;
+    const st = this.bestStick || { x, y };
+    this.trickWait = 0; this.bestStick = null;
+    // How far the stick is from straight down, 0 to 180°.
+    const fromDown = Math.atan2(Math.abs(st.x), -st.y);
+    const kick = st.x < 0;
+    if (fromDown <= T.shuvCone) this.startTrick(null, true);
+    else if (fromDown <= T.varialCone) this.startTrick(kick, kick);
+    else if (Math.abs(st.x) >= T.trickStick * 0.7 && fromDown < Math.PI - T.shuvCone) this.startTrick(kick, null);
   }
 
   makeFlip(kick) {
@@ -510,49 +520,25 @@ export class Skater {
     return { sign, angle: 0, kick, name: `${this.trickPrefix}${kick ? 'Kickflip' : 'Heelflip'}` };
   }
 
-  makeShuv(bs, up = false) {
+  makeShuv(bs) {
     // Backside is the way the rider's back leads: clockwise seen from above for a regular rider (counter-clockwise for goofy).
     // A varial kickflip shoves backside and a varial heelflip frontside. Like the flip direction, this is the one place to change it.
     const sign = (bs ? 1 : -1) * Math.sign(this.faceOffset);
-    return { sign, angle: 0, bs, up, done: false, name: `${this.trickPrefix}${bs ? '' : 'Frontside '}Pop Shove-it` };
+    return { sign, angle: 0, bs, done: false, name: `${this.trickPrefix}${bs ? '' : 'Frontside '}Pop Shove-it` };
   }
 
-  startTrick(drive, steer) {
-    const down = drive <= -T.shuvStick, up = drive >= T.shuvStick;
-    // With the stick down a diagonal only has to be a bit sideways.
-    const side = Math.abs(steer) >= (down ? T.varialSide : T.flipStick);
-    const kick = steer < 0;
-    const flipOn = side, shuvOn = down || (up && !side);
-    if (!flipOn && !shuvOn) return;
+  // flipKick: null for no flip, true for a kickflip, false for a heelflip. shuvBs: null for no shove-it, else true for backside.
+  startTrick(flipKick, shuvBs) {
     headingVec(this.heading, _H);
     const fakie = (this.vel.x * _H.x + this.vel.z * _H.z < -0.3) !== this.switched; // a board that a shove-it turned round is not "fakie"
     this.trickPrefix = fakie ? 'Fakie ' : '';
-    if (flipOn) this.flip = this.makeFlip(kick);
-    if (shuvOn) this.shuv = this.makeShuv(flipOn ? kick : down, up);
-    this.nameVarial();
-    this.trickWait = 1e-6;
+    if (flipKick !== null) this.flip = this.makeFlip(flipKick);
+    if (shuvBs !== null) this.shuv = this.makeShuv(shuvBs);
+    if (this.flip && this.shuv) this.flip.varial = `${this.trickPrefix}Varial ${this.flip.kick ? 'Kickflip' : 'Heelflip'}`;
+    this.trickWait = 0;
     this.flipArm = 0;
     this.spinLock = true;
     this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
-  }
-
-  nameVarial() {
-    if (this.flip && this.shuv) this.flip.varial = `${this.trickPrefix}Varial ${this.flip.kick ? 'Kickflip' : 'Heelflip'}`;
-  }
-
-  // Just after a trick starts, the other half of a varial can still be added by the stick.
-  upgradeTrick() {
-    if (!this.flip === !this.shuv) return;
-    if (this.flip && !this.shuv && this.drive <= -T.shuvStick) {
-      this.shuv = this.makeShuv(this.flip.kick);
-    } else if (this.shuv && !this.flip && !this.shuv.up && Math.abs(this.steer) >= T.varialSide) {
-      const kick = this.steer < 0;
-      this.flip = this.makeFlip(kick);
-      if (this.shuv.bs !== kick) { this.shuv.bs = kick; this.shuv.sign = -this.shuv.sign; this.shuv.angle = -this.shuv.angle; this.shuvYaw = this.shuv.angle; }
-      this.shuv.name = `${this.trickPrefix}${this.shuv.bs ? '' : 'Frontside '}Pop Shove-it`;
-    } else return;
-    this.nameVarial();
-    this.onEvent('flipStart', { name: this.flip.varial });
   }
 
   // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
