@@ -184,7 +184,7 @@ try {
 
   const world = new SkateWorld(collision);
   const paths = parseGrindPaths(grindNodes);
-  sim = new Skater({ world, paths, bounds: level.bounds, onEvent: (type, data) => feel(type, data) });
+  sim = new Skater({ world, paths, bounds: level.bounds, requireGrind: true, onEvent: (type, data) => feel(type, data) });
   sim.setSpawn(spawn, spawnHeading);
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);

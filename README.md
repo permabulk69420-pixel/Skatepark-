@@ -13,7 +13,8 @@ default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campu
 | Left stick up / down | Push (kicks repeat while held) / brake; on a rail in a 50-50: up = nosegrind, down = 5-0. A quick up-down (or down-up) flick is a manual, in the air too (land in it) |
 | Left stick sideways | Steer · spin in the air |
 | Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
-| Right **A** (or right trigger) | Hold to crouch, release to ollie. A longer hold pops higher |
+| Right **A** | Hold to crouch, release to ollie. A longer hold pops higher |
+| Right **trigger** | **Hold to grind.** Rails, ledges and copings are only caught while you hold it (or pressed it up to 0.3 s before touching one); let go and you hop off with your speed. Without it you roll over them and ride ramps without ever catching the coping (keyboard: hold **G** or **Shift**) |
 | Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip** or **right for a heelflip** (the stick can come just before or just after) |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |

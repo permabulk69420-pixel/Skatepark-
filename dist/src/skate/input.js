@@ -1,6 +1,7 @@
 // Turns Quest controllers (or a keyboard) into the five things the skater cares about.
 //   left stick  up = push, down = brake, sideways = steer / air spin / grind balance
-//   right A (or right trigger) = hold to crouch, release to ollie
+//   right A = hold to crouch, release to ollie
+//   right trigger (keyboard G / Shift) = grind: rails and copings are only caught while it is held
 //   right B (keyboard F) = flip button: in the air, with the stick left (kickflip) or right (heelflip)
 //   left Y = switch stance, left X held = back to the entrance, both grips held = stand on the board where you are
 const DEADZONE = 0.15;
@@ -11,7 +12,7 @@ export function createInput(renderer) {
   const keys = new Set();
   const held = { recenter: 0, spawn: 0 };
   const edge = { stance: false, keyStance: false };
-  const out = { steer: 0, drive: 0, lean: 0, jump: false, flip: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
+  const out = { steer: 0, drive: 0, lean: 0, jump: false, grind: false, flip: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
 
   addEventListener('keydown', (event) => {
@@ -22,11 +23,12 @@ export function createInput(renderer) {
   addEventListener('blur', () => keys.clear());
 
   function poll(dt) {
-    let steer = 0, drive = 0, jump = false, flip = false, toggleStance = false, recenter = false, toSpawn = false;
+    let steer = 0, drive = 0, jump = false, grind = false, flip = false, toggleStance = false, recenter = false, toSpawn = false;
     steer += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
     drive += Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
     jump = keys.has('Space');
     flip = keys.has('KeyF');
+    grind = keys.has('KeyG') || keys.has('ShiftLeft') || keys.has('ShiftRight');
     const keyStance = keys.has('KeyZ');
     if (keyStance && !edge.keyStance) toggleStance = true;
     edge.keyStance = keyStance;
@@ -47,7 +49,8 @@ export function createInput(renderer) {
           leftX = !!buttons[BUTTON.a]?.pressed;
           leftY = !!buttons[BUTTON.b]?.pressed;
         } else if (source.handedness === 'right') {
-          jump = jump || !!buttons[BUTTON.a]?.pressed || !!buttons[BUTTON.trigger]?.pressed;
+          jump = jump || !!buttons[BUTTON.a]?.pressed;
+          grind = grind || !!buttons[BUTTON.trigger]?.pressed;
           flip = flip || !!buttons[BUTTON.b]?.pressed;
           rightSqueeze = !!buttons[BUTTON.squeeze]?.pressed;
         }
@@ -65,6 +68,7 @@ export function createInput(renderer) {
     // Balance comes from the hands in VR (main.js sets it); on a flat screen A/D balance so it stays playable for testing.
     out.lean = session ? 0 : out.steer;
     out.jump = jump;
+    out.grind = grind;
     out.flip = flip;
     out.recenter = recenter;
     out.toSpawn = toSpawn;

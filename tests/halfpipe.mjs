@@ -45,12 +45,12 @@ export function coping(sign, p = PIPE) {
   });
 }
 
-export function pipeSkater({ events = [], withCoping = true, seed = 7 } = {}) {
+export function pipeSkater({ events = [], withCoping = true, seed = 7, requireGrind = false } = {}) {
   let state = seed;
   const random = () => (state = (state * 16807) % 2147483647) / 2147483647;
   const world = new SkateWorld([buildHalfPipe()]);
   const paths = withCoping ? [coping(-1), coping(1)] : [];
-  const skater = new Skater({ world, paths, random, onEvent: (type, data) => events.push({ type, data }) });
+  const skater = new Skater({ world, paths, random, requireGrind, onEvent: (type, data) => events.push({ type, data }) });
   return skater;
 }
 
