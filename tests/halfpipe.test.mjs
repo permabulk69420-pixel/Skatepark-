@@ -201,22 +201,52 @@ function ollieAtLip(s, extra = {}) {
   }, 2.5);
 }
 
-test('an ollie at the lip with the speed to clear it takes you out over the top', () => {
-  for (const drive of [0, 1]) {
+test('even at high speed, ollie without forward comes back into the bowl', () => {
+  for (const speed of [9.5, 10.5]) {
     const events = [];
     const s = pipeSkater({ events });
-    rollFrom(s, 0, 9.5, -1);
-    const r = ollieAtLip(s, { drive });
-    assert.ok(r.maxOut > 1.2, `drive ${drive}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
+    rollFrom(s, 0, speed, -1);
+    const r = ollieAtLip(s, { drive: 0 });
+    assert.ok(r.maxOut < 0.45, `speed ${speed}: unintentionally exited ${r.maxOut.toFixed(2)} m`);
     assert.deepEqual(bails(events), []);
   }
 });
 
-test('an ollie at the lip without the speed to clear it still stays in', () => {
-  const s = pipeSkater({});
-  rollFrom(s, 0, 6.2, -1);
-  const r = ollieAtLip(s, { drive: 1 });
-  assert.ok(r.maxOut < 0.45, `went ${r.maxOut.toFixed(2)} m out over the lip`);
+test('ollie plus forward at the lip deliberately exits at ordinary and high speeds', () => {
+  for (const speed of [8.2, 9.5]) {
+    const events = [];
+    const s = pipeSkater({ events });
+    rollFrom(s, 0, speed, -1);
+    const r = ollieAtLip(s, { drive: 1 });
+    assert.ok(r.maxOut > 1.0, `speed ${speed}: only ${r.maxOut.toFixed(2)} m beyond the lip`);
+    assert.deepEqual(bails(events), []);
+  }
+});
+
+test('the lip exit needs recent ollie and forward, not a minimum launch speed; decision stays latched', () => {
+  for (const [intent, forward, expectedOut] of [
+    [false, 1, false],
+    [true, 0, false],
+    [true, 1, true],
+  ]) {
+    const s = pipeSkater();
+    s.pos.set(-PIPE.lip + 0.1, PIPE.height + 0.35, 0);
+    s.vel.set(0, 0, 0);
+    s.mode = Mode.AIR;
+    s.passIntent = intent;
+    s.drive = forward;
+    s.launchE = 0; // deliberately below the removed speed threshold
+    s.lipAir(1 / 72);
+    assert.equal(s.lipExit, expectedOut, `intent=${intent}, drive=${forward}`);
+    assert.equal(s.vel.x < 0, expectedOut, 'unexpected direction of lip force');
+    if (expectedOut) {
+      const vx = s.vel.x;
+      s.drive = 0;
+      s.lipAir(1 / 72);
+      assert.equal(s.lipExit, true, 'exiting was cancelled when forward was released');
+      assert.ok(s.vel.x < vx, 'outward movement stalled when forward was released');
+    }
+  }
 });
 
 test('coming out of the wall you stay tilted like the wall, easing towards what you will land on', () => {

@@ -57,7 +57,7 @@ export class Skater {
     this.steer = 0; this.drive = 0; this.lean = 0;
     this.manual = null; this.manualQueue = null; this.manualLift = 0; this.clock = 0; this.stickExtreme = 0; this.stickExtremeT = -9; this.stickExtremeSpeed = 0;
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
-    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
+    this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
     this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
@@ -84,7 +84,7 @@ export class Skater {
     this.grind = null; this.bailBoard = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
-    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
+    this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.endFlip(); this.flipArm = 0;
     if (this.switched) { this.faceOffset = -this.faceOffset; this.switched = false; } // the spawn heading is the board's nose again
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
@@ -417,7 +417,8 @@ export class Skater {
     this.rolledOff = true;
     this.endManual('air');
     this.launchE = 0.5 * this.vel.lengthSq() + T.gravity * this.pos.y;
-    this.passIntent = this.popTimer < T.passPopWindow;      // only an ollie sends you over a lip, never just riding up it holding forward
+    this.passIntent = this.popTimer < T.passPopWindow;      // an ollie arms a possible exit; forward input at the lip commits it
+    this.lipExit = false;
     this.groundedTime = 0;
     this.braking = false;
   }
@@ -631,8 +632,8 @@ export class Skater {
     if (hit) { f.y = hit.y; f.nx = hit.nx; f.ny = hit.ny; f.nz = hit.nz; }
   }
 
-  // Airs near a coping lip. Carry enough speed to the lip (see TUNING.lipPassFrom) and you are sent out over the top;
-  // carry less and the air is held over the pit so you come back down into the transition, pop or no pop.
+  // Airs near a coping lip stay over the pit regardless of speed unless an ollie and forward input
+  // deliberately commit to crossing the lip. Once chosen, an exit remains committed for this air.
   lipAir(h) {
     let best = null, bestD = T.lipZone;
     const px = this.pos.x, pz = this.pos.z;
@@ -658,10 +659,11 @@ export class Skater {
     const cx = seg.a.x + (seg.b.x - seg.a.x) * t, cz = seg.a.z + (seg.b.z - seg.a.z) * t;
     const intoPit = (px - cx) * pit.x + (pz - cz) * pit.y;       // + over the pit, − over the deck
     const outward = -(this.vel.x * pit.x + this.vel.z * pit.y);  // + moving out over the lip
-    const carried = Math.sqrt(Math.max(0, 2 * (this.launchE - T.gravity * lipY)));
-    const clears = THREE.MathUtils.smoothstep(carried, T.lipPassFrom, T.lipPassTo) >= 0.5;
-    const pass = clears && this.passIntent ? 1 : 0;
-    if (pass < 0.5) {
+    // Speed controls how high you get, never whether you are allowed out.
+    // Require a deliberate forward hold during an ollie near the coping; do not drop
+    // the exit decision if forward is released while crossing.
+    if (this.passIntent && this.drive > T.driveThreshold) this.lipExit = true;
+    if (!this.lipExit) {
       // A damped spring to just inside the lip line: the air stays over the pit and comes back down against the wall.
       if (intoPit > -0.7 && intoPit < T.lipHoldDist + 2) {
         const acc = clamp(T.lipSpring * (T.lipHoldDist - intoPit) + T.lipDamp * outward, -T.lipMaxAccel, T.lipMaxAccel);
