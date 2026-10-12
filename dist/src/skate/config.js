@@ -95,8 +95,7 @@ export const TUNING = Object.freeze({
   catchAbove: 0.05,
   catchMaxRise: 1.0,
   grindMinSpeed: 0.9,
-  grindArmWindow: 0.3,       // pressing the grind button this long before touching a rail still catches it
-  grindReleaseGrace: 0.1,    // a grind survives the button being released for this long right after the catch
+  grindArmWindow: 0.4,       // one press of the grind button catches the first rail or coping the board touches in this many seconds
   grindStallSpeed: 0.35,
   copingSlideMinSpeed: 2.2,  // a coping boardslide needs this much speed along the lip to catch
   copingSlideEnd: 1.2,       // …and ends (into the pit) if it slows below this

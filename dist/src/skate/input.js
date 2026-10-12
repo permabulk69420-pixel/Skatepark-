@@ -1,7 +1,7 @@
 // Turns Quest controllers (or a keyboard) into the five things the skater cares about.
 //   left stick  up = push, down = brake, sideways = steer / air spin / grind balance
 //   right A = hold to crouch, release to ollie
-//   right trigger (keyboard G / Shift) = grind: rails and copings are only caught while it is held
+//   right trigger (keyboard G / Shift) = grind: press it once; the rail or coping the board touches in the next moment is caught
 //   right B (keyboard F) = flip button: in the air, with the stick left (kickflip) or right (heelflip)
 //   left Y = switch stance, left X held = back to the entrance, both grips held = stand on the board where you are
 const DEADZONE = 0.15;
