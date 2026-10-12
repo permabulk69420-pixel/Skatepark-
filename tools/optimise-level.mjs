@@ -392,7 +392,8 @@ for (const [area, { material, parts }] of collisionGroups) {
   scene.addChild(doc.createNode(`COL_${area}`).setMesh(doc.createMesh(`COL_${area}`).addPrimitive(prim)).setExtras({ role: 'collision' }));
   stats.collision += merged.idx.length / 3;
 }
-for (const node of [...renderNodes, ...collisionNodes]) { const mesh = node.getMesh(); node.dispose(); mesh.dispose(); }
+// (nodes that instance one mesh share it: it is gone after the first of them is disposed)
+for (const node of [...renderNodes, ...collisionNodes]) { const mesh = node.getMesh(); node.dispose(); mesh?.dispose(); }
 
 // Textures: resize and store as WebP.
 for (const t of TEXTURES) {
