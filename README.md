@@ -112,7 +112,7 @@ tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then 
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
-tools/patches/burnside.py  Burnside's spawn points moved to their real positions on export; `burnside.tweaks.json` simplifies its collision (350k → 22k triangles within 1 cm)
+tools/patches/burnside.py  Burnside's spawn points moved to their real positions on export; Burnside ships as the raw export (no optimiser, no collision simplification: `dist/assets/levels/burnside.glb` is `tools/export-blend.py` output); `burnside.tweaks.json` is only used if you do optimise it
 tools/patches/eastbank_ramps.py  re-profiles the school's quarter-pipes to end vertical under the coping (the model's ended at 59° with a flat deck, which nothing in the ramp physics copes with)
 tools/patches/eastbank_details.py  frames round windows and doors, door handles (built in Blender during the same export)
 tests/                     simulation tests
