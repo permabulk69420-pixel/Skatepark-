@@ -201,3 +201,12 @@ test('a thumb that goes down first and only slightly sideways still makes the va
   assert.equal(names(events, 'flipStart').at(-1), 'Varial Heelflip');
   assert.ok(s.flip && s.shuv && !s.shuv.bs, 'heelflip goes with a frontside shove');
 });
+
+test('a thumb that pushes straight down and then swings onto the diagonal over about 0.1 s gets the varial', () => {
+  const events = [];
+  const s = ollied(events);
+  run(s, { flip: true, drive: -1 }, 0.04);
+  for (let i = 0; i <= 6; i += 1) run(s, { flip: true, drive: -1, steer: -i / 6 * 0.9 }, 0.012); // swinging from down to down-left
+  run(s, { flip: true, drive: -0.8, steer: -0.8 }, 0.15);
+  assert.equal(names(events, 'flipStart').at(-1), 'Varial Kickflip');
+});

@@ -55,6 +55,8 @@ export const TUNING = Object.freeze({
   shuvTime: 0.32,            // seconds for the board to spin the half turn
   trickStick: 0.4,           // how far the stick has to leave the middle (of 1) to pick a trick
   trickSettle: 0.06,         // seconds the thumb gets to land on its direction before the trick is picked
+  trickMaxWait: 0.16,        // ...unless the thumb is still moving, then up to this long
+  trickStable: 0.12,         // a thumb counts as still moving if its direction changes more than this many radians in a frame
   shuvCone: Math.PI / 8,     // within 22.5° of straight down is a pop shove-it (every zone is an even 45°: down, two diagonals, sides, up-diagonals, up)...
   varialCone: Math.PI * 3 / 8, // ...out to 67.5° from down is a varial; further round is a plain flip
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean

@@ -51,7 +51,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
-    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
+    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -498,12 +498,18 @@ export class Skater {
     const x = this.rawSteer, y = this.rawDrive, mag = Math.hypot(x, y);
     if (this.trickWait === 0) {
       if (mag < T.trickStick) return;
-      this.trickWait = 1e-6; this.bestStick = null;
+      this.trickWait = 1e-6; this.bestStick = null; this.lastStickAng = null;
     }
     this.trickWait += h;
     if (mag >= T.trickStick) this.bestStick = { x, y };
-    if (this.trickWait < T.trickSettle) return;
+    // A thumb often goes straight down or sideways first and swings onto the diagonal a moment later. Wait for it to stop moving
+    // (its direction changing less than a few degrees a frame), but never longer than trickMaxWait.
+    const ang = Math.atan2(x, -y);
+    const moving = mag >= T.trickStick && (this.lastStickAng !== null && Math.abs(Math.atan2(Math.sin(ang - this.lastStickAng), Math.cos(ang - this.lastStickAng))) > T.trickStable);
+    this.lastStickAng = mag >= T.trickStick ? ang : null;
+    if (this.trickWait < T.trickSettle || (moving && this.trickWait < T.trickMaxWait)) return;
     const st = this.bestStick || { x, y };
+    this.pickedStick = { x: st.x, y: st.y };
     this.trickWait = 0; this.bestStick = null;
     // How far the stick is from straight down, 0 to 180°.
     const fromDown = Math.atan2(Math.abs(st.x), -st.y);
@@ -538,7 +544,7 @@ export class Skater {
     this.trickWait = 0;
     this.flipArm = 0;
     this.spinLock = true;
-    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
+    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name, stick: this.pickedStick });
   }
 
   // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
