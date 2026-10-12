@@ -22,8 +22,8 @@ const _cast = { dist: 0, nx: 0, ny: 1, nz: 0 };
 const _sf = new THREE.Vector3(), _sr = new THREE.Vector3(), _so = new THREE.Vector3(), _sd = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _wn = new THREE.Vector3(), _cand = new THREE.Vector3();
 const WHEEL_LIFT = 0.3;
-const _qPitch = new THREE.Quaternion(), _qRoll = new THREE.Quaternion();
-const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
+const _qPitch = new THREE.Quaternion(), _qRoll = new THREE.Quaternion(), _qYaw = new THREE.Quaternion();
+const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Y = new THREE.Vector3(0, 1, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
 
 // The skater is the board: position is where the wheels meet the ground, heading is which way the nose points.
 // The rider is placed over it by the view layer. Everything runs in fixed-ish substeps so frame rate does not change the feel.
@@ -51,6 +51,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
+    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.peakDrive = 0; this.peakSteer = 0; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -76,6 +77,7 @@ export class Skater {
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.endFlip(); this.flipArm = 0;
+    if (this.switched) { this.faceOffset = -this.faceOffset; this.switched = false; } // the spawn heading is the board's nose again
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
   }
@@ -84,6 +86,8 @@ export class Skater {
   // Whatever balance meter is running (a grind or a manual), for the HUD and haptics.
   get balance() { return this.mode === Mode.GRIND ? this.grind : (this.mode === Mode.GROUND ? this.manual : null); }
   get facingYaw() { return this.heading + this.faceOffset; }
+  // Goofy or regular as the rider stands, whatever a shove-it has done to the board's heading since.
+  get goofy() { return (this.faceOffset > 0) !== this.switched; }
 
   // ----- per-frame entry point -------------------------------------------------------------------------------
   update(input, dt) {
@@ -162,6 +166,8 @@ export class Skater {
   // ollie, flick, land in it.
   requestManual(kind) {
     if (this.manual) return;
+    // Down or up on the stick with the flip button is a shove-it, not a manual.
+    if (this.mode === Mode.AIR && (this.flipWas || this.flipArm > 0 || this.flip || this.shuv || this.trickWait > 0)) return;
     if (this.mode === Mode.GROUND) this.tryManual(kind);
     else if (this.mode === Mode.AIR) this.manualQueue = { kind, t: this.clock };
   }
@@ -435,15 +441,22 @@ export class Skater {
 
     // A little stick drift while carving into a jump must not spin you; spin only starts past the dead zone.
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
-    // Flips take the stick for themselves: it picks the direction and must not also spin the board.
-    if (this.flipArm > 0 && !this.flip && this.airTime > T.flipMinAir && Math.abs(this.steer) >= T.flipStick) this.startFlip(Math.sign(this.steer));
+    // Flips and shove-its take the stick for themselves: it picks the trick and must not also spin the board.
+    if (this.flipArm > 0 && !this.flip && !this.shuv && this.airTime > T.flipMinAir) this.pickTrick(h);
+    else if (!(this.flipArm > 0)) this.trickWait = 0;
     if (this.flip) {
       const f = this.flip;
       f.angle = clamp(f.angle + f.sign * (TAU / T.flipTime) * h, -TAU, TAU);
       this.flipRoll = f.angle;
-      if (this.spinLock && Math.abs(f.angle) >= TAU && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
     }
-    const spinTarget = this.spinLock ? 0 : -spinInput * T.airSpinRate;
+    if (this.shuv && !this.shuv.done) {
+      const s = this.shuv;
+      s.angle = clamp(s.angle + s.sign * (Math.PI / T.shuvTime) * h, -Math.PI, Math.PI);
+      this.shuvYaw = s.angle;
+      if (Math.abs(s.angle) >= Math.PI) this.commitShuv();
+    }
+    if (this.spinLock && (!this.flip || Math.abs(this.flip.angle) >= TAU) && (!this.shuv || this.shuv.done) && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
+    const spinTarget = this.spinLock || this.trickWait > 0 ? 0 : -spinInput * T.airSpinRate;
     this.spinVel = damp(this.spinVel, spinTarget, T.airSpinResponse, h);
     this.heading = wrap(this.heading + this.spinVel * h);
     if (this.exitAlign > 0) {
@@ -465,24 +478,83 @@ export class Skater {
     this.clampBounds(_np);
 
     // A board that is mid-flip cannot catch a rail; one that has come round (or is nearly there) can.
-    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
+    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && (!this.shuv || this.shuvResidual() <= T.shuvClean) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
   }
 
-  // ----- flips -----------------------------------------------------------------------------------------------
-  startFlip(direction) {
-    const kick = direction < 0;
-    // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
-    // (the first version was backwards: stick left looked like a heelflip in the headset).
-    const sign = (kick ? 1 : -1) * (this.faceOffset < 0 ? 1 : -1);
+  // ----- flips and shove-its ---------------------------------------------------------------------------------
+  // The flip button in the air, then the stick picks the trick:
+  //   left / right ........ kickflip / heelflip (the board rolls once about its length)
+  //   down ................ pop shove-it (the board spins 180° flat, backside)
+  //   down-left / down-right  varial kickflip / varial heelflip (a kickflip with a backside shove-it / a heelflip with a frontside one)
+  //   up .................. frontside pop shove-it
+  // A stick that is straight left or right starts a flip at once; anything with up or down in it gets a moment (shuvDecide) to settle
+  // on its diagonal first, using the furthest the stick went.
+  pickTrick(h) {
+    const wantsShuv = Math.abs(this.drive) >= T.shuvStick;
+    const wantsFlip = Math.abs(this.steer) >= T.flipStick;
+    if (this.trickWait === 0) {
+      if (!wantsShuv && !wantsFlip) return;
+      if (!wantsShuv && Math.abs(this.drive) < T.shuvStick * 0.4) { this.startTrick(0, this.steer); return; }
+      this.trickWait = 1e-6; this.peakDrive = 0; this.peakSteer = 0;
+    }
+    this.trickWait += h;
+    if (Math.abs(this.drive) > Math.abs(this.peakDrive)) this.peakDrive = this.drive;
+    if (Math.abs(this.steer) > Math.abs(this.peakSteer)) this.peakSteer = this.steer;
+    if (this.trickWait >= T.shuvDecide) this.startTrick(this.peakDrive, this.peakSteer);
+  }
+
+  startTrick(drive, steer) {
+    this.trickWait = 0; this.peakDrive = 0; this.peakSteer = 0;
+    const down = drive <= -T.shuvStick, up = drive >= T.shuvStick, side = Math.abs(steer) >= T.flipStick;
+    const kick = steer < 0;
+    const flipOn = side, shuvOn = down || (up && !side);
+    if (!flipOn && !shuvOn) return;
     headingVec(this.heading, _H);
-    const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
-    this.flip = { sign, angle: 0, name: `${fakie ? 'Fakie ' : ''}${kick ? 'Kickflip' : 'Heelflip'}` };
+    const fakie = (this.vel.x * _H.x + this.vel.z * _H.z < -0.3) !== this.switched; // a board that a shove-it turned round is not "fakie"
+    const prefix = fakie ? 'Fakie ' : '';
+    if (flipOn) {
+      // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
+      // (the first version was backwards: stick left looked like a heelflip in the headset).
+      const sign = (kick ? 1 : -1) * (this.faceOffset < 0 ? 1 : -1);
+      this.flip = { sign, angle: 0, kick, name: `${prefix}${kick ? 'Kickflip' : 'Heelflip'}` };
+    }
+    if (shuvOn) {
+      // Backside is the way the rider's back leads: clockwise seen from above for a regular rider (counter-clockwise for goofy).
+      // A varial kickflip shoves backside and a varial heelflip frontside. Like the flip direction, this is the one place to change it.
+      const bs = flipOn ? kick : down;
+      const sign = (bs ? 1 : -1) * Math.sign(this.faceOffset);
+      this.shuv = { sign, angle: 0, bs, done: false, name: `${prefix}${bs ? '' : 'Frontside '}Pop Shove-it` };
+      if (flipOn) this.flip.varial = `${prefix}Varial ${kick ? 'Kickflip' : 'Heelflip'}`;
+    }
     this.flipArm = 0;
     this.spinLock = true;
-    this.onEvent('flipStart', { name: this.flip.name });
+    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
+  }
+
+  // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
+  // (who never moved) still faces the same way, and carry the board's tilts across so nothing jumps.
+  commitShuv() {
+    const s = this.shuv;
+    if (!s || s.done) return;
+    s.done = true;
+    s.angle = s.sign * Math.PI;
+    this.shuvYaw = 0;
+    this.heading = wrap(this.heading + Math.PI);
+    this.faceOffset = -this.faceOffset;
+    this.switched = !this.switched;
+    this.visPitch = -this.visPitch; this.visRoll = -this.visRoll;
+    if (this.flip) { this.flip.angle = -this.flip.angle; this.flip.sign = -this.flip.sign; this.flipRoll = this.flip.angle; }
+  }
+
+  // How far the board is from pointing straight (or straight round), in radians.
+  shuvResidual() {
+    const s = this.shuv;
+    if (!s || s.done) return 0;
+    const a = Math.abs(s.angle);
+    return Math.min(a, Math.PI - a);
   }
 
   // How far the board is from lying flat, in radians: the distance to the nearest whole turn.
@@ -494,13 +566,21 @@ export class Skater {
   endFlip() {
     this.flip = null;
     this.flipRoll = 0;
+    this.shuv = null;
+    this.shuvYaw = 0;
+    this.trickWait = 0;
     this.spinLock = false;
   }
 
-  // The name to credit when the board is back under you, or null if the flip never really happened.
-  flipCredit() {
-    const f = this.flip;
-    return f && Math.abs(f.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll ? f.name : null;
+  // The name to credit when the board is back under you, or null if nothing really happened.
+  trickCredit() {
+    const f = this.flip, s = this.shuv;
+    const flipOk = f && Math.abs(f.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll;
+    const shuvOk = s && (s.done || (Math.abs(s.angle) > Math.PI / 2 && this.shuvResidual() <= T.shuvClean));
+    if (flipOk && shuvOk) return f.varial || f.name;
+    if (flipOk) return f.name;
+    if (shuvOk) return s.name;
+    return null;
   }
 
   // What is below the airborne board, so its tilt can ease towards that surface's before it lands.
@@ -621,11 +701,11 @@ export class Skater {
 
   land(w) {
     let credit = null, sketchy = false;
-    if (this.flip) {
-      const residual = this.flipResidual();
-      if (residual > T.flipBailRoll) { this.bail('flip'); return; }
-      sketchy = residual > T.flipCleanRoll;
-      credit = this.flipCredit();
+    if (this.flip || this.shuv) {
+      if ((this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
+      sketchy = (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
+      credit = this.trickCredit();
+      if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv(); // landed it round: you are riding the other way
       this.endFlip();
     }
     if (w.hasNormal) this.groundNormal.copy(w.normal); else this.groundNormal.set(0, 1, 0);
@@ -948,8 +1028,9 @@ export class Skater {
     this.mode = Mode.GRIND;
     this.grind = g;
     this.grindArm = 0;
-    if (this.flip) {
-      const credit = this.flipCredit();
+    if (this.flip || this.shuv) {
+      const credit = this.trickCredit();
+      if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv();
       this.endFlip();
       if (credit) this.onEvent('flip', { name: credit });
     }
@@ -1233,6 +1314,7 @@ export class Skater {
     out.setFromRotationMatrix(_basisM);
     if (flair) {
       out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
+      if (this.shuvYaw) out.multiply(_qYaw.setFromAxisAngle(AXIS_Y, this.shuvYaw)); // spins flat, then the flip rolls about the board's own length
       out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.visRoll + this.flipRoll));
     }
     return out;

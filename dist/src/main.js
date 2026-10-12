@@ -275,7 +275,7 @@ function frame(dt) {
   }
   if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
     sim.faceOffset = -sim.faceOffset;
-    hud.say(sim.faceOffset < 0 ? 'Regular' : 'Goofy', 1.0);
+    hud.say(sim.goofy ? 'Goofy' : 'Regular', 1.0);
     haptics.pulse(0.3, 25);
   }
   if (command.recenter) { rider.requestCalibration(); haptics.pulse(0.4, 40); hud.say('Recentred', 1.0); }
