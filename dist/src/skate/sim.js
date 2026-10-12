@@ -13,6 +13,15 @@ export const headingVec = (h, out) => out.set(-Math.sin(h), 0, -Math.cos(h));
 export const yawOf = (x, z) => Math.atan2(-x, -z);
 const damp = (current, target, rate, dt) => target + (current - target) * Math.exp(-rate * dt);
 
+// A short acceleration/deceleration at either end of a trick, with constant angular speed in the middle.
+// A full turn still takes flipTime; a half turn still takes shuvTime. The physical angle and displayed angle agree.
+export const trickRotationEase = (progress) => {
+  const p = clamp(progress, 0, 1), ramp = 0.18;
+  if (p < ramp) return p * p / (2 * ramp * (1 - ramp));
+  if (p > 1 - ramp) return 1 - (1 - p) * (1 - p) / (2 * ramp * (1 - ramp));
+  return (p - ramp / 2) / (1 - ramp);
+};
+
 const _H = new THREE.Vector3(), _R = new THREE.Vector3(), _f = new THREE.Vector3(), _lat = new THREE.Vector3();
 const _gt = new THREE.Vector3(), _np = new THREE.Vector3(), _n = new THREE.Vector3(), _tmp = new THREE.Vector3();
 const _probe = new THREE.Vector3(), _P = new THREE.Vector3(), _u = new THREE.Vector3();
@@ -449,14 +458,16 @@ export class Skater {
     else if (this.flip || this.shuv) this.trickWait = 0;
     if (this.flip) {
       const f = this.flip;
-      f.angle = clamp(f.angle + f.sign * (TAU / T.flipTime) * h, -TAU, TAU);
+      f.progress = clamp((f.progress ?? Math.abs(f.angle) / TAU) + h / T.flipTime, 0, 1);
+      f.angle = f.sign * TAU * trickRotationEase(f.progress);
       this.flipRoll = f.angle;
     }
     if (this.shuv && !this.shuv.done) {
       const s = this.shuv;
-      s.angle = clamp(s.angle + s.sign * (Math.PI / T.shuvTime) * h, -Math.PI, Math.PI);
+      s.progress = clamp((s.progress ?? Math.abs(s.angle) / Math.PI) + h / T.shuvTime, 0, 1);
+      s.angle = s.sign * Math.PI * trickRotationEase(s.progress);
       this.shuvYaw = s.angle;
-      if (Math.abs(s.angle) >= Math.PI) this.commitShuv();
+      if (s.progress >= 1) this.commitShuv();
     }
     if (this.spinLock && (!this.flip || Math.abs(this.flip.angle) >= TAU) && (!this.shuv || this.shuv.done) && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
     const spinTarget = this.spinLock || this.trickWait > 0 ? 0 : -spinInput * T.airSpinRate;
@@ -537,14 +548,14 @@ export class Skater {
     // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
     // (the first version was backwards: stick left looked like a heelflip in the headset).
     const sign = (kick ? 1 : -1) * (this.faceOffset < 0 ? 1 : -1);
-    return { sign, angle: 0, kick, name: `${this.trickPrefix}${kick ? 'Kickflip' : 'Heelflip'}` };
+    return { sign, angle: 0, progress: 0, kick, name: `${this.trickPrefix}${kick ? 'Kickflip' : 'Heelflip'}` };
   }
 
   makeShuv(bs) {
     // Backside is the way the rider's back leads: clockwise seen from above for a regular rider (counter-clockwise for goofy).
     // A varial kickflip shoves backside and a varial heelflip frontside. Like the flip direction, this is the one place to change it.
     const sign = (bs ? 1 : -1) * Math.sign(this.faceOffset);
-    return { sign, angle: 0, bs, done: false, name: `${this.trickPrefix}${bs ? '' : 'Frontside '}Pop Shove-it` };
+    return { sign, angle: 0, progress: 0, bs, done: false, name: `${this.trickPrefix}${bs ? '' : 'Frontside '}Pop Shove-it` };
   }
 
   // flipKick: null for no flip, true for a kickflip, false for a heelflip. shuvBs: null for no shove-it, else true for backside.
@@ -572,8 +583,10 @@ export class Skater {
     this.heading = wrap(this.heading + Math.PI);
     this.faceOffset = -this.faceOffset;
     this.switched = !this.switched;
-    this.visPitch = -this.visPitch; this.visRoll = -this.visRoll;
-    if (this.flip) { this.flip.angle = -this.flip.angle; this.flip.sign = -this.flip.sign; this.flipRoll = this.flip.angle; }
+    // Reparenting 180° of local shove yaw into board heading must preserve the visible orientation.
+    // Pitch reverses in the new frame, but roll (including a mid-varial flip) does NOT:
+    // reversing the flip here used to make the board snap abruptly halfway through a varial.
+    this.visPitch = -this.visPitch;
   }
 
   // How far the board is from pointing straight (or straight round), in radians.
@@ -730,7 +743,11 @@ export class Skater {
     let credit = null, sketchy = false;
     this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; // a pick still waiting must not carry into the next jump
     if (this.flip || this.shuv) {
-      if ((this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
+      // Beginning a flip/shove just before touchdown is not a completed trick.
+      // The old residual check treated a barely-started turn as already aligned and silently cancelled it.
+      const incompleteFlip = this.flip && Math.abs(this.flip.angle) < Math.PI;
+      const incompleteShuv = this.shuv && !this.shuv.done && Math.abs(this.shuv.angle) < Math.PI / 2;
+      if (incompleteFlip || incompleteShuv || (this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
       sketchy = (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
       credit = this.trickCredit();
       if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv(); // landed it round: you are riding the other way

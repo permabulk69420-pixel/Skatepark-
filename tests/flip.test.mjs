@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { Mode } from '../dist/src/skate/sim.js';
+import { Mode, trickRotationEase } from '../dist/src/skate/sim.js';
 import { TUNING as T } from '../dist/src/skate/config.js';
 import { makeSkater, rail, run } from './helpers.mjs';
 
@@ -118,7 +118,7 @@ test('coming down a little off flat is a sketchy landing: a stumble, not a bail,
   assert.ok(s.speed < before * 0.8, 'a sketchy landing kept all its speed');
 });
 
-test('a flip that was barely started when you land is simply cancelled', () => {
+test('a flip begun too late to rotate is a failed landing, not silently cancelled', () => {
   const events = [];
   const s = makeSkater({ events });
   run(s, {}, 0.6);
@@ -126,8 +126,9 @@ test('a flip that was barely started when you land is simply cancelled', () => {
   s.mode = Mode.AIR;
   s.flip = { sign: 1, angle: 0.2, name: 'Kickflip' };
   s.land({ hasNormal: true, normal: new THREE.Vector3(0, 1, 0) });
-  assert.equal(s.mode, Mode.GROUND);
-  assert.ok(!events.some((e) => e.type === 'bail' || e.type === 'sketchy' || e.type === 'flip'));
+  assert.equal(s.mode, Mode.BAIL);
+  assert.ok(events.some((e) => e.type === 'bail' && e.data?.reason === 'flip'));
+  assert.ok(!events.some((e) => e.type === 'flip'));
 });
 
 test('a board mid-flip cannot catch a rail, one that has come round can', () => {
@@ -159,4 +160,16 @@ test('rolling backwards, the trick is named fakie', () => {
   run(s, {}, 0.03);
   run(s, { flip: true, steer: 1 }, 0.05);
   assert.deepEqual(names(events, 'flipStart'), ['Fakie Heelflip']);
+});
+
+test('flip rotation starts and ends smoothly while still completing on schedule', () => {
+  const e = trickRotationEase;
+  assert.equal(e(0), 0);
+  assert.equal(e(1), 1);
+  const increments = [];
+  for (let i = 0; i < 100; i++) increments.push(e((i + 1) / 100) - e(i / 100));
+  assert.ok(increments.every((d) => d > 0), 'the board stopped or changed direction mid-flip');
+  assert.ok(increments[0] < increments[50] * 0.1, 'flip starts at full speed');
+  assert.ok(increments[99] < increments[50] * 0.1, 'flip ends with a hard stop');
+  assert.ok(Math.abs(e(0.5) - 0.5) < 1e-12, 'ease changes the midpoint or flip duration');
 });

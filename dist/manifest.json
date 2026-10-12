@@ -1,5 +1,5 @@
 {
- "build": "0f92308",
+ "build": "86174ac",
  "files": {
   "src/main.js": "d94b3e810d",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -19,7 +19,7 @@
   "src/skate/music.js": "dd250e57a9",
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
-  "src/skate/sim.js": "8a8404ff11",
+  "src/skate/sim.js": "f3ab5acbb3",
   "src/skate/world.js": "5df651f790",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
   "vendor/addons/math/ConvexHull.js": "04452fd4ef",

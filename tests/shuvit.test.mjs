@@ -143,15 +143,16 @@ test('landing a shove-it halfway round bails; landing it nearly round is sketchy
   assert.ok(events.some((e) => e.type === 'bail'), 'sideways landing did not bail');
 });
 
-test('a shove-it that is abandoned gives no credit and leaves the heading alone', () => {
+test('a shove-it started too late fails rather than disappearing on landing', () => {
   const events = [];
   const s = ollied(events);
   const h = s.heading;
   run(s, { flip: true, drive: -1 }, 0.17);
-  s.shuv.angle = -0.2; s.shuvYaw = -0.2;
+  s.shuv.angle = -0.2; s.shuvYaw = -0.2; s.shuv.progress = 0.05;
   s.pos.y = 0.05; s.vel.y = -3;
   run(s, {}, 0.3);
   assert.deepEqual(names(events, 'flip'), []);
+  assert.ok(events.some((e) => e.type === 'bail' && e.data?.reason === 'flip'));
   assert.equal(s.switched, false);
   assert.ok(Math.abs(s.heading - h) < 0.1);
 });
@@ -257,5 +258,26 @@ test('near-down and near-side diagonal holds trigger both varials in air', () =>
     const s = ollied(events);
     run(s, { flip: true, steer, drive }, 0.2);
     assert.deepEqual(names(events, 'flipStart'), [name], `stick (${steer}, ${drive})`);
+  }
+});
+
+test('a finished shove preserves board orientation through the 180° heading transfer', () => {
+  for (const sign of [-1, 1]) {
+    const s = makeSkater();
+    s.heading = 0.4;
+    s.visPitch = 0.24;
+    s.visRoll = -0.13;
+    s.flip = { angle: 4.3, sign: 1, name: 'Kickflip' };
+    s.flipRoll = s.flip.angle;
+    s.shuv = { angle: sign * Math.PI, sign, done: false, bs: sign < 0 };
+    s.shuvYaw = s.shuv.angle;
+    const before = s.boardQuaternion(new THREE.Quaternion());
+    s.commitShuv();
+    const after = s.boardQuaternion(new THREE.Quaternion());
+    assert.ok(1 - Math.abs(before.dot(after)) < 1e-10, 'board orientation jumped at shove completion');
+    assert.equal(s.flip.angle, 4.3, 'committing the shove unexpectedly reversed the flip');
+    assert.equal(s.flip.sign, 1, 'committing the shove reversed flip velocity');
+    assert.equal(s.shuvYaw, 0);
+    assert.equal(s.shuv.done, true);
   }
 });
