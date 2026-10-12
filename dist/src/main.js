@@ -281,6 +281,11 @@ function frame(dt) {
   if (command.recenter) { rider.requestCalibration(); haptics.pulse(0.4, 40); hud.say('Recentred', 1.0); }
   if (command.toSpawn) sim.respawn(sim.spawn);
   sim.update(command, dt);
+  // Live stick readout for tuning the trick zones: hold the flip button on the ground and move the left stick.
+  if (command.flip && sim.mode === Mode.GROUND) {
+    const z = sim.trickZone(command.steer, command.drive);
+    hud.say(z.none && z.name === '-' ? 'stick: middle' : `${z.name}   ${Math.round(z.deg)}°   (${command.steer.toFixed(2)}, ${command.drive.toFixed(2)})`, 0.15);
+  }
   rider.update(dt);
   lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);

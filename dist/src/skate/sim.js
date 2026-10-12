@@ -512,12 +512,25 @@ export class Skater {
     const st = this.bestStick || { x, y };
     this.pickedStick = { x: st.x, y: st.y };
     this.trickWait = 0; this.bestStick = null;
-    // How far the stick is from straight down, 0 to 180°.
-    const fromDown = Math.atan2(Math.abs(st.x), -st.y);
-    const kick = st.x < 0;
-    if (fromDown <= T.shuvCone) this.startTrick(null, true);
-    else if (fromDown <= T.varialCone) this.startTrick(kick, kick);
-    else if (Math.abs(st.x) >= T.trickStick * 0.7 && fromDown < Math.PI - T.shuvCone) this.startTrick(kick, null);
+    const z = this.trickZone(st.x, st.y);
+    if (!z.none) this.startTrick(z.flip, z.shuv);
+  }
+
+  // Which trick a stick position means: { name, flip, shuv, deg } or null. `deg` is the stick's direction in degrees, 0 = straight down,
+  // positive to the right, after the stickTurn correction. Used by pickTrick and by the live readout (hold the flip button on the ground).
+  trickZone(x, y) {
+    const mag = Math.hypot(x, y);
+    // Turn the stick reading by stickTurn (positive = clockwise as you look at the stick) before reading its direction.
+    const c = Math.cos(T.stickTurn), sn = Math.sin(T.stickTurn);
+    const rx = x * c + y * sn, ry = -x * sn + y * c;
+    const deg = Math.atan2(rx, -ry) * 180 / Math.PI;
+    if (mag < T.trickStick) return { name: '-', flip: null, shuv: null, deg, none: true };
+    const fromDown = Math.atan2(Math.abs(rx), -ry);
+    const kick = rx < 0;
+    if (fromDown <= T.shuvCone) return { name: 'Pop Shove-it', flip: null, shuv: true, deg };
+    if (fromDown <= T.varialCone) return { name: kick ? 'Varial Kickflip' : 'Varial Heelflip', flip: kick, shuv: kick, deg };
+    if (fromDown < Math.PI - T.shuvCone) return { name: kick ? 'Kickflip' : 'Heelflip', flip: kick, shuv: null, deg };
+    return { name: '(up: nothing)', flip: null, shuv: null, deg, none: true };
   }
 
   makeFlip(kick) {
@@ -715,6 +728,7 @@ export class Skater {
 
   land(w) {
     let credit = null, sketchy = false;
+    this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; // a pick still waiting must not carry into the next jump
     if (this.flip || this.shuv) {
       if ((this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
       sketchy = (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
