@@ -1,11 +1,11 @@
 {
- "build": "c60c4d2",
+ "build": "25f5ffc",
  "files": {
   "src/main.js": "d94b3e810d",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "743964a136",
   "src/skate/board-view.js": "77fa836db5",
-  "src/skate/config.js": "115110087b",
+  "src/skate/config.js": "602446aaa2",
   "src/skate/grip-contact.js": "b88f95d5d7",
   "src/skate/grip-poses.js": "9b84251e00",
   "src/skate/hand-balance.js": "569e4a15e9",

@@ -57,7 +57,7 @@ export const TUNING = Object.freeze({
   trickSettle: 0.04,         // seconds the thumb gets to land on its direction before the trick is picked
   trickMaxWait: 0.08,        // ...unless the thumb is still moving, then up to this long
   trickStable: 0.12,         // a thumb counts as still moving if its direction changes more than this many radians in a frame
-  stickTurn: 0.35,           // radians (~20°): the Quest left stick reads ~20° anticlockwise of where the thumb aims (from Kane: varials only came out just right of down and just below left), so the pattern is turned back clockwise
+  stickTurn: 0,              // radians: turns the whole stick pattern (positive = clockwise); left at 0, the 20° guess was wrong
   shuvCone: Math.PI / 8,     // within 22.5° of straight down is a pop shove-it (every zone is an even 45°: down, two diagonals, sides, up-diagonals, up)...
   varialCone: Math.PI * 3 / 8, // ...out to 67.5° from down is a varial; further round is a plain flip
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean
