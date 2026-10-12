@@ -583,6 +583,9 @@ export class Skater {
       if (i === 2 && this.edgeGrace > 0) continue;
       const off = i === 0 ? 0 : (i === 1 ? lead : -lead) * BOARD.wheelHalfBase;
       _a.copy(this.pos).addScaledVector(_H, off).y += 0.02;
+      // Just after an ollie the board is still tilted with the ground it left: on a slope the leading wheel would be inside the
+      // surface ahead and "land" the board on the spot, so popping on any incline went nowhere. Only the middle counts until it is clear.
+      if (i !== 0 && this.popTimer < T.popWheelFree) continue;
       const c = this.world.cast(_a, _sd, len, _cast);
       if (!c || (best && c.dist >= best.dist)) continue;
       if (i !== 0 && c.ny >= T.sweepLandMinNormalY) {

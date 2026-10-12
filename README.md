@@ -154,7 +154,7 @@ gives them a depth offset (`decals` in `levels.js`), and the walls, glazing and 
 (`doubleSided`) so a gap shows the far wall instead of the sky; the cream enamel is left single-sided because that is the lettering. `audit-level.mjs` is how to find this sort of thing.
 
 `node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
-without LODs); `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
+without LODs); `node tools/check-pops.mjs eastbank` ollies from random spots and reports pops that do not leave the ground; `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
 grind path); `node tools/shoot-level.mjs eastbank <dir> x,z,heading …` takes screenshots. The raw first export lives on the
 `level/eastbank-school` branch.
 

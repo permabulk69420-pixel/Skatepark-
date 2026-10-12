@@ -58,6 +58,7 @@ export const TUNING = Object.freeze({
   wallProbe: 0.33,           // how far ahead of the board centre a wall is noticed
   edgeGrace: 0.3,            // seconds after rolling off an edge when the trailing wheels are ignored
   freezeBail: 0.35,          // seconds airborne without moving at all (wedged in the geometry) before it bails out
+  popWheelFree: 0.14,        // seconds after an ollie when only the middle of the board can land it (the wheels are still inside a slope ahead)
   sweepSupportReach: 0.3,    // a wheel touching down only counts as a landing if the ground under the board's middle is within this much of it…
   sweepSupportDrop: 0.3,     // …(not more than this far lower: the middle hanging out over a drop means the board only caught the edge)
   sweepLandMinNormalY: 0.2,  // the centre of the board lands on any surface at least this far from vertical

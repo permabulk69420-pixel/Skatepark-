@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { Mode } from '../dist/src/skate/sim.js';
+import { Mode, Skater } from '../dist/src/skate/sim.js';
+import { SkateWorld } from '../dist/src/skate/world.js';
 import { PIPE, pipeSkater, rollFrom } from './halfpipe.mjs';
 import { makeSkater, run } from './helpers.mjs';
 
@@ -271,5 +272,40 @@ test('arriving a little off square, holding forward: no coping crawl, no bail, a
     if (yawDeg === 0) assert.ok(maxOut < 0.45, `${label}: crossed ${maxOut.toFixed(2)} m over the lip without an ollie`);
     const crawl = events.filter((e) => e.type === 'grindEnd' && /Boardslide/.test(e.data.name) && e.data.time > 2.2);
     assert.equal(crawl.length, 0, `${label}: crawled along the coping for ${crawl[0]?.data.time.toFixed(1)} s`);
+  }
+});
+
+// An ollie on a slope (a bank, a bump, the foot of a transition) must leave the ground: the leading wheel used to be inside the surface
+// ahead as the board left it, which "landed" it on the spot and swallowed the pop.
+function bankWorld(degrees) {
+  const rise = Math.tan(degrees * Math.PI / 180) * 6;
+  const profile = [[-20, rise], [-8, rise], [-2, 0], [20, 0]];       // increasing x: a flat, a 6 m slope, a flat
+  const pos = [];
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [ax, ay] = profile[i], [bx, by] = profile[i + 1];
+    pos.push(ax, ay, -6, ax, ay, 6, bx, by, -6, bx, by, -6, ax, ay, 6, bx, by, 6);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  mesh.updateMatrixWorld(true);
+  return new SkateWorld([mesh]);
+}
+
+test('an ollie while rolling up a bank or bump gets you into the air', () => {
+  for (const degrees of [12, 20, 28]) for (const speed of [4, 6]) for (const popAtY of [0.25, 0.6]) {
+    const s = new Skater({ world: bankWorld(degrees), paths: [] });
+    s.setSpawn(new THREE.Vector3(10, 0, 0), Math.PI / 2);
+    s.respawn({ pos: new THREE.Vector3(8, 0, 0), heading: Math.PI / 2 });
+    for (let i = 0; i < 20; i++) s.update({}, 1 / 72);
+    s.vel.set(-speed, 0, 0);
+    let t0 = -1, air = 0;
+    run(s, (t, sk) => {
+      if (t0 < 0 && sk.pos.y > popAtY && sk.mode === Mode.GROUND) t0 = t;
+      return { jump: t0 >= 0 && t - t0 < 0.04 };
+    }, 6, 1 / 72, (t, sk) => { if (t0 >= 0 && t > t0 + 0.05 && t < t0 + 0.4 && sk.mode === Mode.AIR) air += 1 / 72; });
+    if (t0 < 0) continue;                    // did not get that high at this speed
+    assert.ok(air > 0.2, `${degrees}° bank, speed ${speed}, pop above y ${popAtY}: only ${air.toFixed(2)} s in the air in the first 0.4 s`);
   }
 });
