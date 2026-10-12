@@ -45,3 +45,21 @@ export function createHaptics(renderer) {
 
   return { pulse, rumble, setEnabled: (value) => { enabled = !!value; }, isEnabled: () => enabled };
 }
+
+// One buzz on one hand, given that hand's state (used by the hand grips and board grabs, which hold the state rather than the renderer).
+export function pulseHaptics(state, intensity = 0.25, durationMs = 35) {
+  const gamepad = state?.inputSource?.gamepad;
+  if (!gamepad) return false;
+  const strength = Math.max(0, Math.min(1, Number.isFinite(intensity) ? intensity : 0));
+  const duration = Math.max(0, Math.min(250, Number.isFinite(durationMs) ? durationMs : 0));
+  if (strength <= 0 || duration <= 0) return false;
+  const actuator = gamepad.hapticActuators?.[0];
+  if (actuator?.pulse) {
+    try { actuator.pulse(strength, duration)?.catch?.(() => {}); return true; } catch { /* fall through to vibrationActuator */ }
+  }
+  const vibration = gamepad.vibrationActuator;
+  if (vibration?.playEffect) {
+    try { vibration.playEffect('dual-rumble', { duration, strongMagnitude: strength, weakMagnitude: strength })?.catch?.(() => {}); return true; } catch { return false; }
+  }
+  return false;
+}

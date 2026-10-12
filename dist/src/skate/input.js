@@ -3,7 +3,8 @@
 //   right A = hold to crouch, release to ollie
 //   right trigger (keyboard G / Shift) = grind: press it once; the rail or coping the board touches in the next moment is caught
 //   right B (keyboard F) = flip button: in the air, with the stick left (kickflip) or right (heelflip)
-//   left Y = switch stance, left X held = back to the entrance, both grips held = stand on the board where you are
+//   left Y = switch stance, left X held = back to the entrance, both grips held (on the ground) = stand on the board where you are
+//   either grip, in the air = grab the board (board-grab.js)
 const DEADZONE = 0.15;
 const deadzone = (v) => (Math.abs(v) > DEADZONE ? (Math.abs(v) - DEADZONE) / (1 - DEADZONE) * Math.sign(v) : 0);
 const BUTTON = { trigger: 0, squeeze: 1, stick: 3, a: 4, b: 5 };
@@ -14,6 +15,8 @@ export function createInput(renderer) {
   const edge = { stance: false, keyStance: false };
   const out = { steer: 0, drive: 0, lean: 0, jump: false, grind: false, flip: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
+  // Set by the game: while true, holding both grips does not re-centre (in the air, or while grabbing the board with both hands).
+  const block = { recenter: false };
 
   addEventListener('keydown', (event) => {
     keys.add(event.code);
@@ -59,7 +62,7 @@ export function createInput(renderer) {
       edge.stance = leftY;
       held.spawn = leftX ? held.spawn + dt : (keys.has('KeyR') ? held.spawn : 0);
     }
-    held.recenter = leftSqueeze && rightSqueeze ? held.recenter + dt : 0;
+    held.recenter = leftSqueeze && rightSqueeze && !block.recenter ? held.recenter + dt : 0;
     if (held.recenter > 0.6) { recenter = true; held.recenter = -1e9; }
     if (held.spawn > 0.8) { toSpawn = true; held.spawn = -1e9; }
 
@@ -76,5 +79,5 @@ export function createInput(renderer) {
     return Object.assign(out, override);
   }
 
-  return { poll, override, keys };
+  return { poll, override, keys, block };
 }

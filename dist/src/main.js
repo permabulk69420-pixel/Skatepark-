@@ -11,6 +11,7 @@ import { createInput } from './skate/input.js';
 import { createHaptics } from './skate/haptics.js';
 import { createVRHands } from './skate/hands.js';
 import { BoardView } from './skate/board-view.js';
+import { createBoardGrab } from './skate/board-grab.js';
 import { Rider } from './skate/rider.js';
 import { createHud } from './skate/hud.js';
 import { HandBalance } from './skate/hand-balance.js';
@@ -95,7 +96,7 @@ const hands = createVRHands({ renderer, parent: rig });
 const handBalance = new HandBalance();
 
 // The skater is created once the park's collision is loaded; events from it drive haptics and messages.
-let sim, rider, boardView, hud;
+let sim, rider, boardView, hud, grab;
 const feel = (type, data = {}) => {
   switch (type) {
     case 'crouch': haptics.pulse(0.22, 18); break;
@@ -112,6 +113,7 @@ const feel = (type, data = {}) => {
     case 'manualEnd': if (data.reason !== 'bail' && data.time > 0.5) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'grindEnd': if (data.reason !== 'bail' && data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'bail': haptics.pulse(1, 240); hud?.say('BAIL', 1.2); break;
+    case 'grabEnd': if (data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     default: break;
   }
 };
@@ -189,6 +191,7 @@ try {
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);
   hud = createHud({ rig, rider, sim });
+  grab = createBoardGrab({ hands, boardMesh: boardView.root, onEvent: (type, data) => feel(type, data) });
   boardGltf.scene.traverse((node) => {
     if (!node.isMesh) return;
     for (const m of [].concat(node.material)) for (const map of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap]) if (map) map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -253,6 +256,9 @@ addEventListener('resize', () => {
 });
 
 function frame(dt) {
+  // Grabs (board-grab.js): only in the air and not mid-flip. Holding both grips must not re-centre you while you are up there.
+  const airborne = sim.mode === Mode.AIR && !sim.flip;
+  input.block.recenter = sim.mode === Mode.AIR || grab.holding();
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
   if (renderer.xr.isPresenting) {
@@ -273,7 +279,9 @@ function frame(dt) {
   rider.update(dt);
   lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);
+  grab.update(dt, airborne);   // the board comes up to a squeezing hand (after the board is placed)...
   hands.update(dt);
+  grab.place();                // ...then each holding hand is fitted onto its edge (after the hands have posed)
   hud.update(dt);
   continuousFeedback();
 }
@@ -285,5 +293,5 @@ renderer.setAnimationLoop(() => {
 });
 
 // Handles for the console and the automated checks.
-window.__skate = { hands, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes, get lods() { return lods; }, level: levelId };
+window.__skate = { hands, get grab() { return grab; }, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes, get lods() { return lods; }, level: levelId };
 export { scene, renderer, camera, rig, collision, renderMeshes, park, spawn };
