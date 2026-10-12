@@ -197,7 +197,7 @@ test('a thumb that goes sideways first and then down still makes the varial', ()
 test('a thumb that goes down first and only slightly sideways still makes the varial', () => {
   const events = [];
   const s = ollied(events);
-  run(s, { flip: true, drive: -0.6, steer: 0.5 }, 0.25);
+  run(s, { flip: true, drive: -0.45, steer: 0.65 }, 0.25); // ~55° on the stick, i.e. a 35° aim once stickTurn is taken off
   assert.equal(names(events, 'flipStart').at(-1), 'Varial Heelflip');
   assert.ok(s.flip && s.shuv && !s.shuv.bs, 'heelflip goes with a frontside shove');
 });
