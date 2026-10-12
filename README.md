@@ -15,7 +15,7 @@ default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campu
 | Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
 | Right **A** | Hold to crouch, release to ollie. A longer hold pops higher |
 | Right **trigger** | **Press once to grind.** A rail, ledge or coping only catches if you pressed it up to 0.4 s before the board touches it (you do not hold it); the grind then lasts until the rail ends, you ollie off, or you bail. **Near the top of a ramp or bowl wall, a press latches you onto the coping** (from the wall as you roll up it, from the air, or from the deck) and you grind along it, round a bowl's rim if it is a loop, as long as you are moving along the lip at 1.5 m/s or more. Without a press you roll over rails and ride ramps without ever catching the coping (keyboard: **G** or **Shift**) |
-| Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip**, **right for a heelflip**, **down for a pop shove-it**, **down-left for a varial kickflip**, or **down-right for a varial heelflip** (the stick's direction is read as an angle, so a diagonal only has to go part way; up on its own does nothing) (the stick can come just before or just after) |
+| Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip** or **right for a heelflip** (the stick can come just before or just after) |
 | Either **grip** (in the air) | **Grab the board.** Squeeze a grip while you are in the air with a hand near the board: the board comes up to meet your hand (as if you tucked your knees) and your hand closes on the nearest part: the **nose** or **tail** tip, or the edge in the **middle** of the deck (Indy / Stalefish on the right edge, Melon / Mute on the left, by which hand is on which side). It lets go when you let go of the grip, or when you land, catch a rail or bail. Press the grip once you are already in the air (squeezing before you leave the ground does not count). Holding both grips on the ground still re-centres you, but not in the air. No scoring yet; the grab name and how long you held it show for a moment when you let go. Tune it in `GRAB` in `board-grab.js` |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |
@@ -42,12 +42,7 @@ revolution in about half a second. The stick picks the direction and does not al
 start early enough to finish: a tap ollie needs the flip started within about 0.2 s of leaving the ground, a full one about
 0.35 s. Land with the board nearly flat and it counts; land a bit short (up to ~110° off) and it is a sketchy landing (you
 stumble and lose speed, no trick); land mid-flip and you bail. A board that is still turning cannot catch a rail, one that has come
-round can (kickflip to rail). Tune it in the `flip*` values in `config.js`; the direction sign for goofy and regular is in `startTrick`.
-
-**Shove-its.** Same button, with up or down on the stick (see the table). The board spins 180° flat in about a third of a second; a
-varial adds a kickflip or heelflip roll to it. When the board has come round the sim turns its heading (and your stance, so you
-still face the way you were going) and you ride on with the tail leading. Land it half turned and you bail. Credited names reuse the
-`flip` event. No scoring yet. Tune it in the `shuv*` values in `config.js`; which way each one spins is in `startTrick` (one line). The cones are `shuvCone` and `varialCone`.
+round can (kickflip to rail). Tune it in the `flip*` values in `config.js`; the direction sign for goofy and regular is in `startFlip`.
 
 **Ramps that end in a deck.** A steep bank (up to about 70° at its top) that meets a flat deck is ridden, not treated as a wall: at the crest
 the board is judged by the ground under its middle, and once the middle is over a flat deck it flies off the lip with the speed it
@@ -62,7 +57,7 @@ You stand on the board the way you would on a real one: side-on to travel, facin
 or left (goofy). The play space turns with the board, so your head stays over the deck and your own movement still
 moves you around on it.
 
-**Flat screen:** W push · S brake · A/D steer & balance (no hands on a flat screen) · hold Space, release to ollie · F in the air with A/D: kickflip / heelflip; F with S: shove-it; F with S+A / S+D: varial kickflip / heelflip · drag to look · Z stance · R entrance.
+**Flat screen:** W push · S brake · A/D steer & balance (no hands on a flat screen) · hold Space, release to ollie · F in the air with A/D: kickflip / heelflip · drag to look · Z stance · R entrance.
 
 **Grinding.** Be in the air, close to a rail, ledge or coping, with the board roughly parallel (50-50) or roughly
 square (boardslide) to it. It locks on, and the meter starts wherever your landing put it. Left unattended the board

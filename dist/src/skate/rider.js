@@ -87,7 +87,7 @@ export class Rider {
     // Rig attitude = the board's frame (heading + eased up), then turned so the player's calibrated gaze is the stance
     // direction (side-on in VR, down the board on a flat screen).
     sim.boardQuaternion(_qBoard, false, this.up);
-    _qOff.setFromAxisAngle(UP, (vr ? sim.faceOffset : (sim.switched ? Math.PI : 0)) - this.yawCal);
+    _qOff.setFromAxisAngle(UP, (vr ? sim.faceOffset : 0) - this.yawCal);
     this.rig.quaternion.copy(_qBoard).multiply(_qOff);
 
     // Rig origin so the calibrated head position sits over the board centre.
