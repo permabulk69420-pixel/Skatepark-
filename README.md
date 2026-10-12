@@ -97,8 +97,10 @@ dist/src/skate/input.js    Quest controllers / keyboard
 dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding), with the adaptive grip so a hand can close round something
 dist/src/skate/board-grab.js   grabbing the board in the air (nose / tail / middle), from Sandboarding; handle-hold.js, grip-contact.js, adaptive-grip.js and grip-poses.js are the hand-fitting code it rests on
 dist/src/skate/haptics.js  controller pulses
+dist/src/skate/music.js    the soundtrack: the three tracks in dist/assets/music play one after another, forever (starts on the first click / key press / VR session; volume in `MUSIC`)
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
+dist/assets/music/         the soundtrack, three mp3s at 96 kbps (4 MB in all)
 dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
