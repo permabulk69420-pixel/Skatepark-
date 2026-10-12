@@ -12,6 +12,7 @@ import { createHaptics } from './skate/haptics.js';
 import { createVRHands } from './skate/hands.js';
 import { BoardView } from './skate/board-view.js';
 import { createBoardGrab } from './skate/board-grab.js';
+import { createMusic, MUSIC } from './skate/music.js';
 import { Rider } from './skate/rider.js';
 import { createHud } from './skate/hud.js';
 import { HandBalance } from './skate/hand-balance.js';
@@ -94,6 +95,9 @@ const haptics = createHaptics(renderer);
 const input = createInput(renderer);
 const hands = createVRHands({ renderer, parent: rig });
 const handBalance = new HandBalance();
+// Soundtrack: loops through the three tracks; starts on the first click / key press / VR session (browsers need one before any sound).
+const music = createMusic({ urls: MUSIC.tracks.map((name) => new URL(`assets/music/${name}.mp3`, location.href).href) });
+for (const type of ['pointerdown', 'keydown', 'click']) addEventListener(type, () => music.start(), { capture: true });
 
 // The skater is created once the park's collision is loaded; events from it drive haptics and messages.
 let sim, rider, boardView, hud, grab;
@@ -215,6 +219,7 @@ try {
 document.querySelector('#reset').addEventListener('click', () => sim?.respawn(sim.spawn));
 
 renderer.xr.addEventListener('sessionstart', () => {
+  music.start();
   renderer.xr.setFoveation(0);
   const baseLayer = renderer.xr.getSession()?.renderState?.baseLayer;
   if (baseLayer && 'fixedFoveation' in baseLayer) baseLayer.fixedFoveation = 0;
@@ -293,5 +298,5 @@ renderer.setAnimationLoop(() => {
 });
 
 // Handles for the console and the automated checks.
-window.__skate = { hands, get grab() { return grab; }, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes, get lods() { return lods; }, level: levelId };
+window.__skate = { music, hands, get grab() { return grab; }, handBalance, get sim() { return sim; }, get rider() { return rider; }, get boardView() { return boardView; }, get hud() { return hud; }, input, haptics, scene, camera, rig, renderer, collision, grindNodes, get lods() { return lods; }, level: levelId };
 export { scene, renderer, camera, rig, collision, renderMeshes, park, spawn };

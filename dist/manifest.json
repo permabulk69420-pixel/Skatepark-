@@ -1,7 +1,7 @@
 {
- "build": "31ef898",
+ "build": "dd9b1f1",
  "files": {
-  "src/main.js": "5cb84cd31c",
+  "src/main.js": "e42f5a2b0b",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "743964a136",
   "src/skate/board-view.js": "77fa836db5",
@@ -16,6 +16,7 @@
   "src/skate/input.js": "03018590bd",
   "src/skate/levels.js": "222f6a2e16",
   "src/skate/lod.js": "61451ed914",
+  "src/skate/music.js": "dd250e57a9",
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "330baf123c",
   "src/skate/sim.js": "7bb19b374a",
