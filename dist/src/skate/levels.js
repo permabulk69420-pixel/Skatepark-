@@ -29,10 +29,10 @@ export const LEVELS = {
   burnside: {
     name: 'Burnside',
     file: 'assets/levels/burnside.glb',
-    blurb: '81 × 100 metres · Pools, a blue wall and a tunnel under a bridge · RIFT board',
-    bounds: { x: 45, z: 55, cx: 1.6, cz: 0 },
+    blurb: '230 × 210 metres · Pools, a blue wall and a tunnel under a bridge, with the streets round it · RIFT board',
+    bounds: { x: 112, z: 103, cx: 5, cz: -5 },
     shadowHalf: 70,
-    center: { x: 1.6, z: 0 },
+    center: { x: -5, z: 0 },
     noShadow: /Asphalt/
   }
 };
