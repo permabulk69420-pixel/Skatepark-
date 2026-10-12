@@ -16,6 +16,7 @@ default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campu
 | Right **A** | Hold to crouch, release to ollie. A longer hold pops higher |
 | Right **trigger** | **Press once to grind.** A rail, ledge or coping only catches if you pressed it up to 0.4 s before the board touches it (you do not hold it); the grind then lasts until the rail ends, you ollie off, or you bail. **Near the top of a ramp or bowl wall, a press latches you onto the coping** (from the wall as you roll up it, from the air, or from the deck) and you grind along it, round a bowl's rim if it is a loop, as long as you are moving along the lip at 1.5 m/s or more. Without a press you roll over rails and ride ramps without ever catching the coping (keyboard: **G** or **Shift**) |
 | Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip** or **right for a heelflip** (the stick can come just before or just after) |
+| Either **grip** (in the air) | **Grab the board.** Squeeze a grip while you are in the air with a hand near the board: the board comes up to meet your hand (as if you tucked your knees) and your hand closes on the nearest part: the **nose** or **tail** tip, or the edge in the **middle** of the deck (Indy / Stalefish on the right edge, Melon / Mute on the left, by which hand is on which side). It lets go when you let go of the grip, or when you land, catch a rail or bail. Press the grip once you are already in the air (squeezing before you leave the ground does not count). Holding both grips on the ground still re-centres you, but not in the air. No scoring yet; the grab name and how long you held it show for a moment when you let go. Tune it in `GRAB` in `board-grab.js` |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |
 | Hold left **X** | Back to the entrance |
@@ -93,7 +94,8 @@ dist/src/skate/lod.js      swaps chunks of a level between full and cheaper vers
 dist/src/skate/rails.js    grind paths read from the park file (node extras, role "grind_path")
 dist/src/skate/rider.js    puts the player on the board (stance, centring, crouch, lean)
 dist/src/skate/input.js    Quest controllers / keyboard
-dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding)
+dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding), with the adaptive grip so a hand can close round something
+dist/src/skate/board-grab.js   grabbing the board in the air (nose / tail / middle), from Sandboarding; handle-hold.js, grip-contact.js, adaptive-grip.js and grip-poses.js are the hand-fitting code it rests on
 dist/src/skate/haptics.js  controller pulses
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
@@ -109,6 +111,7 @@ tools/plan-level.mjs       top-down plan of a level;  plan-collision.mjs: the sa
 tools/audit-level.mjs      compares what is drawn with what can be ridden (visible floor with no collision and the reverse)
 tools/check-stairs.mjs     rolls the skater off the top of every stair set, with and without an ollie
 tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then a wall, a drop or nothing)
+tools/check-grab.mjs       fakes two controllers in a headless browser, grabs the nose / tail / sides of the board in mid-air and checks the hand lands on the edge (optional screenshots);  see also below
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
 tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
