@@ -489,7 +489,7 @@ export class Skater {
   // ----- flips and shove-its ---------------------------------------------------------------------------------
   // The flip button in the air, then the direction the stick is pushed picks the trick, measured as an angle (like an 8-way pad), not
   // as separate left/right and up/down amounts, so a lazy diagonal that only reaches half way still reads as a diagonal:
-  //   down (±22°) ............ pop shove-it (the board spins 180° flat, backside)
+  //   down (±22.5°) ............ pop shove-it (the board spins 180° flat, backside)
   //   down-left / down-right . varial kickflip / varial heelflip (a kickflip with a backside shove-it / a heelflip with a frontside one)
   //   left / right ........... kickflip / heelflip (the board rolls once about its length)
   //   up-left / up-right ..... the same flips (up on its own does nothing: forward is the push, and it is held a lot)
