@@ -95,6 +95,11 @@ export const TUNING = Object.freeze({
   catchAbove: 0.05,
   catchMaxRise: 1.0,
   grindMinSpeed: 0.9,
+  magnetReach: 0.7,          // press grind within this far (horizontally) of a coping, up the wall or on the deck, and it latches on…
+  magnetBelow: 0.9,          // …if the board is no more than this far below the lip…
+  magnetAbove: 0.2,          // …or this far above it
+  magnetMinSpeed: 1.5,       // …and is moving along it at least this fast (m/s)
+  magnetTruckAngle: 0.8,     // heading within this (rad) of parallel to the coping is a 50-50, otherwise a boardslide
   grindArmWindow: 0.4,       // one press of the grind button catches the first rail or coping the board touches in this many seconds
   grindStallSpeed: 0.35,
   copingSlideMinSpeed: 2.2,  // a coping boardslide needs this much speed along the lip to catch

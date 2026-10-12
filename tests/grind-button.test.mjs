@@ -70,3 +70,43 @@ test('riding up a half-pipe without pressing the grind button never touches the 
 test('the press window is a moment, not a latch', () => {
   assert.ok(T.grindArmWindow > 0.2 && T.grindArmWindow < 0.8, `window ${T.grindArmWindow}`);
 });
+
+// Tony Hawk style: roll up the wall of a ramp or bowl, press grind near the top, and the board latches onto the coping and grinds along it.
+function ridePipe({ speed, yawDeg, pressWhenAbove, events, drive = 1 }) {
+  const s = pipeSkater({ events, withCoping: true, requireGrind: true });
+  s.respawn({ pos: new THREE.Vector3(0, 0, 0), heading: Math.PI / 2 + yawDeg * Math.PI / 180 });
+  for (let i = 0; i < 20; i++) s.update({}, 1 / 72);
+  const h = s.heading;
+  s.vel.set(-Math.sin(h) * speed, 0, -Math.cos(h) * speed);
+  let pressedAt = -1, grindTime = 0, mode0 = null;
+  run(s, (t, sk) => {
+    if (pressedAt < 0 && sk.pos.y > pressWhenAbove) pressedAt = t;
+    return { drive, lean: sk.grind ? THREE.MathUtils.clamp(-(sk.grind.bal * 2.2 + sk.grind.balVel * 0.7), -1, 1) : 0, grind: pressedAt >= 0 && t - pressedAt < 0.08 };
+  }, 3, 1 / 72, (t, sk) => { if (sk.mode === Mode.GRIND) { grindTime += 1 / 72; mode0 = mode0 ?? sk.grind.name; } });
+  return { s, grindTime, name: mode0, pressedAt };
+}
+
+test('pressing grind near the top of the wall, rolling up at an angle, latches onto the coping and grinds along it', () => {
+  for (const [speed, yawDeg] of [[8, 25], [8, -25], [7, 20], [9, 15]]) {
+    const events = [];
+    const r = ridePipe({ speed, yawDeg, pressWhenAbove: 1.2, events });
+    assert.ok(started(events), `speed ${speed}, ${yawDeg}° off: did not catch the coping`);
+    assert.ok(r.grindTime > 0.4, `speed ${speed}, ${yawDeg}° off: only grinded for ${r.grindTime.toFixed(2)} s`);   // the test coping is only 11 m long
+    assert.ok(/Coping/.test(r.name), `caught ${r.name}`);
+  }
+});
+
+test('the same press from the air, just under or over the lip, catches too', () => {
+  for (const above of [1.7, 1.9]) {
+    const events = [];
+    const r = ridePipe({ speed: 9, yawDeg: 20, pressWhenAbove: above, events });
+    assert.ok(started(events), `press above ${above}: did not catch`);
+    assert.ok(r.grindTime > 0.4);
+  }
+});
+
+test('pressing grind arriving square-on with no speed along the lip does not catch (there is nothing to grind along)', () => {
+  const events = [];
+  const r = ridePipe({ speed: 8, yawDeg: 0, pressWhenAbove: 1.5, events });
+  assert.ok(!started(events), `caught while square-on (${r.name})`);
+});

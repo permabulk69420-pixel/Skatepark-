@@ -14,7 +14,7 @@ default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campu
 | Left stick sideways | Steer · spin in the air |
 | Your hands | **Balance grinds and manuals**: raise your right hand to push the meter right, your left hand to push it left (relative to how your hands were resting) |
 | Right **A** | Hold to crouch, release to ollie. A longer hold pops higher |
-| Right **trigger** | **Press once to grind.** A rail, ledge or coping only catches if you pressed it up to 0.4 s before the board touches it (you do not hold it); the grind then lasts until the rail ends, you ollie off, or you bail. Without a press you roll over rails and ride ramps without ever catching the coping (keyboard: **G** or **Shift**) |
+| Right **trigger** | **Press once to grind.** A rail, ledge or coping only catches if you pressed it up to 0.4 s before the board touches it (you do not hold it); the grind then lasts until the rail ends, you ollie off, or you bail. **Near the top of a ramp or bowl wall, a press latches you onto the coping** (from the wall as you roll up it, from the air, or from the deck) and you grind along it, round a bowl's rim if it is a loop, as long as you are moving along the lip at 1.5 m/s or more. Without a press you roll over rails and ride ramps without ever catching the coping (keyboard: **G** or **Shift**) |
 | Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip** or **right for a heelflip** (the stick can come just before or just after) |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |

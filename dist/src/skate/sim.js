@@ -223,6 +223,7 @@ export class Skater {
     let s = this.vel.dot(_f);
 
     if (this.popRequest !== null) { this.pop(this.popRequest); return; }
+    if (this.tryCopingMagnet(this.pos)) return;
 
     _lat.copy(this.vel).addScaledVector(_f, -s);
     _lat.addScaledVector(u, -_lat.dot(u));
@@ -464,7 +465,7 @@ export class Skater {
     this.clampBounds(_np);
 
     // A board that is mid-flip cannot catch a rail; one that has come round (or is nearly there) can.
-    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && this.tryGrind(_np, h)) return;
+    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
@@ -829,6 +830,42 @@ export class Skater {
     }
     if (!best) return false;
     return this.startGrind(best, np);
+  }
+
+  // Press the grind button near the top of a ramp or bowl wall and the board latches onto the coping and grinds along it: from the wall
+  // while it is still rolling up, from the air, or from the deck, at whatever angle it arrives. It needs real speed along the lip
+  // (arriving square-on and slow, there is nothing to grind along).
+  tryCopingMagnet(np) {
+    if (!this.requireGrind || this.grindArm <= 0) return false;
+    headingVec(this.heading, _H);
+    const reach = T.magnetReach;
+    let best = null, bestScore = Infinity;
+    for (const path of this.paths) {
+      if (path.kind !== 'coping') continue;
+      if (path === this.lastGrindPath && this.grindCooldown > 0) continue;
+      const b = path.bounds;
+      if (np.x < b.min.x - reach || np.x > b.max.x + reach || np.z < b.min.z - reach || np.z > b.max.z + reach) continue;
+      const segs = path.segments;
+      for (let i = 0; i < segs.length; i++) {
+        const seg = segs[i];
+        if (seg.hLen < 0.05) continue;
+        const abx = seg.b.x - seg.a.x, abz = seg.b.z - seg.a.z;
+        const len2 = abx * abx + abz * abz;
+        const raw = ((np.x - seg.a.x) * abx + (np.z - seg.a.z) * abz) / len2;
+        const t = clamp(raw, 0, 1);
+        const d = Math.hypot(np.x - (seg.a.x + abx * t), np.z - (seg.a.z + abz * t));
+        if (d > reach || Math.abs(raw - t) * Math.sqrt(len2) > 0.3) continue;
+        const top = seg.a.y + (seg.b.y - seg.a.y) * t + path.topOffset;
+        const dy = top - np.y;                               // + the board is below the lip
+        if (dy < -T.magnetAbove || dy > T.magnetBelow) continue;
+        if (Math.abs(this.vel.dot(seg.dir)) < T.magnetMinSpeed) continue;
+        const score = d / reach + Math.abs(dy) / T.magnetBelow;
+        if (score < bestScore) { bestScore = score; best = { path, seg, i, t, d }; }
+      }
+    }
+    if (!best) return false;
+    const theta = Math.acos(clamp(Math.abs(_H.x * best.seg.dirH.x + _H.z * best.seg.dirH.y), 0, 1));
+    return this.startGrind({ ...best, mode: theta <= T.magnetTruckAngle ? 'truck' : 'slide', theta }, np);
   }
 
   // Which side of this stretch of coping is the drop (lower ground), as a horizontal unit vector; cached on the segment.
