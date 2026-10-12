@@ -28,8 +28,10 @@ const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
 // The skater is the board: position is where the wheels meet the ground, heading is which way the nose points.
 // The rider is placed over it by the view layer. Everything runs in fixed-ish substeps so frame rate does not change the feel.
 export class Skater {
-  constructor({ world, paths = [], onEvent = () => {}, random = Math.random, bounds = T.bounds }) {
+  constructor({ world, paths = [], onEvent = () => {}, random = Math.random, bounds = T.bounds, requireGrind = false }) {
     this.world = world;
+    this.requireGrind = requireGrind;           // true in the game: rails and copings are only caught while the grind button is held
+    this.grindHeld = false; this.grindWas = false; this.grindArm = 0;
     this.bounds = bounds;                        // the level's play area: half-extents x/z around an optional centre cx/cz
     this.paths = paths;
     this.onEvent = onEvent;
@@ -103,6 +105,11 @@ export class Skater {
     }
     this.jumpWas = jump;
     this.jumpHeld = jump;
+    // The grind button (right trigger): a rail or coping is only caught while it is held, or was pressed an instant before touching it.
+    this.grindHeld = !!input.grind;
+    if (this.grindHeld && !this.grindWas) this.grindArm = T.grindArmWindow;
+    this.grindWas = this.grindHeld;
+    this.grindArm = Math.max(0, this.grindArm - dt);
     const flipHeld = !!input.flip;
     if (flipHeld && !this.flipWas) this.flipArm = T.flipArmWindow;
     this.flipWas = flipHeld;
@@ -786,6 +793,7 @@ export class Skater {
 
   // ----- grinding --------------------------------------------------------------------------------------------
   tryGrind(np, h) {
+    if (this.requireGrind && !this.grindHeld && this.grindArm <= 0) return false;
     if (this.vel.y > T.catchMaxRise) return false;
     headingVec(this.heading, _H);
     let best = null, bestScore = Infinity;
@@ -1010,6 +1018,12 @@ export class Skater {
       g.vb += (g.variant - g.vb) * (1 - Math.exp(-T.variantResponse * h));
       if (g.variant) g.vTime[g.variant > 0 ? 'nose' : 'tail'] += h;
       g.name = this.grindName(g);
+    }
+
+    // Let go of the grind button and you hop off the rail with the speed you have.
+    if (this.requireGrind && !this.grindHeld && g.time > T.grindReleaseGrace) {
+      this.endGrind('release', 0);
+      return;
     }
 
     // Speed along the rail: gravity on sloped rails, friction on everything.

@@ -12,6 +12,7 @@ try {
   const report = await page.evaluate(async () => {
     const { sim, scene, renderer } = window.__skate;
     renderer.setAnimationLoop(null);
+    sim.requireGrind = false;      // the check drops boards onto rails with no one holding the grind button
     const THREE = await import('three');
     const world = sim.world;
     const frame = 1 / 72;
