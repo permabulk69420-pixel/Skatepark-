@@ -202,7 +202,8 @@ npm run manifest
 ```
 
 (Running the script as `-c "exec(…)"` rather than as a file avoids a Blender 5 start-up crash, "InitGoogleLogging() twice".)
-`node tools/ride-line.mjs megaramp` rides it from the top and prints a trace: on the first ride it reaches 18 m/s off the roll-in,
+There is no way back up yet, so the level has `autoReturn` (in `levels.js`): come to a stop for 2 s anywhere more than 6 m from the
+start, or bail, and you are put back at the top. `node tools/ride-line.mjs megaramp` rides it from the top and prints a trace: on the first ride it reaches 18 m/s off the roll-in,
 clears the gap onto the knuckle (landing impact about 8 m/s; the bail limit is 13) and airs about 4 m out of the quarter pipe.
 
 ## Foundry
