@@ -250,3 +250,49 @@ export function arc(cx, cy, r, a0, a1, steps) {
   return out;
 }
 
+
+// An axis-aligned box with its edges rounded off (radius r, `segs` steps per edge), for concrete that catches the light along its
+// arrises the way cast concrete does. Sides listed in `sharp` ('x0', 'x1', 'y0', 'y1', 'z0', 'z1') keep square edges all round
+// that face (where a stair or a bank butts onto it); the bottom ('y0') is always square, and never drawn.
+export function roundedBox(part, min, max, r, { segs = 3, sharp = [], top = part } = {}) {
+  const sidePart = part;
+  const lo = [min.x, min.y, min.z], hi = [max.x, max.y, max.z];
+  const rLo = [0, 1, 2].map((a) => (sharp.includes(`${'xyz'[a]}0`) || a === 1 ? 0 : Math.min(r, (hi[a] - lo[a]) / 2 - 1e-4)));
+  const rHi = [0, 1, 2].map((a) => (sharp.includes(`${'xyz'[a]}1`) ? 0 : Math.min(r, (hi[a] - lo[a]) / 2 - 1e-4)));
+  const inLo = lo.map((v, a) => v + rLo[a]), inHi = hi.map((v, a) => v - rHi[a]);
+  // Sample positions along one axis of a face: bunched into the rounded ends, evenly spaced (≤ maxEdge) between them.
+  const samples = (a) => {
+    const out = [];
+    for (let k = segs; k >= 1; k--) if (rLo[a] > 0) out.push(inLo[a] - rLo[a] * Math.tan((k / segs) * Math.PI / 4));
+    const n = Math.max(1, Math.ceil((inHi[a] - inLo[a]) / sidePart.maxEdge));
+    for (let i = 0; i <= n; i++) out.push(inLo[a] + (inHi[a] - inLo[a]) * (i / n));
+    for (let k = 1; k <= segs; k++) if (rHi[a] > 0) out.push(inHi[a] + rHi[a] * Math.tan((k / segs) * Math.PI / 4));
+    return out;
+  };
+  const p = V(), c = V(), nrm = V();
+  for (const [axis, side] of [[0, 0], [0, 1], [1, 1], [2, 0], [2, 1]]) {
+    const part = axis === 1 ? top : sidePart;
+    const [ua, va] = [0, 1, 2].filter((a) => a !== axis);
+    const us = samples(ua), vs = samples(va);
+    const base = part.vertexCount;
+    const faceN = V(); faceN.setComponent(axis, side ? 1 : -1);
+    for (const v of vs) for (const u of us) {
+      p.setComponent(axis, side ? hi[axis] : lo[axis]); p.setComponent(ua, u); p.setComponent(va, v);
+      const radius = side ? rHi[axis] : rLo[axis];
+      if (radius > 0) {
+        // Round the flat face point onto the rounded box: pull it into the inner box, then out again by the radius.
+        for (let a = 0; a < 3; a++) c.setComponent(a, Math.min(Math.max(p.getComponent(a), inLo[a]), inHi[a]));
+        nrm.subVectors(p, c).normalize();
+        p.copy(c).addScaledVector(nrm, radius);
+        part.vert(p, nrm);
+      } else part.vert(p, faceN);      // a square side stays flat (its neighbours do not round towards it either)
+    }
+    const cols = us.length;
+    const a0 = V(...part.pos.slice(base * 3, base * 3 + 3)), a1 = V(...part.pos.slice((base + 1) * 3, (base + 1) * 3 + 3)), a2 = V(...part.pos.slice((base + cols) * 3, (base + cols) * 3 + 3));
+    const flip = faceNormal(a0, a1, a2).dot(faceN) < 0;
+    for (let j = 0; j + 1 < vs.length; j++) for (let i = 0; i + 1 < cols; i++) {
+      const k = base + j * cols + i;
+      if (!flip) { part.tri(k, k + 1, k + cols + 1); part.tri(k, k + cols + 1, k + cols); } else { part.tri(k, k + cols + 1, k + 1); part.tri(k, k + cols, k + cols + 1); }
+    }
+  }
+}

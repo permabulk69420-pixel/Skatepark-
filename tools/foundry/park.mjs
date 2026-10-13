@@ -3,7 +3,7 @@
 // hubbas; ledges, a flat bar, a manual pad, a funbox with a kinked rail, a curved ledge, a kicker; a mini half-pipe, a deep bowl,
 // and quarter pipes. x is east, z is south, y is up; the board's heading h points along (−sin h, 0, −cos h).
 import * as THREE from 'three';
-import { V, Part, quad, polygon, box, extrude, tube, arc, faceNormal } from './geom.mjs';
+import { V, Part, quad, polygon, box, roundedBox, extrude, tube, arc, faceNormal } from './geom.mjs';
 import { loopRibbon, LoopPath } from '../../dist/src/skate/loop.js';
 
 export const MATERIALS = {
@@ -25,7 +25,7 @@ const TOWER_H = 6.5;                         // the start tower's deck: enough d
 
 export function buildPark() {
   const parts = {};
-  for (const [key, m] of Object.entries(MATERIALS)) parts[key] = new Part(m.name, { uvScale: m.uvScale, maxEdge: m.maxEdge ?? 0.42 });
+  for (const [key, m] of Object.entries(MATERIALS)) parts[key] = new Part(m.name, { uvScale: m.uvScale, maxEdge: m.maxEdge ?? 0.3 });
   const cols = {};
   const col = (area) => (cols[area] ??= new Part(`COL_${area}`, { collision: true }));
   const paths = [];
@@ -80,16 +80,17 @@ export function buildPark() {
   }
 
   // A block with a top of one material and sides of another.
-  function block(min, max, { top = P.floor, side = P.precast, area } = {}) {
+  // Edges are rounded off (radius `round`) except round the faces listed in `sharp`, where something butts onto it.
+  function block(min, max, { top = P.floor, side = P.precast, area, round = 0.04, sharp = [] } = {}) {
     if (min.y < 0.01) footprint([min, max]);
-    box(top, min, max, { sides: false });
-    box(side, min, max, { top: false });
+    if (round > 0) roundedBox(side, min, max, round, { top, sharp });
+    else { box(top, min, max, { sides: false }); box(side, min, max, { top: false }); }
     if (area) box(col(area), min, max, {});
   }
 
   // A concrete ledge with steel angle on its two long top edges, and grind lines along them. Long axis along x or z.
   function ledge(name, min, max, { area = 'Street', edges = 'both' } = {}) {
-    block(min, max, { top: P.precast, side: P.precast, area });
+    block(min, max, { top: P.precast, side: P.precast, area, round: 0.03, sharp: min.y > 0.01 ? ['y0'] : [] });
     const alongX = max.x - min.x > max.z - min.z;
     const y = max.y;
     const sides = alongX ? [[min.z, 1], [max.z, -1]] : [[min.x, 1], [max.x, -1]];
@@ -218,7 +219,7 @@ export function buildPark() {
   // ------------------------------------------------------------------ the start tower, its roll-in and the loop
   const towerH = TOWER_H;
   const tower = { x0: -HALF.x, x1: -29.6, z0: -HALF.z, z1: -24 };
-  block(V(tower.x0, 0, tower.z0), V(tower.x1, towerH, tower.z1), { top: P.floor, side: P.precast, area: 'Tower' });
+  block(V(tower.x0, 0, tower.z0), V(tower.x1, towerH, tower.z1), { top: P.floor, side: P.precast, area: 'Tower', sharp: ['x1', 'z1', 'x0', 'z0'] });
   // Parapets round the deck, leaving the two roll-ins open.
   const parapet = (x0, z0, x1, z1) => block(V(x0, towerH, z0), V(x1, towerH + 1.0, z1), { top: P.precast, side: P.precast, area: 'Tower' });
   parapet(tower.x0, tower.z0, tower.x1, tower.z0 + 0.3);                 // north
@@ -394,7 +395,7 @@ export function buildPark() {
 
   // ------------------------------------------------------------------ street: the Big Seven
   const U = { x0: -36, x1: -20, z0: -4, z1: 4, h: 1.12 };
-  block(V(U.x0, 0, U.z0), V(U.x1, U.h, U.z1), { area: 'Street' });
+  block(V(U.x0, 0, U.z0), V(U.x1, U.h, U.z1), { area: 'Street', sharp: ['x1', 'z1'] });
   const seven = stairs({ top: V(-28.75, U.h, U.z1), dir: V(0, 0, 1), width: 8.5, risers: 7 });
   const sevenRail = (x) => {
     const pts = [V(x, 0, 3.7), V(x, 0, 6.65)].map((p) => p.setY(U.h - 0.444 * (p.z - 4) + 0.82));
@@ -420,7 +421,7 @@ export function buildPark() {
 
   // ------------------------------------------------------------------ street: the five (faces east) with rail and hubba
   const M = { x0: -36, x1: -26, z0: 22, z1: HALF.z, h: 0.8 };
-  block(V(M.x0, 0, M.z0), V(M.x1, M.h, M.z1), { area: 'Street' });
+  block(V(M.x0, 0, M.z0), V(M.x1, M.h, M.z1), { area: 'Street', sharp: ['x1', 'z0', 'z1'] });
   const five = stairs({ top: V(M.x1, M.h, 27), dir: V(1, 0, 0), width: 6, risers: 5 });
   {
     const z = 24.35;
@@ -439,7 +440,7 @@ export function buildPark() {
 
   // ------------------------------------------------------------------ street: the three (faces north), centre rail
   const L3 = { x0: -14, x1: -6, z0: 26, z1: HALF.z, h: 0.48 };
-  block(V(L3.x0, 0, L3.z0), V(L3.x1, L3.h, L3.z1), { area: 'Street' });
+  block(V(L3.x0, 0, L3.z0), V(L3.x1, L3.h, L3.z1), { area: 'Street', sharp: ['z0', 'x0', 'z1'] });
   const three = stairs({ top: V(-10, L3.h, L3.z0), dir: V(0, 0, -1), width: 5, risers: 3 });
   {
     const pts = [V(-10, 0, 26.9), V(-10, 0, 24.3)].map((p) => p.setY(L3.h - 0.444 * (L3.z0 - p.z) + 0.75));

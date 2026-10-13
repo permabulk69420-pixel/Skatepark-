@@ -1,7 +1,7 @@
 {
- "build": "3ad1836",
+ "build": "8ade9f6",
  "files": {
-  "src/main.js": "cc24ef7c2c",
+  "src/main.js": "c3157dbe0e",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "743964a136",
   "src/skate/board-view.js": "77fa836db5",
@@ -14,7 +14,7 @@
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "315e33c808",
   "src/skate/input.js": "03018590bd",
-  "src/skate/levels.js": "4266c6acd5",
+  "src/skate/levels.js": "972d455f7e",
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",
   "src/skate/music.js": "dd250e57a9",
@@ -34,7 +34,7 @@
   "vendor/three.module.js": "985eb92490",
   "assets/levels/burnside.glb": "f6f4058037",
   "assets/levels/eastbank-school.glb": "d1ebd668d6",
-  "assets/levels/foundry.glb": "6bff2960a1",
+  "assets/levels/foundry.glb": "96521b9bb3",
   "assets/skateboard.glb": "24c7390171",
   "assets/skatepark.glb": "88c8d75fdc",
   "models/hands/LeftHand.glb": "ff83a892ce",

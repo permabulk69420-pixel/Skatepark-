@@ -3,7 +3,8 @@
 //   tools/foundry/bake-ao.mjs   ambient occlusion baked into the vertex colours
 // It writes a raw GLB with the usual level conventions (ENV_ render meshes, COL_ collision, PATH_ grind lines, LOOP_ loop tracks,
 // Spawn_ nodes) and runs it through tools/optimise-level.mjs, like the other levels, into dist/assets/levels/foundry.glb.
-// Textures are CC0 sets from Poly Haven (source/textures, 1K): brushed_concrete, garage_floor, concrete_floor, plywood.
+// Textures are CC0 sets from Poly Haven (source/textures, 2K): brushed_concrete, garage_floor, concrete_floor, plywood. The game file
+// keeps colour and normal maps at 2048² and the AO/roughness/metal maps at 1024² (tools/foundry/foundry.tweaks.json).
 import { Document, NodeIO } from '@gltf-transform/core';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -58,7 +59,7 @@ const textures = new Map();
 const sets = new Set(Object.values(MATERIALS).map((m) => m.textures).filter(Boolean));
 for (const set of sets) {
   for (const [kind, suffix] of [['base', 'diff'], ['normal', 'nor_gl'], ['orm', 'arm']]) {
-    const file = path.join(repo, 'source/textures', `${set}_${suffix}_1k.jpg`);
+    const file = path.join(repo, 'source/textures', `${set}_${suffix}_2k.jpg`);
     const image = kind === 'base' && GRADE[set] ? await graded(file, GRADE[set]) : fs.readFileSync(file);
     textures.set(`${set}_${kind}`, doc.createTexture(`${set}_${kind}`).setImage(image).setMimeType('image/jpeg').setURI(`${set}_${kind}.jpg`));
   }
@@ -106,5 +107,5 @@ await new NodeIO().write(raw, doc);
 console.log(`collision ${collisionTris} triangles in ${Object.keys(park.cols).length} meshes, ${park.paths.length} grind lines, ${park.loops.length} loop`);
 console.log(`raw ${raw} ${(fs.statSync(raw).size / 1e6).toFixed(1)} MB`);
 
-execFileSync(process.execPath, [path.join(here, 'optimise-level.mjs'), raw, out], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(here, 'optimise-level.mjs'), raw, out, path.join(here, 'foundry/foundry.tweaks.json')], { stdio: 'inherit' });
 console.log(`${out} ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
