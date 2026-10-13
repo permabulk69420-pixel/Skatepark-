@@ -458,8 +458,8 @@ export class Skater {
   // In the air, while holding a grab, the stick held back flips you over backwards and held forward flips you forwards, for as long
   // as you hold it. It has to be meant: the stick must be pushed most of the way (bodyFlipStick), close to straight back or forward
   // (within bodyFlipCone), and held there for bodyFlipDelay before anything turns, so a spin or a brush of the stick never starts one.
-  // Once it has started you can push the stick diagonally to spin as well. You rotate about your shoulders' line (the board's length),
-  // so a backflip takes your head the way your back faces.
+  // Once it has started you can push the stick diagonally to spin as well. You turn nose over tail, about the axis across the board:
+  // a backflip lifts the nose and goes over backwards, a frontflip dips it and goes over forwards.
   bodyFlipStep(h) {
     const x = this.rawSteer, y = this.rawDrive;
     const mag = Math.hypot(x, y);
@@ -471,9 +471,8 @@ export class Skater {
     }
     let target = 0;
     if (this.bodyFlipping && Math.abs(y) > T.bodyFlipKeep) {
-      // backflip: your back leads (regular riders face the board's right side, so their back is its left)
-      const back = y < 0 ? 1 : -1;
-      target = back * (this.faceOffset < 0 ? 1 : -1) * T.bodyFlipRate;
+      // backflip (stick back): the nose comes up and over
+      target = (y < 0 ? 1 : -1) * T.bodyFlipRate;
     }
     this.bodyRollVel = damp(this.bodyRollVel, target, T.bodyFlipResponse, h);
     this.bodyRoll += this.bodyRollVel * h;
@@ -834,7 +833,7 @@ export class Skater {
     if (this.bodyRoll) {
       // Back upright (near enough) and it counts; a bit off and you stagger; upside down or on your side and you slam.
       const off = this.bodyRollResidual(), turns = Math.round(Math.abs(this.bodyRoll) / TAU);
-      const back = Math.sign(this.bodyRoll) === (this.faceOffset < 0 ? 1 : -1);
+      const back = this.bodyRoll > 0;
       this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipping = false; this.bodyFlipHold = 0;
       if (off > T.bodyFlipBail) { this.bail('flip'); return; }
       if (off > T.bodyFlipClean) sketchy = true;
@@ -1554,7 +1553,7 @@ export class Skater {
     _f.crossVectors(up, _R);
     _basisM.makeBasis(_R, up, _f.negate());
     out.setFromRotationMatrix(_basisM);
-    if (this.bodyRoll) out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.bodyRoll));   // flipped over in the air (backflip / frontflip)
+    if (this.bodyRoll) out.multiply(_qRoll.setFromAxisAngle(AXIS_X, this.bodyRoll));   // flipped over in the air, nose over tail (backflip / frontflip)
     if (flair) {
       out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
       if (this.shuvYaw) out.multiply(_qYaw.setFromAxisAngle(AXIS_Y, this.shuvYaw)); // spins flat, then the flip rolls about the board's own length
