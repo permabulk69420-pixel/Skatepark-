@@ -70,6 +70,9 @@ export class Skater {
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
+    // The board taken off the feet in the air (board-off.js): boardOff while it is in your hand; offTrick for this air once you have
+    // taken it off ({ name, far }); a sketchy catch makes a sketchy landing. boardOffPose: where the hand has it (for a bail).
+    this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     this.bailTime = 0; this.bailBoard = null;
     this.safe = { pos: new THREE.Vector3(), heading: 0 };
     this.spawn = { pos: new THREE.Vector3(), heading: 0 };
@@ -92,6 +95,7 @@ export class Skater {
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.endFlip(); this.flipArm = 0;
+    this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     if (this.switched) { this.faceOffset = -this.faceOffset; this.switched = false; } // the spawn heading is the board's nose again
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
@@ -429,6 +433,32 @@ export class Skater {
     this.lipExit = false;
     this.groundedTime = 0;
     this.braking = false;
+    this.offTrick = null; this.catchSketchy = false;
+  }
+
+  // ----- the board off your feet (board-off.js; board-grab.js calls these) ------------------------------------------------------
+  // Take it off: only in the air, and not in the middle of a flip or shove-it (the board is busy).
+  detachBoard() {
+    if (this.mode !== Mode.AIR || this.boardOff || this.flip || this.shuv) return false;
+    this.boardOff = true;
+    this.offTrick = { name: 'Board Off', far: 0 };
+    this.trickWait = 0;
+    this.onEvent('detach');
+    return true;
+  }
+
+  // Back under your feet. quality 'clean' or 'sketchy'; reversed: caught nose-for-tail, so it is ridden the other way round from now.
+  catchBoard(quality, reversed = false) {
+    if (!this.boardOff) return;
+    this.boardOff = false;
+    this.boardOffPose = null;
+    if (quality === 'sketchy') this.catchSketchy = true;
+    if (reversed) {
+      this.heading = wrap(this.heading + Math.PI);
+      this.faceOffset = -this.faceOffset;
+      this.switched = !this.switched;
+    }
+    this.onEvent('catch', { quality, reversed, name: this.offTrick?.name });
   }
 
   pop(charge) {
@@ -463,7 +493,7 @@ export class Skater {
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
     // Flips and shove-its take the stick for themselves: it picks the trick and must not also spin the board.
     // The button's window only gates the stick leaving the middle; a trick that is already being picked carries on past it.
-    if (!this.flip && !this.shuv && this.airTime > T.flipMinAir && (this.flipArm > 0 || this.trickWait > 0)) this.pickTrick(h);
+    if (!this.flip && !this.shuv && !this.boardOff && this.airTime > T.flipMinAir && (this.flipArm > 0 || this.trickWait > 0)) this.pickTrick(h);
     else if (this.flip || this.shuv) this.trickWait = 0;
     if (this.flip) {
       const f = this.flip;
@@ -501,7 +531,8 @@ export class Skater {
     this.clampBounds(_np);
 
     // A board that is mid-flip cannot catch a rail; one that has come round (or is nearly there) can.
-    if ((!this.flip || this.flipResidual() <= T.flipCleanRoll) && (!this.shuv || this.shuvResidual() <= T.shuvClean) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
+    // (and one that is in your hand, not under your feet, catches nothing)
+    if (!this.boardOff && (!this.flip || this.flipResidual() <= T.flipCleanRoll) && (!this.shuv || this.shuvResidual() <= T.shuvClean) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
@@ -751,6 +782,9 @@ export class Skater {
 
   land(w) {
     let credit = null, sketchy = false;
+    // Coming down without the board under you is a slam, however softly.
+    if (this.boardOff) { this.bail('no board'); return; }
+    if (this.offTrick) { credit = this.offTrick.name; sketchy = this.catchSketchy; this.offTrick = null; this.catchSketchy = false; }
     this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; // a pick still waiting must not carry into the next jump
     if (this.flip || this.shuv) {
       // Beginning a flip/shove just before touchdown is not a completed trick.
@@ -758,8 +792,8 @@ export class Skater {
       const incompleteFlip = this.flip && Math.abs(this.flip.angle) < Math.PI;
       const incompleteShuv = this.shuv && !this.shuv.done && Math.abs(this.shuv.angle) < Math.PI / 2;
       if (incompleteFlip || incompleteShuv || (this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
-      sketchy = (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
-      credit = this.trickCredit();
+      sketchy = sketchy || (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
+      credit = this.trickCredit() || credit;
       if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv(); // landed it round: you are riding the other way
       this.endFlip();
     }
@@ -1372,13 +1406,15 @@ export class Skater {
     this.mode = Mode.BAIL;
     this.bailTime = 0;
     this.braking = false;
+    const held = this.boardOff && this.boardOffPose;     // a board in your hand tumbles away from your hand, not your feet
     this.bailBoard = {
-      pos: this.pos.clone(),
+      pos: held ? this.boardOffPose.pos.clone() : this.pos.clone(),
       vel: this.vel.clone().multiplyScalar(0.8).add(new THREE.Vector3((this.random() - 0.5) * 3, 2.5 + this.random() * 2, (this.random() - 0.5) * 3)),
       spin: new THREE.Vector3((this.random() - 0.5) * 14, (this.random() - 0.5) * 10, (this.random() - 0.5) * 14),
-      quat: this.boardQuaternion(new THREE.Quaternion())
+      quat: held ? this.boardOffPose.quat.clone() : this.boardQuaternion(new THREE.Quaternion())
     };
     this.loop = null; this.frameRight = null;
+    this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     this.endFlip();
     this.flipArm = 0;
     this.onEvent('bail', { reason });

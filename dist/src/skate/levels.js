@@ -39,7 +39,7 @@ export const LEVELS = {
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',
-    blurb: '80 × 72 metres · A 6 m start tower with a loop-the-loop, 7-, 5- and 3-stair sets, rails, hubbas, ledges, a funbox, a bowl and a mini ramp · RIFT board',
+    blurb: '80 × 72 metres · A 6.5 m start tower with a loop-the-loop, 7-, 5- and 3-stair sets, rails, hubbas, ledges, a funbox, a bowl and a mini ramp · RIFT board',
     bounds: { x: 39.55, z: 35.55, cx: 0, cz: 0 },
     shadowHalf: 58,
     // Saw-cut joints and painted lines lie on the slab.

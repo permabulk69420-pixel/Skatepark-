@@ -95,6 +95,7 @@ export function createSfx({ url, world }) {
         break;
       }
       case 'push': scuff(SFX.push); break;
+      case 'catch': play('land', data.quality === 'clean' ? 0.45 : 0.6, 1.15); break;   // the board slapping back under your feet
       case 'grindStart': play(data.kind === 'ledge' ? 'land' : 'railHit', data.kind === 'ledge' ? 0.5 : 0.7, data.kind === 'ledge' ? 1.2 : 1); break;
       case 'wall': play('landHard2', Math.min(0.9, 0.2 + (data.impact ?? 1) * 0.15), 0.9); break;
       case 'bail': play('bailBody', 0.9); play('bailBoard', 0.8); break;
