@@ -315,7 +315,9 @@ function frame(dt) {
   boardView.update(sim, dt);
   grab.update(dt, airborne);   // the board comes up to a squeezing hand (after the board is placed)...
   grab.hold(sim, dt);          // ...or, taken off your feet, is wherever your hand has it
-  if (command.detach && !detachWas) grab.toggleOff(sim, renderer.xr.isPresenting);   // left trigger: off your feet / catch it
+  // Left trigger: squeeze it to take the board off your feet, let go to catch it (a miss leaves it in your hand: squeeze and let go again).
+  if (command.detach && !detachWas && !grab.off) grab.toggleOff(sim, renderer.xr.isPresenting);
+  if (!command.detach && detachWas && grab.off) grab.toggleOff(sim, renderer.xr.isPresenting);
   detachWas = command.detach;
   hands.update(dt);
   grab.place();                // ...then each holding hand is fitted onto its edge (after the hands have posed)

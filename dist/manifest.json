@@ -1,10 +1,10 @@
 {
- "build": "079c34c",
+ "build": "080e88c",
  "files": {
-  "src/main.js": "5ece1b3578",
+  "src/main.js": "b6f793a8d2",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "e07586d14b",
-  "src/skate/board-off.js": "1983e20bcf",
+  "src/skate/board-off.js": "c4430cae9b",
   "src/skate/board-view.js": "77fa836db5",
   "src/skate/config.js": "33450981ac",
   "src/skate/grip-contact.js": "b88f95d5d7",
@@ -14,7 +14,7 @@
   "src/skate/hands.js": "3df8d3a5bd",
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "315e33c808",
-  "src/skate/input.js": "9489b9a7dc",
+  "src/skate/input.js": "96e7d0a9a3",
   "src/skate/levels.js": "fcbe920b18",
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",

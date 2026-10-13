@@ -3,7 +3,7 @@
 //   right A = hold to crouch, release to ollie
 //   right trigger (keyboard G / Shift) = grind: press it once; the rail or coping the board touches in the next moment is caught
 //   right B (keyboard F) = flip button: in the air, with the stick left (kickflip) or right (heelflip)
-//   left trigger (keyboard C) = in the air while holding the board in a grab: take it off your feet; again: catch it (board-off.js)
+//   left trigger (keyboard C) = in the air while holding the board in a grab: hold it to take the board off your feet, let go to catch it (board-off.js)
 //   left Y = switch stance, left X held = back to the entrance, both grips held (on the ground) = stand on the board where you are
 //   either grip, in the air = grab the board (board-grab.js)
 const DEADZONE = 0.15;
