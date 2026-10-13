@@ -2,7 +2,8 @@
 
 A Quest 3 WebXR skateboarding test bed: you ride a RIFT board around, to find out whether the skating itself is fun.
 There are two levels, picked with `?level=` (or the links in the info panel): **Breakwater** (a 104 × 88 m skatepark, the
-default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus) and **Burnside** (`?level=burnside`, a 30 × 35 m pools-and-bridge park rebuilt from reference, work in progress). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
+default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus) and **Burnside** (`?level=burnside`, a 30 × 35 m pools-and-bridge park rebuilt from reference, work in progress) and **Foundry**
+(`?level=foundry`, an 80 × 72 m park with a **loop-the-loop**, built entirely from code: see [Foundry](#foundry)). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
 
 ## Playing
 
@@ -54,6 +55,15 @@ the board is judged by the ground under its middle, and once the middle is over 
 has (ollie at the lip and it carries on over the top; otherwise the half-pipe air logic brings you back into the ramp). Tune it with
 `crestMinNormalY`, `crestDeckNormalY` and `crestLeave` in `config.js`. `tests/crest.test.mjs` is built from the school's real ramp profile.
 
+**Loops.** Roll into a loop's track and the board follows it all the way round: up the wall, upside down over the top and back
+down onto the way out, which runs beside the way in. Gravity slows you on the way up; holding forward pumps the bottom half. The
+one rule is the real one: the track can only push, so wherever your speed is too low to stay pressed onto it (upside down) you fall
+off, and that is a bail. Too slow to reach the vertical and you simply roll back out, fakie. Ollie out only on the flat-ish run in
+and out. On Foundry, pushing off the start tower and dropping in carries you round easily (about 10.8 m/s is needed going in, or
+10.1 if you pump). The camera stays bolted to the board the whole way, so in the headset the world goes over your head. Tune it
+in the `loop*` values in `config.js`; the shape and the riding are in `loop.js` (`loopRibbon`, `LoopPath`) and `loopStep` in
+`sim.js`; `tests/loop.test.mjs` rides a real loop mesh.
+
 **Fakie / switch.** Roll backwards and the controls follow where you are going, not the board: steer right and you go right of
 your direction of travel, forward on the stick pushes the way you are rolling, a manual lifts the end that leads (a
 "Fakie Manual" tail-up), and the balance moves are the same as going forward.
@@ -97,6 +107,7 @@ dist/src/skate/world.js    ground/wall queries against the park's collision mesh
 dist/src/skate/levels.js   the level list (?level=): model, play area, shadow reach, intro text
 dist/src/skate/lod.js      swaps chunks of a level between full and cheaper versions by distance
 dist/src/skate/rails.js    grind paths read from the park file (node extras, role "grind_path")
+dist/src/skate/loop.js     loop-the-loops: the track shape (loopRibbon) and the ridden path read from the park file (role "loop_path")
 dist/src/skate/rider.js    puts the player on the board (stance, centring, crouch, lean)
 dist/src/skate/input.js    Quest controllers / keyboard
 dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding), with the adaptive grip so a hand can close round something
@@ -106,9 +117,13 @@ dist/src/skate/music.js    the soundtrack: the three tracks in dist/assets/music
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
 dist/assets/music/         the soundtrack, three mp3s at 96 kbps (4 MB in all)
-dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb)
+dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb, foundry.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
+tools/build-foundry.mjs    builds the Foundry park from code (tools/foundry/: park.mjs the layout, geom.mjs shapes, bake-ao.mjs, probe.mjs)
+tools/check-loop.mjs       rides the real skater from a level's entrance into its loop, a few ways, and says whether it got round
+tools/shoot-loop.mjs       screenshots from the rider's own view going round a loop
+source/textures/           the CC0 Poly Haven texture sets Foundry uses (1K: colour, normal, AO/roughness/metal)
 tools/export-blend.py      level .blend -> raw GLB, via Blender as a Python module (see Levels)
 tools/optimise-level.mjs   raw level GLB -> merged, chunked, LOD'd, compressed game GLB (see Levels)
 tools/measure-level.mjs    triangles / draw calls per view over a grid of ground positions, with and without LODs
@@ -167,6 +182,32 @@ gives them a depth offset (`decals` in `levels.js`), and the walls, glazing and 
 without LODs); `node tools/check-pops.mjs eastbank` ollies from random spots and reports pops that do not leave the ground; `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
 grind path); `node tools/shoot-level.mjs eastbank <dir> x,z,heading …` takes screenshots. The raw first export lives on the
 `level/eastbank-school` branch.
+
+## Foundry
+
+`?level=foundry`. A park built entirely from code rather than Blender: `node tools/build-foundry.mjs` writes
+`dist/assets/levels/foundry.glb` (about a minute; it runs the usual optimiser at the end). Change the park in
+`tools/foundry/park.mjs` and rebuild; `node tools/foundry/probe.mjs x0,z0 x1,z1` prints the collision heights along a line without a
+browser.
+
+What is in it (x is east, z is south; you start on the tower facing east):
+
+- **Start tower** (6.5 m, north-west corner): a 26° roll-in east into the **loop** (4.6 m teardrop, ply on an orange steel frame), a
+  run-out to a 3.3 m **quarter pipe**; and a 30° bank south into the plaza.
+- **Street**: the **Big Seven** (7 stairs, two handrails, a hubba), the **five** (handrail and hubba, faces east), the **three**
+  (centre rail, faces north), each with a bank up to its deck; a long ledge, a flat bar, a manual pad, a **funbox** with a kinked rail
+  beside it, a **curved ledge**, a kicker, and a seat-height ledge all round the outside wall.
+- **Transition**: a ply **mini half-pipe** (1.8 m), a 2.4 m deep **bowl** with pool coping and a tile band, a smaller quarter pipe.
+
+Every rail, ledge edge and coping has a grind line (28 in all). The look: Poly Haven CC0 textures (`source/textures`, graded to sit
+with the other parks' concrete), and ambient occlusion plus a little weathering baked into the vertex colours, so contact shadows
+under ledges, in stair corners and in the bowl cost nothing on the headset. On the measuring grid the worst view is about 230k
+triangles and 36 draw calls (`node tools/measure-level.mjs foundry 8`), 4.6 MB to download. The materials are named by kind
+(`Concrete | brushed slab`, `Concrete | smooth transition`, `Concrete | precast`, `Timber | ply deck`, `Steel | …`), so swapping in
+shared PBR sets later is a change to `MATERIALS` in `park.mjs`.
+
+Checks that pass on it: `check-level` (both spawns, the ground grid, all 28 grind lines catch), `check-stairs` (all three sets, rolled
+and ollied), `check-loop` (round the loop from the tower whether you hold forward, push and coast, or just roll off).
 
 ## Cache busting (so you always test the latest)
 
