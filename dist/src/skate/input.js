@@ -36,7 +36,6 @@ export function createInput(renderer) {
     const keyStance = keys.has('KeyZ');
     if (keyStance && !edge.keyStance) toggleStance = true;
     edge.keyStance = keyStance;
-    held.spawn = keys.has('KeyR') ? held.spawn + dt : 0;
 
     const session = renderer.xr.isPresenting ? renderer.xr.getSession() : null;
     let leftSqueeze = false, rightSqueeze = false, leftX = false, leftY = false;
@@ -62,8 +61,9 @@ export function createInput(renderer) {
       }
       if (leftY && !edge.stance) toggleStance = true;
       edge.stance = leftY;
-      held.spawn = leftX ? held.spawn + dt : (keys.has('KeyR') ? held.spawn : 0);
     }
+    // Held left X (or R) takes you back to the entrance. (The keyboard used to zero this every frame before the controller could add to it.)
+    held.spawn = leftX || keys.has('KeyR') ? held.spawn + dt : 0;
     held.recenter = leftSqueeze && rightSqueeze && !block.recenter ? held.recenter + dt : 0;
     if (held.recenter > 0.6) { recenter = true; held.recenter = -1e9; }
     if (held.spawn > 0.8) { toSpawn = true; held.spawn = -1e9; }

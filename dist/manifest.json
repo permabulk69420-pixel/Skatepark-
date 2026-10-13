@@ -1,5 +1,5 @@
 {
- "build": "705f3b6",
+ "build": "b4a0b2b",
  "files": {
   "src/main.js": "27e11dccca",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -14,7 +14,7 @@
   "src/skate/hands.js": "3df8d3a5bd",
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "315e33c808",
-  "src/skate/input.js": "96e7d0a9a3",
+  "src/skate/input.js": "dc09b30b4e",
   "src/skate/levels.js": "cdc29e1d5e",
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",
@@ -22,7 +22,7 @@
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
   "src/skate/sfx.js": "8e31f7fa09",
-  "src/skate/sim.js": "6503a11678",
+  "src/skate/sim.js": "16678ce759",
   "src/skate/world.js": "e63c7edae0",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
   "vendor/addons/math/ConvexHull.js": "04452fd4ef",
