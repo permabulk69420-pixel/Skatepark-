@@ -13,6 +13,17 @@ export const LEVELS = {
     shadowHalf: 85,
     noShadow: /Landscape|Asphalt/
   },
+  megaramp: {
+    name: 'Mega Ramp',
+    file: 'assets/levels/megaramp.glb',
+    blurb: 'Competition mega ramp · 25 m roll-in, the big gap and a practice gap, a vert quarter pipe · RIFT board',
+    // Built in Blender (source/levels/megaramp/megaramp.blend), exported raw by tools/export-blend.py (not optimised).
+    bounds: { x: 31.5, z: 81.5, cx: 0, cz: -60 },
+    shadowHalf: 88,
+    center: { x: 0, z: -60 },
+    noShadow: /Ground|Apron|Collision/i,
+    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
+  },
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',
