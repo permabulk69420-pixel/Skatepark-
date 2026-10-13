@@ -6,6 +6,7 @@ import { acceleratedRaycast, computeBoundsTree } from '../vendor/mesh-bvh.js';
 import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 import { SkateWorld } from './skate/world.js';
 import { parseGrindPaths } from './skate/rails.js';
+import { parseLoopPaths } from './skate/loop.js';
 import { Skater, Mode } from './skate/sim.js';
 import { createInput } from './skate/input.js';
 import { createHaptics } from './skate/haptics.js';
@@ -85,6 +86,7 @@ scene.add(sun, sun.target);
 
 const collision = [];
 const grindNodes = [];
+const loopNodes = [];
 const renderMeshes = [];
 let park, lods, ready = false;
 const spawn = new THREE.Vector3(0, 0.045, 40);
@@ -117,6 +119,8 @@ const feel = (type, data = {}) => {
     case 'manualEnd': if (data.reason !== 'bail' && data.time > 0.5) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'grindEnd': if (data.reason !== 'bail' && data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     case 'bail': haptics.pulse(1, 240); hud?.say('BAIL', 1.2); break;
+    case 'loopStart': haptics.pulse(0.4, 30); break;
+    case 'loopEnd': if (data.completed) { haptics.pulse(0.9, 90); hud?.say('LOOP!', 1.6); } break;
     case 'grabEnd': if (data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     default: break;
   }
@@ -127,6 +131,9 @@ function continuousFeedback() {
     if (sim.manual) haptics.rumble(0.12 + 0.45 * sim.manual.bal * sim.manual.bal, 'both', 40);
     else if (sim.braking) haptics.rumble(0.3, 'both', 40);
     else if (sim.speed > 0.4) haptics.rumble(0.03 + 0.06 * Math.min(sim.speed / 10, 1), 'both', 60);
+  } else if (sim.mode === Mode.LOOP && sim.loop) {
+    // The track presses harder the faster you go round it.
+    haptics.rumble(0.08 + 0.3 * Math.min(Math.abs(sim.loop.gs) / 12, 1), 'both', 40);
   } else if (sim.mode === Mode.GRIND && sim.grind) {
     // The closer to falling off, the harder the rail shakes the board.
     haptics.rumble(0.28 + 0.5 * sim.grind.bal * sim.grind.bal, 'both', 35);
@@ -153,6 +160,7 @@ try {
   park.updateMatrixWorld(true);
   park.traverse((object) => {
     if (object.userData.role === 'grind_path') grindNodes.push(object);
+    if (object.userData.role === 'loop_path') loopNodes.push(object);
     if (!object.isMesh) return;
     if (object.userData.role === 'collision' || object.name.startsWith('COL_')) {
       collision.push(object);
@@ -190,7 +198,8 @@ try {
 
   const world = new SkateWorld(collision);
   const paths = parseGrindPaths(grindNodes);
-  sim = new Skater({ world, paths, bounds: level.bounds, requireGrind: true, onEvent: (type, data) => feel(type, data) });
+  const loops = parseLoopPaths(loopNodes);
+  sim = new Skater({ world, paths, loops, bounds: level.bounds, requireGrind: true, onEvent: (type, data) => feel(type, data) });
   sim.setSpawn(spawn, spawnHeading);
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);
@@ -206,7 +215,7 @@ try {
   ready = true;
   progress.style.width = '100%';
   document.querySelector('.progress').style.display = 'none';
-  status.textContent = `${level.name} ready · ${paths.length} grindable lines`;
+  status.textContent = `${level.name} ready · ${paths.length} grindable lines${loops.length ? ` · ${loops.length} loop${loops.length > 1 ? 's' : ''}` : ''}`;
   const button = VRButton.createButton(renderer, { optionalFeatures: ['local-floor'] });
   document.body.append(button);
   if (!navigator.xr) document.querySelector('#controls').innerHTML = document.querySelector('#controls-desktop').innerHTML;

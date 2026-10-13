@@ -185,6 +185,16 @@ export const TUNING = Object.freeze({
   stallPopScale: 0.55,
   stallAutoRock: 0.8,        // a stall held this long rocks back in by itself (no pop needed), instead of ending in a balance bail
 
+  // Loops (loop.js). Rolling onto the curved part of a loop's track, the board follows the track; it falls (a bail) wherever the
+  // track would have to pull it on: speed² × curvature less than the part of gravity pulling it off, upside down.
+  loopEnterNy: 0.97,         // the track counts as the loop where its normal has tilted past this (before that it is plain ground)
+  loopFriction: 0.35,        // × the ground's rolling drag and air drag: a smooth ply track
+  loopPump: 2.6,             // m/s² from holding forward on the bottom half of the loop (pumping it)
+  loopGrip: 0,               // m/s² of "stick" before the board falls off upside down (0: plain physics)
+  loopSteer: 0.7,            // m/s of drift across the track at full stick
+  loopEdge: 0.3,             // the board's middle keeps at least this far from the edge of the track
+  loopPopNy: 0.6,            // ollie out of the loop only where the track is at least this flat
+
   // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
   // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.
   flickThreshold: 0.5,       // how far the stick has to go either way to count as a flick

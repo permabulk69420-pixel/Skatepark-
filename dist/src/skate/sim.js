@@ -6,7 +6,7 @@ const TAU = Math.PI * 2;
 const wrap = (a) => a - TAU * Math.round(a / TAU);
 const UP = new THREE.Vector3(0, 1, 0);
 
-export const Mode = Object.freeze({ GROUND: 'ground', AIR: 'air', GRIND: 'grind', BAIL: 'bail' });
+export const Mode = Object.freeze({ GROUND: 'ground', AIR: 'air', GRIND: 'grind', BAIL: 'bail', LOOP: 'loop' });
 
 // Board heading h points the nose along (-sin h, 0, -cos h): h = 0 is -Z, the way the park entrance faces.
 export const headingVec = (h, out) => out.set(-Math.sin(h), 0, -Math.cos(h));
@@ -27,6 +27,8 @@ const _gt = new THREE.Vector3(), _np = new THREE.Vector3(), _n = new THREE.Vecto
 const _probe = new THREE.Vector3(), _P = new THREE.Vector3(), _u = new THREE.Vector3();
 const _F = new THREE.Vector3(), _t = new THREE.Vector3(), _basisM = new THREE.Matrix4(), _q = new THREE.Quaternion();
 const _hit = { y: 0, nx: 0, ny: 1, nz: 0 };
+const _lf = { p: new THREE.Vector3(), t: new THREE.Vector3(), n: new THREE.Vector3(), b: new THREE.Vector3(), k: 0 };
+const _lp = { s: 0, l: 0, h: 0 };
 const _cast = { dist: 0, nx: 0, ny: 1, nz: 0 };
 const _sf = new THREE.Vector3(), _sr = new THREE.Vector3(), _so = new THREE.Vector3(), _sd = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _wn = new THREE.Vector3(), _cand = new THREE.Vector3();
@@ -37,12 +39,16 @@ const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Y = new THREE.Vector3(0, 1, 0), 
 // The skater is the board: position is where the wheels meet the ground, heading is which way the nose points.
 // The rider is placed over it by the view layer. Everything runs in fixed-ish substeps so frame rate does not change the feel.
 export class Skater {
-  constructor({ world, paths = [], onEvent = () => {}, random = Math.random, bounds = T.bounds, requireGrind = false }) {
+  constructor({ world, paths = [], loops = [], onEvent = () => {}, random = Math.random, bounds = T.bounds, requireGrind = false }) {
     this.world = world;
     this.requireGrind = requireGrind;           // true in the game: rails and copings are only caught after a press of the grind button
     this.grindHeld = false; this.grindWas = false; this.grindArm = 0;
     this.bounds = bounds;                        // the level's play area: half-extents x/z around an optional centre cx/cz
     this.paths = paths;
+    this.loops = loops;                          // loop-the-loops (loop.js): ridden as a position along the track, like a grind
+    for (const loop of loops) [loop.sIn, loop.sOut] = loop.window(T.loopEnterNy);
+    this.loop = null;
+    this.frameRight = null;                      // while on a loop, the board's right side (heading + up cannot describe upside down)
     this.onEvent = onEvent;
     this.random = random;
 
@@ -81,7 +87,7 @@ export class Skater {
     this.heading = where.heading;
     this.vel.set(0, 0, 0);
     this.mode = Mode.AIR;
-    this.grind = null; this.bailBoard = null;
+    this.grind = null; this.bailBoard = null; this.loop = null; this.frameRight = null;
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
@@ -143,6 +149,7 @@ export class Skater {
       for (let i = 0; i < n && this.mode !== Mode.BAIL; i++) {
         if (this.mode === Mode.GROUND) this.groundStep(h);
         else if (this.mode === Mode.AIR) this.airStep(h);
+        else if (this.mode === Mode.LOOP) this.loopStep(h);
         else this.grindStep(h);
       }
       if (this.pos.y < T.killY) this.respawn(this.spawn);
@@ -315,6 +322,7 @@ export class Skater {
 
     _np.copy(this.pos).addScaledVector(this.vel, h);
     this.moveOnGround(_np, h);
+    if (this.mode === Mode.GROUND && this.loops.length && this.tryEnterLoop()) return;
     if (this.mode === Mode.GROUND && this.groundNormal.y > 0.92 && this.groundedTime > 0.5 && this.speed < 9) {
       this.safe.pos.copy(this.pos); this.safe.heading = this.heading;
     }
@@ -1264,6 +1272,97 @@ export class Skater {
     this.onEvent('grindEnd', { reason, name: g.name, time: g.time });
   }
 
+  // ----- loops -----------------------------------------------------------------------------------------------
+  // Rolling onto the curved part of a loop's track hands the board to the loop: from here it is a position s along the track, a
+  // signed speed along it and a sideways offset. Gravity along the track, rolling drag, and the one real rule of a loop: the track
+  // can only push, so wherever it would have to pull (speed² × curvature less than gravity's share pulling you off it) you fall.
+  tryEnterLoop() {
+    for (const loop of this.loops) {
+      if (!loop.bounds.containsPoint(this.pos)) continue;
+      const p = loop.project(this.pos, loop.sIn, loop.sOut, _lp, 0.25);
+      if (!p || p.s < loop.sIn || p.s > loop.sOut || Math.abs(p.l) > loop.width / 2 - T.loopEdge * 0.5) continue;
+      loop.frame(p.s, _lf);
+      const gs = this.vel.dot(_lf.t);
+      headingVec(this.heading, _H);
+      this.endManual('loop');
+      this.mode = Mode.LOOP;
+      this.loop = { path: loop, s: p.s, gs, l: clamp(p.l, -(loop.width / 2 - T.loopEdge), loop.width / 2 - T.loopEdge), nose: _H.dot(_lf.t) >= 0 ? 1 : -1, time: 0, minNy: 1, entry: gs >= 0 ? 'start' : 'end' };
+      this.onEvent('loopStart', { name: loop.name, speed: Math.abs(gs) });
+      this.placeOnLoop(0);
+      return true;
+    }
+    return false;
+  }
+
+  loopStep(h) {
+    const L = this.loop;
+    const path = L.path;
+    L.time += h;
+    path.frame(L.s, _lf);
+    // Ollie out only where the track is still fairly flat (the run in and out); higher up there is nothing to pop from.
+    if (this.popRequest !== null) {
+      if (_lf.n.y > T.loopPopNy) { const charge = this.popRequest; this.leaveLoop('pop'); this.pop(charge); return; }
+      this.popRequest = null;
+    }
+    let gs = L.gs;
+    gs -= T.gravity * _lf.t.y * h;
+    const sp = Math.abs(gs);
+    gs -= Math.sign(gs) * Math.min(sp, (T.rollFriction + T.airDrag * sp * sp) * T.loopFriction * h);
+    // Forward on the stick pumps the bottom half of the loop (the same input that pumps a transition).
+    if (this.drive > T.driveThreshold && _lf.n.y > 0 && sp > 1.2) gs += Math.sign(gs) * T.loopPump * clamp(_lf.k * 2, 0, 1) * h;
+    // The track pushes the board towards the middle of the loop with whatever it takes to bend its path: speed² × curvature,
+    // less the part of gravity already pressing it on (n.y > 0) or pulling it off (n.y < 0, upside down). Below zero it falls.
+    const press = gs * gs * _lf.k + T.gravity * _lf.n.y;
+    L.minNy = Math.min(L.minNy, _lf.n.y);
+    if (press < -T.loopGrip) {
+      this.vel.copy(_lf.t).multiplyScalar(gs);
+      this.onEvent('loopEnd', { reason: 'fell', name: path.name, completed: false });
+      this.bail('loop');
+      return;
+    }
+    L.gs = gs;
+    L.s += gs * h;
+    // Steering drifts you across the track, never off its edge.
+    const edge = path.width / 2 - T.loopEdge;
+    L.l = clamp(L.l + this.steer * T.loopSteer * h * Math.sign(gs || 1), -edge, edge);
+    if (L.s <= path.sIn && gs < 0) { this.leaveLoop('start'); return; }
+    if (L.s >= path.sOut && gs > 0) { this.leaveLoop('end'); return; }
+    this.placeOnLoop(h);
+  }
+
+  // Board on the track at the loop's s and l: position, normal, velocity, heading (and the right-side vector for the view).
+  placeOnLoop(h) {
+    const L = this.loop;
+    L.path.frame(L.s, _lf);
+    this.pos.copy(_lf.p).addScaledVector(_lf.b, L.l);
+    this.groundNormal.copy(_lf.n);
+    this.vel.copy(_lf.t).multiplyScalar(L.gs);
+    this.rollSpeed = L.gs * L.nose;
+    // The nose points along the track (or back along it, riding fakie). Its horizontal direction is the heading; at the very top it
+    // flips round, which is what riding over the top is. The board's right side carries the attitude through it.
+    _F.copy(_lf.t).multiplyScalar(L.nose);
+    if (Math.hypot(_F.x, _F.z) > 0.05) this.heading = yawOf(_F.x, _F.z);
+    this.frameRight = (this.frameRight || new THREE.Vector3()).crossVectors(_F, _lf.n).normalize();
+  }
+
+  leaveLoop(where) {
+    const L = this.loop;
+    L.path.frame(clamp(L.s, 0, L.path.length), _lf);
+    this.pos.copy(_lf.p).addScaledVector(_lf.b, L.l);
+    this.groundNormal.copy(_lf.n);
+    // Out along the lane: the track's last bit of sideways drift is not carried on across the floor.
+    _F.copy(_lf.t).addScaledVector(L.path.across, -_lf.t.dot(L.path.across)).normalize();
+    this.vel.copy(_F).multiplyScalar(L.gs);
+    _F.multiplyScalar(L.nose);
+    this.heading = yawOf(_F.x, _F.z);
+    this.mode = Mode.GROUND;
+    this.loop = null;
+    this.frameRight = null;
+    // All the way round: came in one end and out of the other, having been upside down.
+    const completed = L.minNy < -0.9 && ((where === 'end' && L.entry === 'start') || (where === 'start' && L.entry === 'end'));
+    this.onEvent('loopEnd', { reason: where, name: L.path.name, completed, time: L.time });
+  }
+
   // ----- bail ------------------------------------------------------------------------------------------------
   bail(reason) {
     if (this.mode === Mode.BAIL) return;
@@ -1279,6 +1378,7 @@ export class Skater {
       spin: new THREE.Vector3((this.random() - 0.5) * 14, (this.random() - 0.5) * 10, (this.random() - 0.5) * 14),
       quat: this.boardQuaternion(new THREE.Quaternion())
     };
+    this.loop = null; this.frameRight = null;
     this.endFlip();
     this.flipArm = 0;
     this.onEvent('bail', { reason });
@@ -1311,6 +1411,7 @@ export class Skater {
   // ----- display ---------------------------------------------------------------------------------------------
   updateVisuals(dt) {
     if (this.mode === Mode.GRIND && this.grind) this.up.copy(this.grind.u);
+    else if (this.mode === Mode.LOOP) this.up.lerp(this.groundNormal, 1 - Math.exp(-60 * dt)).normalize();
     else if (this.mode === Mode.GROUND) {
       let lift = 0;
       _u.copy(this.groundNormal);
@@ -1353,7 +1454,8 @@ export class Skater {
   // frame the rider is bolted to: heading plus whatever surface (or grind tilt) the board is lying on.
   boardQuaternion(out, flair = true, up = this.up) {
     headingVec(this.heading, _H);
-    _R.crossVectors(_H, up);
+    if (this.frameRight) _R.copy(this.frameRight).addScaledVector(up, -this.frameRight.dot(up));   // on a loop: the track's own frame
+    else _R.crossVectors(_H, up);
     if (_R.lengthSq() < 1e-8) _R.set(Math.cos(this.heading), 0, -Math.sin(this.heading));
     _R.normalize();
     _f.crossVectors(up, _R);
