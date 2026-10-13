@@ -40,6 +40,7 @@ export class SkateWorld {
     if (this.normal.y < 0.05) return null;
     out.y = hit.point.y;
     out.nx = this.normal.x; out.ny = this.normal.y; out.nz = this.normal.z;
+    out.object = hit.object;          // which collision mesh (the sounds tell wood from concrete by its name)
     return out;
   }
 

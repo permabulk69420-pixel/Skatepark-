@@ -93,6 +93,14 @@ speed builds pass after pass until you can reach the lip and air out of it. An o
 into the pipe. In VR you can also **pump** with your real
 knees: squat, then stand as you go up a transition and you gain speed (squatting costs a little, so mashing doesn't pay).
 
+**Sound.** Board sounds play through Web Audio alongside the music (after the first click, key press or VR session): a pop on the
+ollie, a landing that gets heavier with the drop, a clank as you lock onto a rail or coping, a metal grind on rails and coping and a
+concrete grind on ledges (both rise in pitch with speed), rolling that gets louder and higher as you speed up (on concrete, or on
+ply: the mini ramp and the loop), a scuff on every push, and a slam and a clattering board when you bail. Levels in `SFX` in
+`sfx.js`; the clips are cut from CC0 Freesound recordings (`source/sfx`, credits in `source/sfx/CREDITS.md`) by
+`node tools/build-sfx.mjs`, which says where in each recording each clip starts; `node tools/check-sfx.mjs` plays them in a
+headless browser and reports what sounded.
+
 Haptics: roll rumble, push ticks, crouch tick, pop snap, landing thump scaled to the impact, grind rumble that gets
 harder as you near falling, wall hits and bails.
 
@@ -113,9 +121,11 @@ dist/src/skate/input.js    Quest controllers / keyboard
 dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding), with the adaptive grip so a hand can close round something
 dist/src/skate/board-grab.js   grabbing the board in the air (nose / tail / middle), from Sandboarding; handle-hold.js, grip-contact.js, adaptive-grip.js and grip-poses.js are the hand-fitting code it rests on
 dist/src/skate/haptics.js  controller pulses
+dist/src/skate/sfx.js      board sounds: one-shots on the skater's events, rolling and grinding loops that follow its speed
 dist/src/skate/music.js    the soundtrack: the three tracks in dist/assets/music play one after another, forever (starts on the first click / key press / VR session; volume in `MUSIC`)
 dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
+dist/assets/sfx/           the board sounds (mono Ogg Vorbis, 264 KB in all; tools/build-sfx.mjs makes them from source/sfx)
 dist/assets/music/         the soundtrack, three mp3s at 96 kbps (4 MB in all)
 dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb, foundry.glb)
 dist/models/hands/         the hand rigs
