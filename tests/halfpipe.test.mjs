@@ -339,3 +339,34 @@ test('an ollie while rolling up a bank or bump gets you into the air', () => {
     assert.ok(air > 0.2, `${degrees}° bank, speed ${speed}, pop above y ${popAtY}: only ${air.toFixed(2)} s in the air in the first 0.4 s`);
   }
 });
+
+// A board that goes up the wall a few degrees off square must keep going up it. Its forward used to be the heading flattened onto the
+// surface, which near the vertical leaves only the sideways part: pumping pushed it along the wall and its climb was gripped away as
+// sideways slip, so it arrived at the lip drifting along the wall (0.9 → 3.4 m/s at 9 m/s and 6°) and the next air landed crooked.
+test('a run up the wall a few degrees off square keeps its sideways speed, pumping or not', () => {
+  for (const drive of [0, 1]) {
+    const s = pipeSkater({ requireGrind: true });
+    rollFrom(s, 0, 9, -1);
+    s.heading += 0.1;
+    let topSide = 0;
+    for (let i = 0; i < 72 * 1.2; i++) { s.update({ drive }, 1 / 72); if (s.pos.y > 1.6) topSide = Math.max(topSide, Math.abs(s.vel.z)); }
+    assert.ok(topSide < 9 * Math.sin(0.1) + 0.25, `sideways near the top ${topSide.toFixed(2)} m/s (drive ${drive})`);
+  }
+});
+
+test('fast airs from a slightly skewed run, back and forth, ollieing every wall: no bails', () => {
+  for (const yaw of [0.15, 0.3]) {
+    const events = [];
+    const s = pipeSkater({ events, requireGrind: true });
+    rollFrom(s, 0, 9, -1);
+    s.heading += yaw;
+    let popped = false;
+    for (let i = 0; i < 72 * 15; i++) {
+      let jump = false;
+      if (s.mode === 'ground' && Math.abs(s.pos.x) < 1) popped = false;
+      if (!popped && s.mode === 'ground' && s.pos.y > 1.2 && s.vel.y > 0) { jump = true; if (s.crouchTime > 0.12) { jump = false; popped = true; } }
+      s.update({ jump, drive: 1 }, 1 / 72);
+    }
+    assert.deepEqual(events.filter((e) => e.type === 'bail').map((e) => e.data.reason), [], `skew ${yaw}`);
+  }
+});
