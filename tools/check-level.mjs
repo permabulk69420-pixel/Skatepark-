@@ -4,7 +4,7 @@
 //   3. every grind path catches a board that is dropped onto it, travelling along it
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);
 try {

@@ -2,7 +2,7 @@
 //   node tools/profile-ramp.mjs <levelId> <x0,z0> <x1,z1> [step]
 import { serveDist, openPage } from './browser.mjs';
 
-const [levelId = 'eastbank', a = '-76,-3', b = '-69,-3', step = '0.1'] = process.argv.slice(2);
+const [levelId = 'foundry', a = '20,-27.5', b = '28,-27.5', step = '0.1'] = process.argv.slice(2);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);
 try {

@@ -17,7 +17,7 @@ test('dist/manifest.json is up to date (run `npm run manifest` after changing an
 
 test('every game module and model is in the manifest, so nothing is ever loaded unversioned', () => {
   const { files } = buildManifest(dist);
-  for (const file of ['src/main.js', 'src/skate/sim.js', 'src/skate/rider.js', 'assets/skatepark.glb', 'assets/levels/eastbank-school.glb', 'assets/levels/burnside.glb', 'assets/skateboard.glb', 'models/hands/LeftHand.glb', 'vendor/three.module.js', 'vendor/three.core.js']) {
+  for (const file of ['src/main.js', 'src/skate/sim.js', 'src/skate/rider.js', 'assets/skatepark.glb', 'assets/levels/foundry.glb', 'assets/skateboard.glb', 'models/hands/LeftHand.glb', 'vendor/three.module.js', 'vendor/three.core.js']) {
     assert.ok(files[file], `${file} missing from the manifest`);
   }
   for (const f of fs.readdirSync(path.join(dist, 'src/skate'))) assert.ok(files[`src/skate/${f}`], `src/skate/${f} missing`);

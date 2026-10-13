@@ -76,8 +76,7 @@ test('chunks switch independently and meshes without a lod tag are left alone', 
 test('levels: unknown or missing ?level falls back to the default, known ones are picked', () => {
   assert.equal(pickLevel(''), DEFAULT_LEVEL);
   assert.equal(pickLevel('?level=nope'), DEFAULT_LEVEL);
-  assert.equal(pickLevel('?level=eastbank'), 'eastbank');
-  assert.equal(pickLevel('?level=burnside'), 'burnside');
+  assert.equal(pickLevel('?level=foundry'), 'foundry');
   for (const [id, level] of Object.entries(LEVELS)) {
     assert.ok(level.name && level.file && level.blurb, `${id} is missing text or a file`);
     assert.ok(level.bounds.x > 0 && level.bounds.z > 0 && level.shadowHalf > 0, `${id} has no play area`);
