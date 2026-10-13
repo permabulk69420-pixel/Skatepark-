@@ -150,7 +150,7 @@ export function buildPark() {
 
   // Cheek wall down the right side of the stairs, a ledge 0.4 m over the nosings, with the handrail on it.
   {
-    const top = 0.4, z0 = 0.6, z1 = -run - 0.5;
+    const top = 0.4, z0 = S.zBack - 0.01, z1 = -run - 0.5;   // on along the upper plaza as a low ledge
     const yAt = (z) => (z > 0 ? H + top : Math.max(top, nosingY(z) + top));
     const zs = [z0, 0]; for (let k = 1; k <= 12; k++) zs.push(-run * k / 12); zs.push(z1);
     const pts = zs.map((z) => [z, yAt(z)]);
@@ -166,9 +166,9 @@ export function buildPark() {
     both(P.limestone, 'Cheek', [V(S.stairX1, 0, z1), V(S.cheekX1, 0, z1), V(S.cheekX1, yAt(z1), z1), V(S.stairX1, yAt(z1), z1)], V(0, 0, -1));
     addPath('Cheek_Ledge', 'ledge', pts.map(([z, y]) => V(S.stairX1 + 0.03, y + 0.027, z)));
     // handrail posts on the wall, the rail 0.85 m above it
-    const rx = (S.stairX1 + S.cheekX1) / 2, rail = pts.map(([z, y]) => V(rx, y + 0.85, z));
+    const rx = (S.stairX1 + S.cheekX1) / 2, rail = [[0.6, H + top], ...pts.slice(1)].map(([z, y]) => V(rx, y + 0.85, z));
     tube(P.rail, rail, 0.024, { segments: 12 });
-    for (const z of [z0 - 0.1, -run * 0.33, -run * 0.66, z1 + 0.1]) tube(P.rail, [V(rx, yAt(z), z), V(rx, yAt(z) + 0.83, z)], 0.02, { segments: 10 });
+    for (const z of [0.5, -run * 0.33, -run * 0.66, z1 + 0.1]) tube(P.rail, [V(rx, yAt(z), z), V(rx, yAt(z) + 0.83, z)], 0.02, { segments: 10 });
     addPath('MainStairs_Handrail', 'rail', rail);
   }
 
@@ -308,6 +308,7 @@ export function buildPark() {
     // The balcony slab that runs the length of the building, 2.3 m out over the plaza, with its railing.
     const slab0 = strips[0][0], slab1 = strips[0][1], out = 2.3;
     roundedBox(P.concrete, V(x - 0.4, slab0, z0), V(x + out, slab1, z1), 0.03);
+    face(P.concrete, [V(x - 0.4, slab0, z0), V(x + out, slab0, z0), V(x + out, slab0, z1), V(x - 0.4, slab0, z1)], V(0, -1, 0));   // its underside
     box(col('Building'), V(x - 0.4, slab0, z0), V(x + out, slab1, z1), {});
     for (let z = z0 + 0.3; z < z1; z += 1.6) tube(P.frame, [V(x + out - 0.12, slab1, z), V(x + out - 0.12, slab1 + 1.05, z)], 0.022, { segments: 8 });
     tube(P.rail, [V(x + out - 0.12, slab1 + 1.05, z0 + 0.3), V(x + out - 0.12, slab1 + 1.05, z1 - 0.3)], 0.026, { segments: 10 });
