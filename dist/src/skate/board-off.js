@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 
 // Taking the board off your feet in the air and catching it again (board-grab.js does the holding, sim.js the consequences).
-// While you hold the board in a grab, press the detach button (left trigger; C on a flat screen): the board leaves your feet and
-// stays in your hand exactly where it was. Press it again to catch: the board snaps back under your feet if it is close enough and
-// lined up well enough at that moment. Land without it and you bail. Held well away from you it is a Christ Air.
+// While you hold the board in a grab, squeeze the detach button (left trigger; C on a flat screen): the board leaves your feet and
+// stays in your hand exactly where it was. Let go of the button to catch: the board snaps back under your feet if it is close enough
+// and lined up well enough at that moment (if not, it stays in your hand: squeeze and let go again). Land without it and you bail.
+// Held well away from you it is a Christ Air.
 export const BOARD_OFF = Object.freeze({
   clean: Object.freeze({ angle: THREE.MathUtils.degToRad(25), distance: 0.3 }),   // within both: a clean catch
   sketchy: Object.freeze({ angle: THREE.MathUtils.degToRad(60), distance: 0.5 }), // within both: caught, but you land sketchy

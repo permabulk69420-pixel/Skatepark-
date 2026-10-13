@@ -1,5 +1,5 @@
 // Headless check of taking the board off your feet and catching it (board-off.js): fakes two controllers, grabs the board in mid-air
-// with the right hand (an Indy), presses detach (C), swings the board out to the side (a Christ Air), tries to catch it out there (a
+// with the right hand (an Indy), holds detach (C), swings the board out to the side (a Christ Air), lets go out there (a
 // miss), brings it back under the feet and catches it (clean), and reports each step. Optional: a folder to save screenshots in.
 //   node tools/check-board-off.mjs [levelId] [screenshotDir]
 import { serveDist, openPage } from './browser.mjs';
@@ -46,7 +46,9 @@ try {
     const { sim, grab, boardView } = window.__skate;
     return { boardOff: sim.boardOff, held: grab.off, trick: sim.offTrick?.name ?? null, far: +(sim.offTrick?.far ?? 0).toFixed(2), boardFromFeet: +boardView.root.position.distanceTo(sim.pos).toFixed(2), grabs: grab.names() };
   });
-  const pressDetach = async () => { await page.keyboard.down('KeyC'); await page.evaluate(() => window.__frames(3)); await page.keyboard.up('KeyC'); await page.evaluate(() => window.__frames(3)); };
+  // Hold the detach button to take the board off; let go to catch it.
+  const squeeze = async () => { await page.keyboard.down('KeyC'); await page.evaluate(() => window.__frames(3)); };
+  const letGo = async () => { await page.keyboard.up('KeyC'); await page.evaluate(() => window.__frames(3)); };
   const events = [];
   await page.exposeFunction('__event', (t, d) => events.push(t + (d?.quality ? `:${d.quality}` : '')));
   await page.evaluate(() => { const g = window.__skate.grab; void g; const sim = window.__skate.sim; const orig = sim.onEvent; sim.onEvent = (t, d) => { window.__event(t, d); orig(t, d); }; });
@@ -68,9 +70,9 @@ try {
   });
   note('grab', { ...start, ...(await status()) });
 
-  // 2. take it off your feet
-  await pressDetach();
-  note('detach (C)', await status());
+  // 2. take it off your feet (and keep holding the button)
+  await squeeze();
+  note('detach (hold C)', await status());
 
   // 3. swing it out to the side and up: a Christ Air
   const moved = await page.evaluate(async () => {
@@ -100,9 +102,10 @@ try {
     await page.evaluate(() => { window.__skate.renderer.render = window.__origRender; });
   }
 
-  // 4. try to catch it out there: too far, nothing happens
-  await pressDetach();
-  note('catch at arm\'s length', await status());
+  // 4. let go out there: too far to catch, so it stays in your hand
+  await letGo();
+  note('let go at arm\'s length', await status());
+  await squeeze();
 
   // 5. bring it back under your feet and catch it
   await page.evaluate(async () => {
@@ -112,7 +115,7 @@ try {
     await window.__frames(20);
   });
   note('bring it back', await status());
-  await pressDetach();
+  await letGo();
   await page.evaluate(() => window.__frames(20));
   note('catch under your feet', await status());
   note('events', { events });
