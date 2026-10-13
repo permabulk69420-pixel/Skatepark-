@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import { serveDist, openPage } from './browser.mjs';
 
-const [levelId = 'eastbank', outDir = '.', ...views] = process.argv.slice(2);
+const [levelId = 'foundry', outDir = '.', ...views] = process.argv.slice(2);
 const spots = views.length ? views.map((v) => v.split(',').map(Number)) : [[22, 44, 0], [4, -20, 200], [-30, -10, 90]];
 fs.mkdirSync(outDir, { recursive: true });
 const { server, origin } = await serveDist();

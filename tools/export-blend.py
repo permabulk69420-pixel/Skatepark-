@@ -4,7 +4,7 @@
 # The blend's textures may be linked from a library file that is not available; any image named <name>.(webp|jpg|png) in the
 # textures directory is attached in its place (dump-textures.mjs can pull them from an existing game GLB).
 # An optional patch file (a module with apply()) is run inside Blender just before export, for fixes to the model that should
-# be repeated on every new version of the level (see tools/patches/eastbank.py).
+# be repeated on every new version of the level (tools/patches/<level>.py).
 # Then:  node tools/optimise-level.mjs <out.raw.glb> dist/assets/levels/<level>.glb
 import bpy, sys, os
 

@@ -2,7 +2,7 @@
 
 A Quest 3 WebXR skateboarding test bed: you ride a RIFT board around, to find out whether the skating itself is fun.
 There are two levels, picked with `?level=` (or the links in the info panel): **Breakwater** (a 104 × 88 m skatepark, the
-default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campus) and **Burnside** (`?level=burnside`, a 30 × 35 m pools-and-bridge park rebuilt from reference, work in progress) and **Foundry**
+default) and **Foundry**
 (`?level=foundry`, an 80 × 72 m park with a **loop-the-loop**, built entirely from code: see [Foundry](#foundry)). Static files, no build step — `dist/` is what GitHub Pages serves (push to `main` deploys).
 
 ## Playing
@@ -54,7 +54,7 @@ still face the way you were going) and you ride on with the tail leading. Land i
 **Ramps that end in a deck.** A steep bank (up to about 70° at its top) that meets a flat deck is ridden, not treated as a wall: at the crest
 the board is judged by the ground under its middle, and once the middle is over a flat deck it flies off the lip with the speed it
 has (ollie at the lip and it carries on over the top; otherwise the half-pipe air logic brings you back into the ramp). Tune it with
-`crestMinNormalY`, `crestDeckNormalY` and `crestLeave` in `config.js`. `tests/crest.test.mjs` is built from the school's real ramp profile.
+`crestMinNormalY`, `crestDeckNormalY` and `crestLeave` in `config.js`. `tests/crest.test.mjs` is built from a real ramp profile (from an earlier level).
 
 **Loops.** Roll into a loop's track and the board follows it all the way round: up the wall, upside down over the top and back
 down onto the way out, which runs beside the way in. Gravity slows you on the way up; holding forward pumps the bottom half. The
@@ -129,7 +129,7 @@ dist/src/skate/hud.js      grind balance gauge
 dist/assets/skateboard.glb game version of the board (2 MB)
 dist/assets/sfx/           the board sounds (mono Ogg Vorbis, 264 KB in all; tools/build-sfx.mjs makes them from source/sfx)
 dist/assets/music/         the soundtrack, three mp3s at 96 kbps (4 MB in all)
-dist/assets/levels/        optimised level models (eastbank-school.glb, burnside.glb, foundry.glb)
+dist/assets/levels/        optimised level models (foundry.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
 tools/build-foundry.mjs    builds the Foundry park from code (tools/foundry/: park.mjs the layout, geom.mjs shapes, bake-ao.mjs, probe.mjs)
@@ -149,10 +149,7 @@ tools/check-board-off.mjs  fakes controllers, grabs the board in mid-air, takes 
 tools/check-grab.mjs       fakes two controllers in a headless browser, grabs the nose / tail / sides of the board in mid-air and checks the hand lands on the edge (optional screenshots);  see also below
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line
-tools/patches/eastbank.py  fixes applied inside Blender on every export of the school (see Levels)
-tools/patches/burnside.py  Burnside's spawn points moved to their real positions on export; Burnside ships as the raw export (no optimiser, no collision simplification: `dist/assets/levels/burnside.glb` is `tools/export-blend.py` output); `burnside.tweaks.json` is only used if you do optimise it
-tools/patches/eastbank_ramps.py  re-profiles the school's quarter-pipes to end vertical under the coping (the model's ended at 59° with a flat deck, which nothing in the ramp physics copes with)
-tools/patches/eastbank_details.py  frames round windows and doors, door handles (built in Blender during the same export)
+tools/patches/<level>.py   (none at the moment) fixes run inside Blender on every export of a level's .blend (see Levels)
 tests/                     simulation tests
 ```
 
@@ -165,10 +162,9 @@ A level is a GLB with `ENV_*` render meshes, `COL_*` collision meshes (invisible
 `grind_path`) and a `Spawn_Entrance` node. Add it to `dist/src/skate/levels.js` with its play-area `bounds` (the skater is
 kept inside them) and the `?level=` id it answers to.
 
-Eastbank school is built by Codex in Blender. `tools/export-blend.py` turns the `.blend` into a raw GLB (it runs Blender as a
-Python module, so no Blender install is needed), and `node tools/optimise-level.mjs <raw.glb> dist/assets/levels/eastbank-school.glb`
-turns that into the game file. The first export came in at 80 MB with 1.6 M triangles and ~335 MB of texture memory; the
-current one is a 7.7 MB game file. The optimiser:
+A level built in Blender: `tools/export-blend.py` turns the `.blend` into a raw GLB (it runs Blender as a Python module, so no
+Blender install is needed; setup in the file), and `node tools/optimise-level.mjs <raw.glb> dist/assets/levels/<level>.glb [tweaks.json]`
+turns that into the game file. The optimiser:
 
 - bakes every object's transform and merges everything that shares a material, so thousands of separate objects do not become
   thousands of draw calls (collision pieces are merged by area, `COL_<Area>`, and otherwise left exactly as exported);
@@ -176,25 +172,19 @@ current one is a 7.7 MB game file. The optimiser:
   and sparse things such as rails stay a single draw call;
 - gives every chunk LOD1/LOD2 copies, swapped in by distance to the chunk's box (`lod.js`). Geometry is simplified with locked
   borders so chunks do not crack apart; leaf cards are thinned (whole leaves dropped, the rest scaled up) instead;
-- quantises positions, normals and colours, resizes textures (base/normal 1024², ORM 512²) to WebP, and meshopt-compresses
-  the buffers.
+- quantises positions, normals and colours, resizes textures (base/normal 1024², ORM 512², or `textureSizes` in the tweaks file)
+  to WebP, and meshopt-compresses the buffers.
 
-**Fixes to the model (`tools/patches/<level>.py`).** `export-blend.py` can run a patch file inside Blender just before exporting,
-so fixes survive each new version of the `.blend`. The school's patch (1) digs pockets out of the terrain slab, which was
-drawn over everything below −0.4 m and buried the drainage basin and the Forum plaza, (2) moves surfaces that were modelled at
-exactly the same height on top of each other 2 cm apart (roads over the concrete extension, and so on) so they stop z-fighting,
-(3) copies the grass outside the campus to collision, so it can be ridden, (4) makes the ground around the campus concrete,
-(5) removes a lone pier that held nothing up, (6) gives the Locker Hall a base (its floor hovered 0.5 m off the ground), and
-(7) slides the ledge that blocked the top of the dock stairs along the landing. A small tweaks file next to it
-(`eastbank.materials.json`) corrects materials in the optimiser: the asphalt used the dark green loam texture, so it is
-re-pointed at the concrete set and tinted grey. Thin joint and marking lines are decals: the game
-gives them a depth offset (`decals` in `levels.js`), and the walls, glazing and roofs, which are thin shells with small gaps at the joints, are drawn on both sides
-(`doubleSided`) so a gap shows the far wall instead of the sky; the cream enamel is left single-sided because that is the lettering. `audit-level.mjs` is how to find this sort of thing.
+**Fixes to a model (`tools/patches/<level>.py`).** `export-blend.py` can run a patch file inside Blender just before exporting, so
+fixes survive each new version of the `.blend`. A tweaks file can re-point or tint materials in the optimiser. Thin joint and
+marking lines are decals: the game gives them a depth offset (`decals` in `levels.js`); thin-shell walls can be drawn on both sides
+(`doubleSided`). `audit-level.mjs` compares what is drawn with what can be ridden.
 
-`node tools/measure-level.mjs eastbank` reports what a headset would be asked to draw (triangles and draw calls per view, with and
-without LODs); `node tools/check-pops.mjs eastbank` ollies from random spots and reports pops that do not leave the ground; `node tools/check-level.mjs eastbank` rides the real skater over the level (spawns, a grid of ground points, every
-grind path); `node tools/shoot-level.mjs eastbank <dir> x,z,heading …` takes screenshots. The raw first export lives on the
-`level/eastbank-school` branch.
+`node tools/measure-level.mjs <level>` reports what a headset would be asked to draw (triangles and draw calls per view, with and
+without LODs); `node tools/check-pops.mjs <level>` ollies from random spots; `node tools/check-level.mjs <level>` rides the real
+skater over the level (spawns, a grid of ground points, every grind path); `node tools/shoot-level.mjs <level> <dir> x,z,heading …`
+takes screenshots. (Two earlier levels, the Eastbank school campus and a Burnside rebuild, were removed; they are in the git
+history, and the school's raw export is on the `level/eastbank-school` branch.)
 
 ## Foundry
 

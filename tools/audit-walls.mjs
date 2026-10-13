@@ -3,7 +3,7 @@
 //   node tools/audit-walls.mjs <levelId> [step]
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const step = Number(process.argv[3] || 2.5);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);

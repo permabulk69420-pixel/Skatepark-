@@ -3,7 +3,7 @@
 // "invisible wall"), or not getting up a ramp it has the speed for.     node tools/check-ramps.mjs [levelId] [speed]
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const speed = Number(process.argv[3] || 6.5);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);

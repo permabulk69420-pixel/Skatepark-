@@ -1,7 +1,7 @@
 // Top-down plan view of a level (and optionally a close-up): node tools/plan-level.mjs <levelId> <out.png> [cx,cz,height]
 import { serveDist, openPage } from './browser.mjs';
 
-const [levelId = 'eastbank', out = 'plan.png', view = ''] = process.argv.slice(2);
+const [levelId = 'foundry', out = 'plan.png', view = ''] = process.argv.slice(2);
 const [cx, cz, height] = (view || '7,-8,230').split(',').map(Number);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`, { width: 1600, height: 1300 });

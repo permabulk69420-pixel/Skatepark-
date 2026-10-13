@@ -2,7 +2,7 @@
 // nothing).  A stair that ends in a wall or a short stub "goes nowhere".   node tools/check-stair-tops.mjs [levelId]
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);
 try {

@@ -2,7 +2,7 @@
 // draw calls per view, with and without the LODs.   node tools/measure-level.mjs [levelId] [gridStep]
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const step = Number(process.argv[3] || 14);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);

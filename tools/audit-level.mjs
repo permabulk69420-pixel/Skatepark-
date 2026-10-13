@@ -3,7 +3,7 @@
 //   node tools/audit-level.mjs <levelId> [step]
 import { serveDist, openPage } from './browser.mjs';
 
-const levelId = process.argv[2] || 'eastbank';
+const levelId = process.argv[2] || 'foundry';
 const step = Number(process.argv[3] || 3);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);

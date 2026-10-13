@@ -13,29 +13,6 @@ export const LEVELS = {
     shadowHalf: 85,
     noShadow: /Landscape|Asphalt/
   },
-  eastbank: {
-    name: 'Eastbank school',
-    file: 'assets/levels/eastbank-school.glb',
-    blurb: '210 × 160 metres · School campus: seven linked sections, rails, ledges, a locker hall and a drainage basin · RIFT board',
-    bounds: { x: 103.5, z: 77.5, cx: 7, cz: -8 },
-    shadowHalf: 125,
-    center: { x: 7, z: -8 },
-    // Thin joint and marking lines lie flat on the floor at the same height; pull them a touch towards the camera so they never z-fight.
-    decals: /Construction|Paint|ochre line/,
-    // Walls and roofs here are thin shells with small gaps at the joints; drawing both sides means a gap shows the far wall, not the sky.
-    doubleSided: /^(Brick|Concrete \| warm|School \| (opaque|ochre|oxidised|worn))/,   // not the cream enamel: that is the lettering, which must only read from the front
-    // Ground slabs and terrain do not cast; trees, buildings and props do.
-    noShadow: /Landscape_Landscape|Site_Concrete|Site_Asphalt|Asphalt/
-  },
-  burnside: {
-    name: 'Burnside',
-    file: 'assets/levels/burnside.glb',
-    blurb: '30 × 35 metres · Pools, a central hip and a tunnel under the bridge · RIFT board',
-    bounds: { x: 15, z: 17.2, cx: -5, cz: -2.7 },
-    shadowHalf: 45,
-    center: { x: -5, z: -3 },
-    noShadow: /Asphalt/
-  },
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',

@@ -3,7 +3,7 @@
 // Prints position / height / mode every 0.1 s plus every event (wall hits, bails, landings).
 import { serveDist, openPage } from './browser.mjs';
 
-const [levelId = 'eastbank', start = '-82,-3', headingDeg = '-90', speed = '7', seconds = '4', hold = '0', top = '30'] = process.argv.slice(2);
+const [levelId = 'foundry', start = '17,-27.5', headingDeg = '-90', speed = '7', seconds = '4', hold = '0', top = '30'] = process.argv.slice(2);
 const { server, origin } = await serveDist();
 const { browser, page } = await openPage(`${origin}/index.html?level=${levelId}`);
 try {
