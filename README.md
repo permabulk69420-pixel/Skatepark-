@@ -133,6 +133,7 @@ dist/assets/levels/        optimised level models (foundry.glb)
 dist/models/hands/         the hand rigs
 tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Skateboard.glb
 tools/build-foundry.mjs    builds the Foundry park from code (tools/foundry/: park.mjs the layout, geom.mjs shapes, bake-ao.mjs, probe.mjs)
+tools/ride-line.mjs        rides the real skater from a level's entrance (push, then roll) and prints a trace of where it went and what happened
 tools/check-loop.mjs       rides the real skater from a level's entrance into its loop, a few ways, and says whether it got round
 tools/shoot-loop.mjs       screenshots from the rider's own view going round a loop
 source/textures/           the CC0 Poly Haven texture sets Foundry uses (2K: colour, normal, AO/roughness/metal)
@@ -185,6 +186,24 @@ without LODs); `node tools/check-pops.mjs <level>` ollies from random spots; `no
 skater over the level (spawns, a grid of ground points, every grind path); `node tools/shoot-level.mjs <level> <dir> x,z,heading …`
 takes screenshots. (Two earlier levels, the Eastbank school campus and a Burnside rebuild, were removed; they are in the git
 history, and the school's raw export is on the `level/eastbank-school` branch.)
+
+## Mega Ramp
+
+`?level=megaramp`. A competition mega ramp built in Blender by another AI from `docs/briefs/megaramp.md`: a 25 m roll-in, the big
+launch and gap with a landing knuckle and downslope, a practice launch and gap beside it, and an 8–9 m vert quarter pipe; truss
+structure and signage. The source is `source/levels/megaramp/megaramp.blend` (textures packed in it). It ships **raw** (not through
+the optimiser, so its 2K textures are untouched): `tools/export-blend.py` writes `dist/assets/levels/megaramp.glb` (21 MB, about
+620k triangles). Re-export after changing the .blend:
+
+```
+uv venv .venv-bpy --python 3.13 && uv pip install --python .venv-bpy/bin/python bpy     # once (Blender as a Python module)
+.venv-bpy/bin/python -c "exec(open('tools/export-blend.py').read())" -- source/levels/megaramp/megaramp.blend dist/assets/levels/megaramp.glb /tmp
+npm run manifest
+```
+
+(Running the script as `-c "exec(…)"` rather than as a file avoids a Blender 5 start-up crash, "InitGoogleLogging() twice".)
+`node tools/ride-line.mjs megaramp` rides it from the top and prints a trace: on the first ride it reaches 18 m/s off the roll-in,
+clears the gap onto the knuckle (landing impact about 8 m/s; the bail limit is 13) and airs about 4 m out of the quarter pipe.
 
 ## Foundry
 
