@@ -24,6 +24,17 @@ export const LEVELS = {
     noShadow: /Ground|Apron|Collision/i,
     look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
+  france25: {
+    name: 'France 25 stair',
+    file: 'assets/levels/france25.glb',
+    blurb: 'A 25-stair, its banks, rails and the plaza round it · RIFT board',
+    // Built in Blender (source/levels/france25/france25.blend); the game file is that build's own export, not optimised.
+    bounds: { x: 13.4, z: 31.4, cx: 3.1, cz: -11.35 },
+    shadowHalf: 40,
+    center: { x: 3, z: -11 },
+    noShadow: /Ground|Collision/i,
+    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
+  },
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',
