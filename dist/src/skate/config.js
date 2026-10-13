@@ -1,4 +1,5 @@
 // Every number that decides how the skateboarding feels lives here. Metres, seconds, radians.
+const THREE_DEG = (d) => d * Math.PI / 180;
 export const BOARD = Object.freeze({
   // Measured from RIFT_Skateboard.glb (origin on the ground between the wheels, nose toward -Z).
   deckTop: 0.145,        // standing surface above the origin
@@ -194,6 +195,17 @@ export const TUNING = Object.freeze({
   loopSteer: 0.7,            // m/s of drift across the track at full stick
   loopEdge: 0.3,             // the board's middle keeps at least this far from the edge of the track
   loopPopNy: 0.6,            // ollie out of the loop only where the track is at least this flat
+
+  // Backflips and frontflips: in the air, while grabbing, hold the stick back (backflip) or forward (frontflip). Deliberately hard to
+  // start by accident: most of the way over, close to straight back/forward, and held a moment first. Spin and flip can then combine.
+  bodyFlipStick: 0.75,       // how far the stick must be pushed (of 1) to start one
+  bodyFlipCone: THREE_DEG(28), // …within this of straight back or forward (a diagonal or sideways push stays a spin)
+  bodyFlipDelay: 0.15,       // seconds it has to be held there before you start turning over
+  bodyFlipKeep: 0.45,        // once started, you keep turning while the stick is at least this far back/forward (diagonals included)
+  bodyFlipRate: 6.3,         // rad/s at full turn (a whole flip in about a second)
+  bodyFlipResponse: 7,       // 1/s: how quickly the turn speeds up and slows down
+  bodyFlipClean: 0.6,        // landing within this (rad, ~35°) of upright is clean…
+  bodyFlipBail: 1.3,         // …beyond this (~75°) you slam; in between it is sketchy
 
   // Manuals. Flick the stick forward then back (quickly) for a manual; back then forward for a nose manual. Then balance it with
   // forward/back on the stick, like a grind meter. Ollie out of it, or let it run out of speed.
