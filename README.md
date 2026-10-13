@@ -123,7 +123,7 @@ tools/slim-skateboard.mjs  makes dist/assets/skateboard.glb from source/RIFT_Ska
 tools/build-foundry.mjs    builds the Foundry park from code (tools/foundry/: park.mjs the layout, geom.mjs shapes, bake-ao.mjs, probe.mjs)
 tools/check-loop.mjs       rides the real skater from a level's entrance into its loop, a few ways, and says whether it got round
 tools/shoot-loop.mjs       screenshots from the rider's own view going round a loop
-source/textures/           the CC0 Poly Haven texture sets Foundry uses (1K: colour, normal, AO/roughness/metal)
+source/textures/           the CC0 Poly Haven texture sets Foundry uses (2K: colour, normal, AO/roughness/metal)
 tools/export-blend.py      level .blend -> raw GLB, via Blender as a Python module (see Levels)
 tools/optimise-level.mjs   raw level GLB -> merged, chunked, LOD'd, compressed game GLB (see Levels)
 tools/measure-level.mjs    triangles / draw calls per view over a grid of ground positions, with and without LODs
@@ -186,7 +186,7 @@ grind path); `node tools/shoot-level.mjs eastbank <dir> x,z,heading …` takes s
 ## Foundry
 
 `?level=foundry`. A park built entirely from code rather than Blender: `node tools/build-foundry.mjs` writes
-`dist/assets/levels/foundry.glb` (about a minute; it runs the usual optimiser at the end). Change the park in
+`dist/assets/levels/foundry.glb` (under a minute; it runs the usual optimiser at the end, with `tools/foundry/foundry.tweaks.json`). Change the park in
 `tools/foundry/park.mjs` and rebuild; `node tools/foundry/probe.mjs x0,z0 x1,z1` prints the collision heights along a line without a
 browser.
 
@@ -199,12 +199,15 @@ What is in it (x is east, z is south; you start on the tower facing east):
   beside it, a **curved ledge**, a kicker, and a seat-height ledge all round the outside wall.
 - **Transition**: a ply **mini half-pipe** (1.8 m), a 2.4 m deep **bowl** with pool coping and a tile band, a smaller quarter pipe.
 
-Every rail, ledge edge and coping has a grind line (28 in all). The look: Poly Haven CC0 textures (`source/textures`, graded to sit
-with the other parks' concrete), and ambient occlusion plus a little weathering baked into the vertex colours, so contact shadows
-under ledges, in stair corners and in the bowl cost nothing on the headset. On the measuring grid the worst view is about 230k
-triangles and 36 draw calls (`node tools/measure-level.mjs foundry 8`), 4.6 MB to download. The materials are named by kind
-(`Concrete | brushed slab`, `Concrete | smooth transition`, `Concrete | precast`, `Timber | ply deck`, `Steel | …`), so swapping in
-shared PBR sets later is a change to `MATERIALS` in `park.mjs`.
+Every rail, ledge edge and coping has a grind line (28 in all). The look: 2K Poly Haven CC0 textures (`source/textures`, colour
+maps graded at build time), rounded edges on the concrete, and ambient occlusion plus a little weathering baked into the vertex
+colours (a 0.3 m grid), so contact shadows under ledges, in stair corners and in the bowl cost nothing on the headset. It has its
+own lighting (`look` in `levels.js`: Neutral tone mapping, a lower, warmer, stronger sun, less fill, a clear sky); levels without
+a `look` keep the original lighting. On the measuring grid the worst view is about 315k triangles and 71 draw calls
+(`node tools/measure-level.mjs foundry 8`); 14.5 MB to download, about 250 MB of texture memory uncompressed. If that is too much
+on the headset, set `textureSizes` in `tools/foundry/foundry.tweaks.json` back to 1024 and rebuild (about 5 MB, a quarter of the
+memory). The materials are named by kind (`Concrete | brushed slab`, `Concrete | smooth transition`, `Concrete | precast`,
+`Timber | ply deck`, `Steel | …`), so swapping in shared PBR sets later is a change to `MATERIALS` in `park.mjs`.
 
 Checks that pass on it: `check-level` (both spawns, the ground grid, all 28 grind lines catch), `check-stairs` (all three sets, rolled
 and ollied), `check-loop` (round the loop from the tower whether you hold forward, push and coast, or just roll off).

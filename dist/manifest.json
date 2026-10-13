@@ -1,7 +1,7 @@
 {
- "build": "8ade9f6",
+ "build": "1b46b56",
  "files": {
-  "src/main.js": "c3157dbe0e",
+  "src/main.js": "60e5e2df46",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "743964a136",
   "src/skate/board-view.js": "77fa836db5",

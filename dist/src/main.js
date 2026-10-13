@@ -31,18 +31,18 @@ document.querySelector('#levels').innerHTML = Object.entries(LEVELS)
   .map(([id, entry]) => (id === levelId ? `<b>${entry.name}</b>` : `<a href="?level=${id}" style="color:#d9a779">${entry.name}</a>`))
   .join(' &nbsp;·&nbsp; ');
 // Lighting: these defaults, unless the level sets its own (`look` in levels.js).
-const look = {
+const lighting = {
   toneMapping: 'aces', exposure: 0.85, sun: 2.1, sunColor: '#ffe6c4', sunDirection: [-0.40, 0.73, -0.56], hemisphere: 0.48,
   environment: 0.25, fog: '#b8c6c5', ...level.look
 };
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(look.fog), 130, 290);
+scene.fog = new THREE.Fog(new THREE.Color(lighting.fog), 130, 290);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping }[look.toneMapping];
-renderer.toneMappingExposure = look.exposure;
+renderer.toneMapping = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping, neutral: THREE.NeutralToneMapping }[lighting.toneMapping];
+renderer.toneMappingExposure = lighting.exposure;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
@@ -67,7 +67,7 @@ skyUniforms.turbidity.value = 2.5;
 skyUniforms.rayleigh.value = 2.0;
 skyUniforms.mieCoefficient.value = 0.003;
 skyUniforms.mieDirectionalG.value = 0.77;
-const sunDirection = new THREE.Vector3(...look.sunDirection).normalize();
+const sunDirection = new THREE.Vector3(...lighting.sunDirection).normalize();
 skyUniforms.sunPosition.value.copy(sunDirection);
 scene.add(sky);
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -75,10 +75,10 @@ const skyScene = new THREE.Scene();
 skyScene.add(sky.clone());
 const skyEnvironment = pmrem.fromScene(skyScene, 0.035, 0.1, 1800);
 scene.environment = skyEnvironment.texture;
-scene.environmentIntensity = look.environment;
+scene.environmentIntensity = lighting.environment;
 pmrem.dispose();
-scene.add(new THREE.HemisphereLight(0xc0d7ed, 0x786951, look.hemisphere));
-const sun = new THREE.DirectionalLight(look.sunColor, look.sun);
+scene.add(new THREE.HemisphereLight(0xc0d7ed, 0x786951, lighting.hemisphere));
+const sun = new THREE.DirectionalLight(lighting.sunColor, lighting.sun);
 const shadowCentre = new THREE.Vector3(level.center?.x ?? 0, 0, level.center?.z ?? 0);
 sun.position.copy(sunDirection).multiplyScalar(110).add(shadowCentre);
 sun.target.position.copy(shadowCentre);
