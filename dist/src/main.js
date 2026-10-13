@@ -109,6 +109,7 @@ for (const type of ['pointerdown', 'keydown', 'click']) addEventListener(type, (
 
 // The skater is created once the park's collision is loaded; events from it drive haptics and messages.
 let sim, rider, boardView, hud, grab, sfx;
+let detachWas = false;
 const feel = (type, data = {}) => {
   sfx?.event(type, data);
   switch (type) {
@@ -128,6 +129,10 @@ const feel = (type, data = {}) => {
     case 'bail': haptics.pulse(1, 240); hud?.say('BAIL', 1.2); break;
     case 'loopStart': haptics.pulse(0.4, 30); break;
     case 'loopEnd': if (data.completed) { haptics.pulse(0.9, 90); hud?.say('LOOP!', 1.6); } break;
+    case 'detach': hud?.say('Board off', 0.7); break;
+    case 'catch': haptics.pulse(data.quality === 'clean' ? 0.7 : 0.5, 50); if (data.quality === 'sketchy') hud?.say('Sketchy catch', 0.8); break;
+    case 'catchMiss': hud?.say('Missed it', 0.6); break;
+    case 'dropBoard': hud?.say('Dropped it', 0.9); break;
     case 'grabEnd': if (data.time > 0.3) hud?.say(`${data.name}  ${data.time.toFixed(1)}s`); break;
     default: break;
   }
@@ -213,7 +218,7 @@ try {
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);
   hud = createHud({ rig, rider, sim });
-  grab = createBoardGrab({ hands, boardMesh: boardView.root, onEvent: (type, data) => feel(type, data) });
+  grab = createBoardGrab({ hands, boardMesh: boardView.root, onEvent: (type, data) => feel(type, data), desk: camera });
   boardGltf.scene.traverse((node) => {
     if (!node.isMesh) return;
     for (const m of [].concat(node.material)) for (const map of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap]) if (map) map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -309,6 +314,9 @@ function frame(dt) {
   lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);
   grab.update(dt, airborne);   // the board comes up to a squeezing hand (after the board is placed)...
+  grab.hold(sim, dt);          // ...or, taken off your feet, is wherever your hand has it
+  if (command.detach && !detachWas) grab.toggleOff(sim, renderer.xr.isPresenting);   // left trigger: off your feet / catch it
+  detachWas = command.detach;
   hands.update(dt);
   grab.place();                // ...then each holding hand is fitted onto its edge (after the hands have posed)
   hud.update(dt);

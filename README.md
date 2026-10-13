@@ -18,6 +18,7 @@ default) and **Eastbank school** (`?level=eastbank`, a 210 × 160 m school campu
 | Right **trigger** | **Press once to grind.** A rail, ledge or coping only catches if you pressed it up to 0.4 s before the board touches it (you do not hold it); the grind then lasts until the rail ends, you ollie off, or you bail. **Near the top of a ramp or bowl wall, a press latches you onto the coping** (from the wall as you roll up it, from the air, or from the deck) and you grind along it, round a bowl's rim if it is a loop, as long as you are moving along the lip at 1.5 m/s or more. Without a press you roll over rails and ride ramps without ever catching the coping (keyboard: **G** or **Shift**) |
 | Right **B** (in the air) | Flip button: press it, then push the left stick **left for a kickflip**, **right for a heelflip**, **down for a pop shove-it**, **down-left for a varial kickflip**, or **down-right for a varial heelflip** (the stick's direction is read as an angle, so a diagonal only has to go part way; up on its own does nothing) (the stick can come just before or just after) |
 | Either **grip** (in the air) | **Grab the board.** Squeeze a grip while you are in the air with a hand near the board: the board comes up to meet your hand (as if you tucked your knees) and your hand closes on the nearest part: the **nose** or **tail** tip, or the edge in the **middle** of the deck (Indy / Stalefish on the right edge, Melon / Mute on the left, by which hand is on which side). It lets go when you let go of the grip, or when you land, catch a rail or bail. Press the grip once you are already in the air (squeezing before you leave the ground does not count). Holding both grips on the ground still re-centres you, but not in the air. No scoring yet; the grab name and how long you held it show for a moment when you let go. Tune it in `GRAB` in `board-grab.js` |
+| Left **trigger** (while grabbing, in the air) | **Take the board off your feet.** It stays in your hand exactly where it was and follows it; hold it out wide for a **Christ Air**. Press again with the board back under your feet, about the right way up and lined up, to **catch** it: close and square is clean, a bit off is a sketchy landing, too far off and nothing happens (try again). Land without it and you bail; let go of the grip and you drop it. Nose-for-tail catches count (you ride on switch). The view keeps following your body through the air meanwhile. Tune it in `BOARD_OFF` in `board-off.js` (keyboard **C**: held out to the side, and a press always catches) |
 | Left **Y** | Switch regular / goofy (only when slow) |
 | Hold both grips | Re-centre: stand on the board where you are now |
 | Hold left **X** | Back to the entrance |
@@ -119,7 +120,8 @@ dist/src/skate/loop.js     loop-the-loops: the track shape (loopRibbon) and the 
 dist/src/skate/rider.js    puts the player on the board (stance, centring, crouch, lean)
 dist/src/skate/input.js    Quest controllers / keyboard
 dist/src/skate/hands.js    VR hands (rigs from Oasis / Sandboarding), with the adaptive grip so a hand can close round something
-dist/src/skate/board-grab.js   grabbing the board in the air (nose / tail / middle), from Sandboarding; handle-hold.js, grip-contact.js, adaptive-grip.js and grip-poses.js are the hand-fitting code it rests on
+dist/src/skate/board-off.js    taking the board off your feet in the air and catching it again: the catch judgement and its numbers
+dist/src/skate/board-grab.js   grabbing the board in the air (nose / tail / middle), from Sandboarding, and holding it off your feet; handle-hold.js, grip-contact.js, adaptive-grip.js and grip-poses.js are the hand-fitting code it rests on
 dist/src/skate/haptics.js  controller pulses
 dist/src/skate/sfx.js      board sounds: one-shots on the skater's events, rolling and grinding loops that follow its speed
 dist/src/skate/music.js    the soundtrack: the three tracks in dist/assets/music play one after another, forever (starts on the first click / key press / VR session; volume in `MUSIC`)
@@ -143,6 +145,7 @@ tools/plan-level.mjs       top-down plan of a level;  plan-collision.mjs: the sa
 tools/audit-level.mjs      compares what is drawn with what can be ridden (visible floor with no collision and the reverse)
 tools/check-stairs.mjs     rolls the skater off the top of every stair set, with and without an ollie
 tools/check-stair-tops.mjs what is at the top of each stair set (flat run, then a wall, a drop or nothing)
+tools/check-board-off.mjs  fakes controllers, grabs the board in mid-air, takes it off, swings it out (a Christ Air), misses a catch out there and catches it under the feet
 tools/check-grab.mjs       fakes two controllers in a headless browser, grabs the nose / tail / sides of the board in mid-air and checks the hand lands on the edge (optional screenshots);  see also below
 tools/check-ramps.mjs      finds every ramp in the collision and rides up it at a given speed (stops dead? bails? gets to the top?)
 tools/ride-ramp.mjs        traces the skater riding at a ramp from a point and heading;  profile-ramp.mjs: collision vs visible height along a line

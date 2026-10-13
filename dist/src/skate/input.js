@@ -3,6 +3,7 @@
 //   right A = hold to crouch, release to ollie
 //   right trigger (keyboard G / Shift) = grind: press it once; the rail or coping the board touches in the next moment is caught
 //   right B (keyboard F) = flip button: in the air, with the stick left (kickflip) or right (heelflip)
+//   left trigger (keyboard C) = in the air while holding the board in a grab: take it off your feet; again: catch it (board-off.js)
 //   left Y = switch stance, left X held = back to the entrance, both grips held (on the ground) = stand on the board where you are
 //   either grip, in the air = grab the board (board-grab.js)
 const DEADZONE = 0.15;
@@ -13,7 +14,7 @@ export function createInput(renderer) {
   const keys = new Set();
   const held = { recenter: 0, spawn: 0 };
   const edge = { stance: false, keyStance: false };
-  const out = { steer: 0, drive: 0, lean: 0, jump: false, grind: false, flip: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
+  const out = { steer: 0, drive: 0, lean: 0, jump: false, grind: false, flip: false, detach: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
   // Set by the game: while true, holding both grips does not re-centre (in the air, or while grabbing the board with both hands).
   const block = { recenter: false };
@@ -26,7 +27,7 @@ export function createInput(renderer) {
   addEventListener('blur', () => keys.clear());
 
   function poll(dt) {
-    let steer = 0, drive = 0, jump = false, grind = false, flip = false, toggleStance = false, recenter = false, toSpawn = false;
+    let steer = 0, drive = 0, jump = false, grind = false, flip = false, detach = keys.has('KeyC'), toggleStance = false, recenter = false, toSpawn = false;
     steer += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
     drive += Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
     jump = keys.has('Space');
@@ -51,6 +52,7 @@ export function createInput(renderer) {
           leftSqueeze = !!buttons[BUTTON.squeeze]?.pressed;
           leftX = !!buttons[BUTTON.a]?.pressed;
           leftY = !!buttons[BUTTON.b]?.pressed;
+          detach = detach || !!buttons[BUTTON.trigger]?.pressed;
         } else if (source.handedness === 'right') {
           jump = jump || !!buttons[BUTTON.a]?.pressed;
           grind = grind || !!buttons[BUTTON.trigger]?.pressed;
@@ -73,6 +75,7 @@ export function createInput(renderer) {
     out.jump = jump;
     out.grind = grind;
     out.flip = flip;
+    out.detach = detach;
     out.recenter = recenter;
     out.toSpawn = toSpawn;
     out.toggleStance = toggleStance;

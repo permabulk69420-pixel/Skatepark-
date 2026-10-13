@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createHandleHold } from './handle-hold.js';
 import { pulseHaptics } from './haptics.js';
+import { BOARD_OFF, judgeCatch } from './board-off.js';
 
 // Grabbing the board in the air (from Sandboarding's board-grab.js). Squeeze a grip button with your hand anywhere near the board and
 // the board comes up to meet it (as if you'd tucked your knees), then your hand closes on the nearest edge: the nose, the tail, or
@@ -72,13 +73,22 @@ export function pickGrab(local, shape) {
 
 export const grabName = (part, hand) => names[part](hand);
 
-export function createBoardGrab({ hands, boardMesh, onEvent = () => {} }) {
+// Taking the board off your feet (board-off.js): while a hand holds the board, toggleOff() lets it go from your feet and it then follows
+// that hand rigidly, from wherever it was, until toggleOff() again catches it (or not, if it is too far off). Let go of the grip with it
+// off and you have dropped it: it falls, and you bail when you land. On a flat screen (no hands) it is held out to your right instead.
+const DESK_HOLD = new THREE.Matrix4().compose(new THREE.Vector3(0.62, -0.75, -0.25), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2.4)), new THREE.Vector3(1, 1, 1));
+
+export function createBoardGrab({ hands, boardMesh, onEvent = () => {}, desk = null }) {
   const hold = createHandleHold();
   const grabs = new Map(); // hand state -> { part, name, marker, time }
   const offset = new THREE.Vector3(), want = new THREE.Vector3(), socket = new THREE.Vector3(), mark = new THREE.Vector3(), local = new THREE.Vector3();
   const toBoard = new THREE.Matrix4();
   let shape = null;
   const log = []; // finished grabs this jump: { name, time } (for points, later)
+  // The board off your feet: { hand (a hand state, or null on a flat screen), rel (board relative to the hand), dropped, vel, spin }
+  let off = null, settle = null;
+  const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _feetQ = new THREE.Quaternion();
+  const _prev = new THREE.Vector3(), _handVel = new THREE.Vector3(), _sq = new THREE.Quaternion();
 
   const squeezeOf = state => state.inputSource?.gamepad?.buttons?.[1]?.value ?? 0;
 
@@ -104,9 +114,11 @@ export function createBoardGrab({ hands, boardMesh, onEvent = () => {} }) {
     return true;
   }
 
-  function stop(state) {
+  function stop(state, air = false) {
     const g = grabs.get(state);
     if (!g) return;
+    // Letting go of the board in the air while it is off your feet drops it: it carries on with the hand's speed and falls.
+    if (air && off && off.hand === state && !off.dropped) { off.dropped = true; off.vel = _handVel.clone(); off.spin = new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6); onEvent('dropBoard', {}); }
     hold.release(state);
     g.marker.removeFromParent();
     grabs.delete(state);
@@ -123,7 +135,7 @@ export function createBoardGrab({ hands, boardMesh, onEvent = () => {} }) {
     update(dt, air) {
       for (const state of hands.states) {
         const sq = squeezeOf(state), g = grabs.get(state);
-        if (g && (!air || sq < GRAB.squeezeOff)) stop(state);
+        if (g && (!air || sq < GRAB.squeezeOff)) stop(state, air);
         else if (!g && air && sq > GRAB.squeezeOn && !state.wasSqueezed) start(state);
         state.wasSqueezed = sq > GRAB.squeezeOn;
       }
@@ -142,6 +154,78 @@ export function createBoardGrab({ hands, boardMesh, onEvent = () => {} }) {
       offset.lerp(want, Math.min(1, GRAB.follow * dt));
       if (offset.lengthSq() > 1e-8) { boardMesh.position.add(offset); boardMesh.updateMatrixWorld(true); }
     },
+    // The detach button was pressed (main.js, after hold): take the board off your feet, or catch it. `sim` is the skater.
+    toggleOff(sim, presenting) {
+      if (!off) {
+        if (sim.mode !== 'air') return false;
+        const hand = grabs.size ? grabs.keys().next().value : null;
+        if (!hand && presenting) return false;            // in VR you have to be holding it
+        if (!sim.detachBoard()) return false;
+        boardMesh.updateMatrixWorld(true);
+        const anchor = hand ? hand.grip : desk;
+        anchor.updateMatrixWorld(true);
+        off = { hand, rel: hand ? new THREE.Matrix4().copy(anchor.matrixWorld).invert().multiply(boardMesh.matrixWorld) : DESK_HOLD.clone(), dropped: false };
+        _prev.setFromMatrixPosition(anchor.matrixWorld); _handVel.set(0, 0, 0);
+        settle = null;
+        if (hand) pulseHaptics(hand, 0.6, 40);
+        return true;
+      }
+      if (off.dropped) return false;                     // nothing in your hand to put back
+      boardMesh.updateMatrixWorld(true);
+      boardMesh.matrixWorld.decompose(_p, _q, _s);
+      sim.boardQuaternion(_feetQ, false);
+      // On a flat screen there is no hand to line it up with: a press always brings it back clean.
+      const verdict = off.hand ? judgeCatch({ pos: _p, quat: _q }, { pos: sim.pos, quat: _feetQ }) : { quality: 'clean', reversed: false };
+      if (verdict.quality === 'miss') {
+        if (off.hand) pulseHaptics(off.hand, 0.15, 20);
+        onEvent('catchMiss', verdict);
+        if (BOARD_OFF.missBails) sim.bail('missed catch');
+        return false;
+      }
+      sim.catchBoard(verdict.quality, verdict.reversed);
+      // Swing the last few degrees into line rather than snapping (from where it was, relative to the feet; reversed: the other end first).
+      sim.boardQuaternion(_feetQ, false);
+      settle = { from: _feetQ.clone().invert().multiply(_q), t: 0 };
+      if (verdict.reversed) settle.from.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+      offset.copy(_p).sub(sim.pos);                       // and let the existing lift ease it back down to the feet
+      if (off.hand) pulseHaptics(off.hand, verdict.quality === 'clean' ? 0.9 : 0.6, verdict.quality === 'clean' ? 60 : 90);
+      off = null;
+      return true;
+    },
+    // After update, before toggleOff: while the board is off, put it where the hand has it (or where it has fallen to).
+    hold(sim, dt) {
+      if (off && sim.mode !== 'air') { off = null; settle = null; }   // landed (a bail, the sim saw to that) or respawned
+      if (!off) {
+        if (settle && sim.mode !== 'bail') {
+          settle.t += dt;
+          const k = Math.min(1, settle.t / BOARD_OFF.settle);
+          _sq.identity().slerp(settle.from, 1 - k);
+          boardMesh.quaternion.multiply(_sq);
+          if (k >= 1) settle = null;
+        }
+        return;
+      }
+      if (off.dropped) {
+        off.vel.y -= 9.81 * dt;
+        boardMesh.position.copy(_p.copy(sim.boardOffPose?.pos ?? boardMesh.position)).addScaledVector(off.vel, dt);
+        boardMesh.quaternion.copy(sim.boardOffPose?.quat ?? boardMesh.quaternion);
+        _q.setFromEuler(new THREE.Euler(off.spin.x * dt, off.spin.y * dt, off.spin.z * dt));
+        boardMesh.quaternion.premultiply(_q);
+      } else {
+        const anchor = off.hand ? off.hand.grip : desk;
+        anchor.updateMatrixWorld(true);
+        _m.copy(anchor.matrixWorld).multiply(off.rel).decompose(boardMesh.position, boardMesh.quaternion, _s);
+        if (off.hand) { _p.setFromMatrixPosition(anchor.matrixWorld); if (dt > 0) _handVel.copy(_p).sub(_prev).divideScalar(dt); _prev.copy(_p); }
+      }
+      boardMesh.updateMatrixWorld(true);
+      // How far you have held it from your feet decides the name; the sim keeps the pose in case you bail with it in your hand.
+      if (sim.offTrick) {
+        sim.offTrick.far = Math.max(sim.offTrick.far, boardMesh.position.distanceTo(sim.pos));
+        if (sim.offTrick.far >= BOARD_OFF.christ) sim.offTrick.name = BOARD_OFF.names.far;
+      }
+      sim.boardOffPose = { pos: boardMesh.position.clone(), quat: boardMesh.quaternion.clone() };
+    },
+    get off() { return off ? { dropped: off.dropped, hand: off.hand?.handedness ?? null } : null; },
     // After the hands have posed: fit each holding hand onto its edge.
     place() { for (const state of grabs.keys()) hold.place(state); },
     releaseAll() { for (const state of [...grabs.keys()]) stop(state); },
