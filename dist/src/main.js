@@ -290,6 +290,7 @@ function frame(dt) {
   input.block.recenter = sim.mode === Mode.AIR || grab.holding();
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
+  command.grabbing = grab.holding();   // grabbing lets the stick flip you over (backflip / frontflip)
   if (renderer.xr.isPresenting) {
     // In VR the hands balance grinds and manuals: right hand up pushes the meter right, left hand up pushes it left. The neutral
     // hand position is only learned while rolling relaxed on the ground, not through a crouch, pop or flight.

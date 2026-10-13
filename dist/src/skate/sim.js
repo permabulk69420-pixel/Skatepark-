@@ -85,6 +85,7 @@ export class Skater {
     // The board taken off the feet in the air (board-off.js): boardOff while it is in your hand; offTrick for this air once you have
     // taken it off ({ name, far }); a sketchy catch makes a sketchy landing. boardOffPose: where the hand has it (for a bail).
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
+    this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
     this.bailTime = 0; this.bailBoard = null;
     this.safe = { pos: new THREE.Vector3(), heading: 0 };
     this.spawn = { pos: new THREE.Vector3(), heading: 0 };
@@ -108,6 +109,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
     this.endFlip(); this.flipArm = 0;
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
+    this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
     if (this.switched) { this.faceOffset = -this.faceOffset; this.switched = false; } // the spawn heading is the board's nose again
     this.safe.pos.copy(where.pos); this.safe.heading = where.heading;
     this.onEvent('respawn');
@@ -125,6 +127,7 @@ export class Skater {
     if (!(dt > 0)) return;
     this.steer = damp(this.steer, clamp(input.steer || 0, -1, 1), 20, dt);
     this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
+    this.grabbing = !!input.grabbing;             // holding the board in a grab (main.js): what lets the stick flip you over
     this.drive = clamp(input.drive || 0, -1, 1);
     this.rawSteer = clamp(input.steer || 0, -1, 1); // the stick as it is, for picking a trick (this.steer is smoothed)
     this.rawDrive = this.drive;
@@ -202,6 +205,8 @@ export class Skater {
     if (this.manual) return;
     // Down or up on the stick with the flip button is a shove-it, not a manual.
     if (this.mode === Mode.AIR && (this.flipWas || this.flipArm > 0 || this.flip || this.shuv || this.trickWait > 0)) return;
+    // …and while grabbing, back or forward on the stick is a backflip or frontflip.
+    if (this.mode === Mode.AIR && (this.grabbing || this.bodyFlipping)) return;
     if (this.mode === Mode.GROUND) this.tryManual(kind);
     else if (this.mode === Mode.AIR) this.manualQueue = { kind, t: this.clock };
   }
@@ -446,7 +451,36 @@ export class Skater {
     this.groundedTime = 0;
     this.braking = false;
     this.offTrick = null; this.catchSketchy = false;
+    this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;
   }
+
+  // ----- backflips and frontflips (while grabbing) -------------------------------------------------------------------------------
+  // In the air, while holding a grab, the stick held back flips you over backwards and held forward flips you forwards, for as long
+  // as you hold it. It has to be meant: the stick must be pushed most of the way (bodyFlipStick), close to straight back or forward
+  // (within bodyFlipCone), and held there for bodyFlipDelay before anything turns, so a spin or a brush of the stick never starts one.
+  // Once it has started you can push the stick diagonally to spin as well. You rotate about your shoulders' line (the board's length),
+  // so a backflip takes your head the way your back faces.
+  bodyFlipStep(h) {
+    const x = this.rawSteer, y = this.rawDrive;
+    const mag = Math.hypot(x, y);
+    const fromAxis = Math.atan2(Math.abs(x), Math.abs(y));      // 0 = straight back or forward
+    if (!this.bodyFlipping) {
+      const inZone = this.grabbing && !this.flip && !this.shuv && mag >= T.bodyFlipStick && fromAxis <= T.bodyFlipCone;
+      this.bodyFlipHold = inZone ? this.bodyFlipHold + h : 0;
+      if (this.bodyFlipHold >= T.bodyFlipDelay) this.bodyFlipping = true;
+    }
+    let target = 0;
+    if (this.bodyFlipping && Math.abs(y) > T.bodyFlipKeep) {
+      // backflip: your back leads (regular riders face the board's right side, so their back is its left)
+      const back = y < 0 ? 1 : -1;
+      target = back * (this.faceOffset < 0 ? 1 : -1) * T.bodyFlipRate;
+    }
+    this.bodyRollVel = damp(this.bodyRollVel, target, T.bodyFlipResponse, h);
+    this.bodyRoll += this.bodyRollVel * h;
+  }
+
+  // How far you are from upright after a flip, in radians.
+  bodyRollResidual() { return Math.abs(wrap(this.bodyRoll)); }
 
   // ----- the board off your feet (board-off.js; board-grab.js calls these) ------------------------------------------------------
   // Take it off: only in the air, and not in the middle of a flip or shove-it (the board is busy).
@@ -523,6 +557,7 @@ export class Skater {
     if (this.spinLock && (!this.flip || Math.abs(this.flip.angle) >= TAU) && (!this.shuv || this.shuv.done) && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
     const spinTarget = this.spinLock || this.trickWait > 0 ? 0 : -spinInput * T.airSpinRate;
     this.spinVel = damp(this.spinVel, spinTarget, T.airSpinResponse, h);
+    this.bodyFlipStep(h);
     this.heading = wrap(this.heading + this.spinVel * h);
     if (this.exitAlign > 0) {
       this.exitAlign -= h;
@@ -796,7 +831,16 @@ export class Skater {
     let credit = null, sketchy = false;
     // Coming down without the board under you is a slam, however softly.
     if (this.boardOff) { this.bail('no board'); return; }
-    if (this.offTrick) { credit = this.offTrick.name; sketchy = this.catchSketchy; this.offTrick = null; this.catchSketchy = false; }
+    if (this.bodyRoll) {
+      // Back upright (near enough) and it counts; a bit off and you stagger; upside down or on your side and you slam.
+      const off = this.bodyRollResidual(), turns = Math.round(Math.abs(this.bodyRoll) / TAU);
+      const back = Math.sign(this.bodyRoll) === (this.faceOffset < 0 ? 1 : -1);
+      this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipping = false; this.bodyFlipHold = 0;
+      if (off > T.bodyFlipBail) { this.bail('flip'); return; }
+      if (off > T.bodyFlipClean) sketchy = true;
+      if (turns >= 1) credit = `${['', '', 'Double ', 'Triple '][Math.min(turns, 3)]}${back ? 'Backflip' : 'Frontflip'}`;
+    }
+    if (this.offTrick) { credit = credit ? `${credit} ${this.offTrick.name}` : this.offTrick.name; sketchy = sketchy || this.catchSketchy; this.offTrick = null; this.catchSketchy = false; }
     this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; // a pick still waiting must not carry into the next jump
     if (this.flip || this.shuv) {
       // Beginning a flip/shove just before touchdown is not a completed trick.
@@ -1427,6 +1471,7 @@ export class Skater {
     };
     this.loop = null; this.frameRight = null;
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
+    this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
     this.endFlip();
     this.flipArm = 0;
     this.onEvent('bail', { reason });
@@ -1509,6 +1554,7 @@ export class Skater {
     _f.crossVectors(up, _R);
     _basisM.makeBasis(_R, up, _f.negate());
     out.setFromRotationMatrix(_basisM);
+    if (this.bodyRoll) out.multiply(_qRoll.setFromAxisAngle(AXIS_Z, this.bodyRoll));   // flipped over in the air (backflip / frontflip)
     if (flair) {
       out.multiply(_qPitch.setFromAxisAngle(AXIS_X, this.visPitch));
       if (this.shuvYaw) out.multiply(_qYaw.setFromAxisAngle(AXIS_Y, this.shuvYaw)); // spins flat, then the flip rolls about the board's own length
