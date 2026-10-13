@@ -22,9 +22,7 @@ export const LEVELS = {
     shadowHalf: 88,
     center: { x: 0, z: -60 },
     noShadow: /Ground|Apron|Collision/i,
-    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' },
-    // No way back up yet: stop for `after` seconds anywhere further than `startRadius` m from the start (or bail) and you are back at the top.
-    autoReturn: { after: 2, startRadius: 6 }
+    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
   foundry: {
     name: 'Foundry',

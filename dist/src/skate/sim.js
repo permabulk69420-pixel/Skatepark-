@@ -53,8 +53,7 @@ const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Y = new THREE.Vector3(0, 1, 0), 
 export class Skater {
   constructor({ world, paths = [], loops = [], onEvent = () => {}, random = Math.random, bounds = T.bounds, requireGrind = false }) {
     this.world = world;
-    this.requireGrind = requireGrind;
-    this.bailToSpawn = false;                    // a level can send a bail back to the start (a one-line course like the mega ramp) instead of the last safe spot           // true in the game: rails and copings are only caught after a press of the grind button
+    this.requireGrind = requireGrind;           // true in the game: rails and copings are only caught after a press of the grind button
     this.grindHeld = false; this.grindWas = false; this.grindArm = 0;
     this.bounds = bounds;                        // the level's play area: half-extents x/z around an optional centre cx/cz
     this.paths = paths;
@@ -1454,7 +1453,7 @@ export class Skater {
       _q.setFromEuler(new THREE.Euler(b.spin.x * dt, b.spin.y * dt, b.spin.z * dt));
       b.quat.premultiply(_q);
     }
-    if (this.bailTime >= T.bailTime) this.respawn(this.bailToSpawn ? this.spawn : this.safe);
+    if (this.bailTime >= T.bailTime) this.respawn(this.safe);
   }
 
   // ----- display ---------------------------------------------------------------------------------------------

@@ -110,7 +110,6 @@ for (const type of ['pointerdown', 'keydown', 'click']) addEventListener(type, (
 // The skater is created once the park's collision is loaded; events from it drive haptics and messages.
 let sim, rider, boardView, hud, grab, sfx;
 let detachWas = false;
-let stillTime = 0;
 const feel = (type, data = {}) => {
   sfx?.event(type, data);
   switch (type) {
@@ -216,7 +215,6 @@ try {
   const loops = parseLoopPaths(loopNodes);
   sim = new Skater({ world, paths, loops, bounds: level.bounds, requireGrind: true, onEvent: (type, data) => feel(type, data) });
   sim.setSpawn(spawn, spawnHeading);
-  sim.bailToSpawn = !!level.autoReturn;
   rider = new Rider({ rig, camera, renderer, sim });
   boardView = new BoardView(scene, boardGltf.scene);
   hud = createHud({ rig, rider, sim });
@@ -306,12 +304,6 @@ function frame(dt) {
   }
   if (command.recenter) { rider.requestCalibration(); haptics.pulse(0.4, 40); hud.say('Recentred', 1.0); }
   if (command.toSpawn) sim.respawn(sim.spawn);
-  // A one-line course (the mega ramp) has no way back up: come to a stop anywhere but the start and you are put back there.
-  if (level.autoReturn) {
-    const stopped = sim.mode === Mode.GROUND && sim.speed < 0.6 && sim.pos.distanceTo(sim.spawn.pos) > level.autoReturn.startRadius;
-    stillTime = stopped ? stillTime + dt : 0;
-    if (stillTime > level.autoReturn.after) { stillTime = 0; sim.respawn(sim.spawn); hud.say('Back to the top', 1.2); }
-  }
   sim.update(command, dt);
   // Live stick readout for tuning the trick zones: hold the flip button on the ground and move the left stick.
   if (command.flip && sim.mode === Mode.GROUND) {
