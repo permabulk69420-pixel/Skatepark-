@@ -13,6 +13,18 @@ export const headingVec = (h, out) => out.set(-Math.sin(h), 0, -Math.cos(h));
 export const yawOf = (x, z) => Math.atan2(-x, -z);
 const damp = (current, target, rate, dt) => target + (current - target) * Math.exp(-rate * dt);
 
+// The heading laid onto a surface with normal n: turned with the surface (by the rotation that takes straight up to n), not flattened
+// onto it. On flat ground and gentle slopes the two agree; on a steep wall they do not: flattening a heading that points nearly into
+// the wall leaves only its sideways part, so a few degrees of skew made "forward" point along the wall near the top of a ramp (pumping
+// pushed you sideways, your real up-and-down motion was treated as sideways slip and gripped away, and fast airs ended in a crooked
+// landing and a bail). Turned with the surface, "into the wall" is "up the face" and the skew stays a few degrees.
+const _qs = new THREE.Quaternion(), _flipX = new THREE.Quaternion(1, 0, 0, 0);
+export function onSurface(h, n, out) {
+  if (n.y > -0.9999) _qs.setFromUnitVectors(UP, n); else _qs.copy(_flipX);
+  out.copy(h).applyQuaternion(_qs);
+  return out.addScaledVector(n, -out.dot(n)).normalize();
+}
+
 // A short acceleration/deceleration at either end of a trick, with constant angular speed in the middle.
 // A full turn still takes flipTime; a half turn still takes shuvTime. The physical angle and displayed angle agree.
 export const trickRotationEase = (progress) => {
@@ -247,7 +259,7 @@ export class Skater {
     const m = this.manual;
     const u = this.groundNormal;
     headingVec(this.heading, _H);
-    _f.copy(_H).addScaledVector(u, -_H.dot(u)).normalize();
+    onSurface(_H, u, _f);
     let s = this.vel.dot(_f);
 
     if (this.popRequest !== null) { this.pop(this.popRequest); return; }
@@ -319,7 +331,7 @@ export class Skater {
     this.carve = damp(this.carve, this.steer * clamp(sp / 6, 0, 1) * (s < 0 ? -1 : 1), 10, h);
 
     headingVec(this.heading, _H);
-    _f.copy(_H).addScaledVector(u, -_H.dot(u)).normalize();
+    onSurface(_H, u, _f);
     _lat.multiplyScalar(Math.exp(-T.lateralGrip * h));
     this.vel.copy(_f).multiplyScalar(s).add(_lat);
     this.rollSpeed = s;
@@ -805,7 +817,7 @@ export class Skater {
     if (flatSpeed > T.landAngleMinSpeed) {
       // Compare along the surface, not along the horizontal, so landing on a wall is judged fairly.
       headingVec(this.heading, _H);
-      _f.copy(_H).addScaledVector(n, -_H.dot(n));
+      onSurface(_H, n, _f);
       const align = _f.lengthSq() > 1e-6 ? Math.acos(clamp(Math.abs(_tmp.dot(_f.normalize())) / flatSpeed, 0, 1)) : 0;
       if (align > T.landMaxAngle) { this.bail('landing'); return; }
     }
@@ -881,7 +893,7 @@ export class Skater {
     const n = this.groundNormal;
     headingVec(heading, _H);
     if (steep) {
-      _sf.copy(_H).addScaledVector(n, -_H.dot(n)).normalize();
+      onSurface(_H, n, _sf);
       _sr.crossVectors(_sf, n);
     } else {
       _sf.copy(_H);
@@ -1455,7 +1467,7 @@ export class Skater {
         // The board rocks back (or forward) onto one pair of wheels; the rider's world rocks with it.
         const a = this.manual.pitchSign * (T.manualTilt + this.manual.bal * T.manualMaxTilt);
         headingVec(this.heading, _H);
-        _f.copy(_H).addScaledVector(this.groundNormal, -_H.dot(this.groundNormal)).normalize();
+        onSurface(_H, this.groundNormal, _f);
         _u.multiplyScalar(Math.cos(a)).addScaledVector(_f, -Math.sin(a));
         lift = BOARD.wheelHalfBase * Math.abs(Math.sin(a));
       }
@@ -1491,7 +1503,7 @@ export class Skater {
   boardQuaternion(out, flair = true, up = this.up) {
     headingVec(this.heading, _H);
     if (this.frameRight) _R.copy(this.frameRight).addScaledVector(up, -this.frameRight.dot(up));   // on a loop: the track's own frame
-    else _R.crossVectors(_H, up);
+    else _R.crossVectors(onSurface(_H, up, _F), up);
     if (_R.lengthSq() < 1e-8) _R.set(Math.cos(this.heading), 0, -Math.sin(this.heading));
     _R.normalize();
     _f.crossVectors(up, _R);
