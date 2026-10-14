@@ -78,7 +78,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
-    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
+    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; this.lastStickMag = 0; this.trickStill = 0; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -129,8 +129,8 @@ export class Skater {
     this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
     this.grabbing = !!input.grabbing;             // holding the board in a grab (main.js): what lets the stick flip you over
     this.drive = clamp(input.drive || 0, -1, 1);
-    this.rawSteer = clamp(input.steer || 0, -1, 1); // the stick as it is, for picking a trick (this.steer is smoothed)
-    this.rawDrive = this.drive;
+    this.rawSteer = clamp(input.trickSteer ?? input.steer ?? 0, -1, 1); // radial trick axis preserves diagonal direction
+    this.rawDrive = clamp(input.trickDrive ?? input.drive ?? 0, -1, 1);
     // How long forward has been held; a tap does not build it and letting go drains it quickly.
     this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
     this.clock += dt;
@@ -590,26 +590,34 @@ export class Skater {
   //   down-left / down-right ... varial kickflip / varial heelflip
   //   left / right ............. kickflip / heelflip (wide sectors, to avoid unintended varials)
   //   mostly up ................ no trick (forward is already used to push)
-  // Let the thumb settle before classifying, so passing through a diagonal does not select a varial by accident.
+  // Wait for the thumb to actually settle. A transient down or left reading must not select a trick on the way to the intended direction.
   pickTrick(h) {
     const x = this.rawSteer, y = this.rawDrive, mag = Math.hypot(x, y);
     if (this.trickWait === 0) {
       if (mag < T.trickStick) return;
-      this.trickWait = 1e-6; this.bestStick = null; this.lastStickAng = null;
+      this.trickWait = 1e-6; this.bestStick = null;
+      this.lastStickAng = Math.atan2(x, -y); this.lastStickMag = mag; this.trickStill = 0;
     }
     this.trickWait += h;
-    if (mag >= T.trickStick) this.bestStick = { x, y };
-    // A thumb often goes straight down or sideways first and swings onto the diagonal a moment later. Wait for it to stop moving
-    // (its direction changing less than a few degrees a frame), but never longer than trickMaxWait.
-    const ang = Math.atan2(x, -y);
-    const moving = mag >= T.trickStick && (this.lastStickAng !== null && Math.abs(Math.atan2(Math.sin(ang - this.lastStickAng), Math.cos(ang - this.lastStickAng))) > T.trickStable);
-    this.lastStickAng = mag >= T.trickStick ? ang : null;
-    if (this.trickWait < T.trickSettle || (moving && this.trickWait < T.trickMaxWait)) return;
-    const st = this.bestStick || { x, y };
+    if (mag >= T.trickStick) {
+      const ang = Math.atan2(x, -y);
+      const turned = Math.abs(Math.atan2(Math.sin(ang - this.lastStickAng), Math.cos(ang - this.lastStickAng)));
+      if (turned > T.trickStable || Math.abs(mag - this.lastStickMag) > T.trickRadialStable) {
+        this.trickStill = 0;
+        this.lastStickAng = ang; this.lastStickMag = mag;
+      } else this.trickStill += h;
+      this.bestStick = { x, y };
+    } else this.trickStill = 0;
+    // Let a released flick commit using its last direction. Otherwise wait for an
+    // actually settled stick, not duplicate physics substeps of one controller reading.
+    const released = mag < T.trickStick && this.bestStick;
+    if (this.trickWait < T.trickSettle || (!released && this.trickStill < T.trickStillTime && this.trickWait < T.trickMaxWait)) return;
+    const st = this.bestStick;
     this.pickedStick = { x: st.x, y: st.y };
     this.trickWait = 0; this.bestStick = null;
     const z = this.trickZone(st.x, st.y);
-    if (!z.none) this.startTrick(z.flip, z.shuv);
+    if (z.none) this.flipArm = 0; // Up is not a board trick: consume the pending B-button attempt.
+    else this.startTrick(z.flip, z.shuv);
   }
 
   // Which trick a stick position means: { name, flip, shuv, deg } or null. `deg` is the stick's direction in degrees, 0 = straight down,
