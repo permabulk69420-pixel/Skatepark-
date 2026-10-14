@@ -285,8 +285,8 @@ addEventListener('resize', () => {
 });
 
 function frame(dt) {
-  // Grabs (board-grab.js): only in the air and not mid-flip. Holding both grips must not re-centre you while you are up there.
-  const airborne = sim.mode === Mode.AIR && !sim.flip;
+  // Grabs (board-grab.js): in the air, once any board flip has finished. Holding both grips must not re-centre you while you are up there.
+  const airborne = sim.mode === Mode.AIR && (!sim.flip || sim.flip.progress >= 1);
   input.block.recenter = sim.mode === Mode.AIR || grab.holding();
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
