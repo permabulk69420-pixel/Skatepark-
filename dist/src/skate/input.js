@@ -2,7 +2,7 @@
 //   left stick  up = push, down = brake, sideways = steer / air spin / grind balance
 //   right A = hold to crouch, release to ollie
 //   right trigger (keyboard G / Shift) = grind: press it once; the rail or coping the board touches in the next moment is caught
-//   right B (keyboard F) = flip button: left/right = kickflip/heelflip,
+//   right B (keyboard F) + left stick, either order (Tony Hawk style, trick-controls.js): left/right = kickflip/heelflip,
 //     down = shove-it, down-left/down-right = varial kickflip/heelflip; up does nothing
 //   left trigger (keyboard C) = in the air while holding the board in a grab: hold it to take the board off your feet, let go to catch it (board-off.js)
 //   left Y = switch stance, left X held = back to the entrance, both grips held (on the ground) = stand on the board where you are
