@@ -62,7 +62,7 @@ test('the stick can come a moment after the button, but not long after', () => {
   assert.ok(soon.flip, 'a stick push 0.1 s after the button should still flip');
   const late = ollied([]);
   run(late, { flip: true }, 0.05);
-  run(late, {}, T.flipArmWindow + 0.05);
+  run(late, {}, T.trickButtonWindow + 0.05);
   run(late, { steer: -1 }, 0.1);
   assert.equal(late.flip, null, 'a stick push long after the button flipped');
 });

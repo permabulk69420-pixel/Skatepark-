@@ -45,25 +45,19 @@ export const TUNING = Object.freeze({
 
   // Flips: the flip button in the air plus the stick left (kickflip) or right (heelflip), one full turn of the board.
   flipTime: 0.46,            // seconds for the board to turn all the way round
-  flipArmWindow: 0.3,        // the stick may come this long after the button (or the button this long before leaving the ground)
-  flipStick: 0.45,           // how far the stick has to go to pick a direction
   flipMinAir: 0.05,          // seconds in the air before a flip can start
   flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
   flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
   flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
-  // Shove-its: down is a pop shove-it; diagonal down-left/right is a varial. Wide left/right sectors
-  // favour basic flips, while inputs mostly pointing up do not trigger a trick.
+  // Board-trick controls: raw stick coordinates, eight equal directions.
+  // Up and both upward diagonals are unassigned. Timing runs once per input frame.
   shuvTime: 0.32,            // seconds for the board to spin the half turn
-  trickStick: 0.4,           // how far the stick has to leave the middle (of 1) to pick a trick
-  trickSettle: 0.09,         // minimum time to reach the intended direction
-  trickMaxWait: 0.20,        // choose the latest input if the thumb keeps moving
-  trickStable: 0.08,         // accumulated direction change since the last stable reading (radians)
-  trickRadialStable: 0.055,  // meaningful magnitude change also resets settling
-  trickStillTime: 0.035,     // must remain settled this long; repeated physics substeps do not count as movement
-  stickTurn: 0,              // radians: optional stick rotation (0 = unrotated controller axes)
-  shuvCone: THREE_DEG(22.5), // within 22.5° of down: pop shove-it
-  varialCone: THREE_DEG(60), // 22.5°–60° from down: varial; favour regular flips near left/right
-  trickUpCone: THREE_DEG(45), // within 45° of up: no trick (prevents accidental flips when pushing forward)
+  trickStick: 0.4,           // raw radial distance from centre required for a direction
+  trickButtonWindow: 0.3,    // time after a B press to begin the stick input or leave the ground
+  trickChooseDelay: 0.08,    // let the thumb reach a diagonal before choosing
+  trickChooseLimit: 0.20,    // maximum collection time if the thumb keeps moving
+  trickHoldTime: 0.035,      // actual input-frame time with a steady direction
+  trickMoveTolerance: 0.055, // movement on either raw axis restarts the hold timer
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean
   shuvBail: 1.05,            // further than this (~60°) from straight and you bail; in between is sketchy
 

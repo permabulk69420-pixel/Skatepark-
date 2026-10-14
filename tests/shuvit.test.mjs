@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { Mode } from '../dist/src/skate/sim.js';
 import { TUNING as T } from '../dist/src/skate/config.js';
-import { radialDeadzone } from '../dist/src/skate/input.js';
+import { stickDirection, TRICKS } from '../dist/src/skate/trick-controls.js';
 import { makeSkater, rail, run } from './helpers.mjs';
 
 function ollied(events = [], opts = {}) {
@@ -63,17 +63,17 @@ test('goofy spins the other way', () => {
   assert.equal(regular.shuv.name, goofy.shuv.name);
 });
 
-test('up and near-up do nothing (forward is push); upper-right closer to right is a heelflip', () => {
+test('up and upward diagonals do not select board tricks', () => {
   const events = [], e2 = [];
   const a = ollied(events), b = ollied(e2);
   run(a, { flip: true, drive: 1 }, 0.3);
   assert.deepEqual(names(events, 'flipStart'), []);
   run(b, { flip: true, drive: 0.5, steer: 0.8 }, 0.3);
-  assert.deepEqual(names(e2, 'flipStart'), ['Heelflip']);
+  assert.deepEqual(names(e2, 'flipStart'), []);
   assert.equal(b.shuv, null);
   assert.ok(!events.some((e) => e.type === 'manualStart'), 'the stick up read as a manual');
-  assert.equal(b.trickZone(0.4, 0.9).none, true, 'near-up incorrectly selects a flip');
-  assert.equal(b.trickZone(-0.4, 0.9).none, true, 'near-up-left incorrectly selects a kickflip');
+  assert.equal(TRICKS[stickDirection(0.4, -0.9)], undefined, 'near-up incorrectly selects a flip');
+  assert.equal(TRICKS[stickDirection(-0.4, -0.9)], undefined, 'near-up-left incorrectly selects a kickflip');
 });
 
 test('a lazy diagonal that only goes half way on both axes is still a varial', () => {
@@ -234,18 +234,17 @@ test('a diagonal picked in a short hop still has time to come round', () => {
 });
 
 test('Quest stick has distinct down, diagonal, side and near-up sectors', () => {
-  const s = makeSkater();
   const at = (degrees, side) => {
     const rad = degrees * Math.PI / 180;
-    return s.trickZone(Math.sin(rad) * side, -Math.cos(rad)).name;
+    return TRICKS[stickDirection(Math.sin(rad) * side, Math.cos(rad))]?.name;
   };
   for (const side of [-1, 1]) {
     const plain = side < 0 ? 'Kickflip' : 'Heelflip';
     const varial = side < 0 ? 'Varial Kickflip' : 'Varial Heelflip';
     for (const a of [0, 15, 20]) assert.equal(at(a, side), 'Pop Shove-it', `down at ${a}°`);
-    for (const a of [30, 45, 55]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
-    for (const a of [65, 75, 90, 110, 125]) assert.equal(at(a, side), plain, `side at ${a}°`);
-    for (const a of [145, 165, 180]) assert.equal(s.trickZone(Math.sin(a * Math.PI / 180) * side, -Math.cos(a * Math.PI / 180)).none, true, `up at ${a}°`);
+    for (const a of [30, 45, 55, 65]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
+    for (const a of [75, 90, 110]) assert.equal(at(a, side), plain, `side at ${a}°`);
+    for (const a of [125, 145, 165, 180]) assert.equal(at(a, side), undefined, `up at ${a}°`);
   }
 });
 
@@ -284,11 +283,9 @@ test('a finished shove preserves board orientation through the 180° heading tra
   }
 });
 
-test('radial deadzone preserves diagonal angles that per-axis deadzones changed into shoves', () => {
-  const s = makeSkater();
-  const p = radialDeadzone(-0.42, 0.85);
-  assert.equal(s.trickZone(p.x, -p.y).name, 'Varial Kickflip');
-  assert.equal(s.trickZone(-p.x, -p.y).name, 'Varial Heelflip');
+test('a partly deflected down-left or down-right selects the varial from raw axes', () => {
+  assert.equal(TRICKS[stickDirection(-0.42, 0.85)].name, 'Varial Kickflip');
+  assert.equal(TRICKS[stickDirection(0.42, 0.85)].name, 'Varial Heelflip');
 });
 
 test('down-to-left thumb movement stays pending until the varial direction settles', () => {

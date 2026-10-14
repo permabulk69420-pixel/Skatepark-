@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BOARD, RIDER, TUNING as T } from './config.js';
+import { TrickControls } from './trick-controls.js';
 
 const { clamp } = THREE.MathUtils;
 const TAU = Math.PI * 2;
@@ -77,8 +78,9 @@ export class Skater {
     this.jumpWas = false; this.crouchTime = 0; this.popRequest = null; this.popBuffer = 0;
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
-    this.flip = null; this.flipArm = 0; this.flipWas = false; this.flipRoll = 0; this.spinLock = false;
-    this.shuv = null; this.shuvYaw = 0; this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; this.lastStickMag = 0; this.trickStill = 0; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
+    this.trickControls = new TrickControls();
+    this.flip = null; this.flipRoll = 0; this.spinLock = false;
+    this.shuv = null; this.shuvYaw = 0; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
     this.crouch = 0; this.rollSpeed = 0; this.bodyRef = null; this.bodyY = null; this.extend = 0; this.pumpAcc = 0; this.groundedTime = 0; this.airTime = 0;
     this.grind = null; this.lastGrindPath = null; this.grindCooldown = 0;
@@ -107,7 +109,7 @@ export class Skater {
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
-    this.endFlip(); this.flipArm = 0;
+    this.endFlip();
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
     if (this.switched) { this.faceOffset = -this.faceOffset; this.switched = false; } // the spawn heading is the board's nose again
@@ -129,11 +131,17 @@ export class Skater {
     this.lean = clamp(input.lean || 0, -1, 1);   // the hands (VR) or A/D (flat screen): what balances grinds and manuals
     this.grabbing = !!input.grabbing;             // holding the board in a grab (main.js): what lets the stick flip you over
     this.drive = clamp(input.drive || 0, -1, 1);
-    this.rawSteer = clamp(input.trickSteer ?? input.steer ?? 0, -1, 1); // radial trick axis preserves diagonal direction
-    this.rawDrive = clamp(input.trickDrive ?? input.drive ?? 0, -1, 1);
+    this.rawSteer = clamp(input.trickStick?.x ?? input.steer ?? 0, -1, 1);
+    this.rawDrive = clamp(input.trickStick ? -input.trickStick.y : input.drive ?? 0, -1, 1);
     // How long forward has been held; a tap does not build it and letting go drains it quickly.
     this.holdFwd = clamp(this.holdFwd + (this.drive > T.driveThreshold ? dt : -dt * T.passHoldDrain), 0, T.passHoldMax);
     this.clock += dt;
+    const trick = this.trickControls.sample(
+      !!input.flip, this.rawSteer, -this.rawDrive, dt,
+      (this.mode === Mode.GROUND || this.mode === Mode.AIR) && !this.flip && !this.shuv && !this.boardOff,
+      this.mode === Mode.AIR && this.airTime >= T.flipMinAir,
+    );
+    if (trick) this.startTrick(trick.flip, trick.shuv);
     this.detectFlick();
 
     const jump = !!input.jump;
@@ -151,10 +159,6 @@ export class Skater {
     if (this.grindHeld && !this.grindWas) this.grindArm = T.grindArmWindow;
     this.grindWas = this.grindHeld;
     this.grindArm = Math.max(0, this.grindArm - dt);
-    const flipHeld = !!input.flip;
-    if (flipHeld && !this.flipWas) this.flipArm = T.flipArmWindow;
-    this.flipWas = flipHeld;
-    this.flipArm = Math.max(0, this.flipArm - dt);
     this.trackBody(input.bodyY, dt);
     this.popBuffer -= dt;
     if (this.popBuffer <= 0) this.popRequest = null;
@@ -203,8 +207,8 @@ export class Skater {
   // ollie, flick, land in it.
   requestManual(kind) {
     if (this.manual) return;
-    // Down or up on the stick with the flip button is a shove-it, not a manual.
-    if (this.mode === Mode.AIR && (this.flipWas || this.flipArm > 0 || this.flip || this.shuv || this.trickWait > 0)) return;
+    // A board-trick attempt owns the stick until it is consumed or expires.
+    if (this.mode === Mode.AIR && (this.trickControls.held || this.trickControls.pending || this.flip || this.shuv)) return;
     // …and while grabbing, back or forward on the stick is a backflip or frontflip.
     if (this.mode === Mode.AIR && (this.grabbing || this.bodyFlipping)) return;
     if (this.mode === Mode.GROUND) this.tryManual(kind);
@@ -465,7 +469,7 @@ export class Skater {
     const mag = Math.hypot(x, y);
     const fromAxis = Math.atan2(Math.abs(x), Math.abs(y));      // 0 = straight back or forward
     if (!this.bodyFlipping) {
-      const inZone = this.grabbing && !this.flip && !this.shuv && mag >= T.bodyFlipStick && fromAxis <= T.bodyFlipCone;
+      const inZone = this.grabbing && !this.flip && !this.shuv && !this.trickControls.pending && mag >= T.bodyFlipStick && fromAxis <= T.bodyFlipCone;
       this.bodyFlipHold = inZone ? this.bodyFlipHold + h : 0;
       if (this.bodyFlipHold >= T.bodyFlipDelay) this.bodyFlipping = true;
     }
@@ -487,7 +491,7 @@ export class Skater {
     if (this.mode !== Mode.AIR || this.boardOff || this.flip || this.shuv) return false;
     this.boardOff = true;
     this.offTrick = { name: 'Board Off', far: 0 };
-    this.trickWait = 0;
+    this.trickControls.reset();
     this.onEvent('detach');
     return true;
   }
@@ -536,10 +540,7 @@ export class Skater {
 
     // A little stick drift while carving into a jump must not spin you; spin only starts past the dead zone.
     const spinInput = Math.sign(this.steer) * Math.max(0, Math.abs(this.steer) - T.airSpinDeadzone) / (1 - T.airSpinDeadzone);
-    // Flips and shove-its take the stick for themselves: it picks the trick and must not also spin the board.
-    // The button's window only gates the stick leaving the middle; a trick that is already being picked carries on past it.
-    if (!this.flip && !this.shuv && !this.boardOff && this.airTime > T.flipMinAir && (this.flipArm > 0 || this.trickWait > 0)) this.pickTrick(h);
-    else if (this.flip || this.shuv) this.trickWait = 0;
+    // Trick selection is already complete for this input frame; physics only animates it.
     if (this.flip) {
       const f = this.flip;
       f.progress = clamp((f.progress ?? Math.abs(f.angle) / TAU) + h / T.flipTime, 0, 1);
@@ -554,7 +555,7 @@ export class Skater {
       if (s.progress >= 1) this.commitShuv();
     }
     if (this.spinLock && (!this.flip || Math.abs(this.flip.angle) >= TAU) && (!this.shuv || this.shuv.done) && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
-    const spinTarget = this.spinLock || this.trickWait > 0 ? 0 : -spinInput * T.airSpinRate;
+    const spinTarget = this.spinLock || this.trickControls.pending ? 0 : -spinInput * T.airSpinRate;
     this.spinVel = damp(this.spinVel, spinTarget, T.airSpinResponse, h);
     this.bodyFlipStep(h);
     this.heading = wrap(this.heading + this.spinVel * h);
@@ -585,58 +586,6 @@ export class Skater {
   }
 
   // ----- flips and shove-its ---------------------------------------------------------------------------------
-  // The flip button in the air, then the direction of the left stick selects the trick:
-  //   down ..................... pop shove-it
-  //   down-left / down-right ... varial kickflip / varial heelflip
-  //   left / right ............. kickflip / heelflip (wide sectors, to avoid unintended varials)
-  //   mostly up ................ no trick (forward is already used to push)
-  // Wait for the thumb to actually settle. A transient down or left reading must not select a trick on the way to the intended direction.
-  pickTrick(h) {
-    const x = this.rawSteer, y = this.rawDrive, mag = Math.hypot(x, y);
-    if (this.trickWait === 0) {
-      if (mag < T.trickStick) return;
-      this.trickWait = 1e-6; this.bestStick = null;
-      this.lastStickAng = Math.atan2(x, -y); this.lastStickMag = mag; this.trickStill = 0;
-    }
-    this.trickWait += h;
-    if (mag >= T.trickStick) {
-      const ang = Math.atan2(x, -y);
-      const turned = Math.abs(Math.atan2(Math.sin(ang - this.lastStickAng), Math.cos(ang - this.lastStickAng)));
-      if (turned > T.trickStable || Math.abs(mag - this.lastStickMag) > T.trickRadialStable) {
-        this.trickStill = 0;
-        this.lastStickAng = ang; this.lastStickMag = mag;
-      } else this.trickStill += h;
-      this.bestStick = { x, y };
-    } else this.trickStill = 0;
-    // Let a released flick commit using its last direction. Otherwise wait for an
-    // actually settled stick, not duplicate physics substeps of one controller reading.
-    const released = mag < T.trickStick && this.bestStick;
-    if (this.trickWait < T.trickSettle || (!released && this.trickStill < T.trickStillTime && this.trickWait < T.trickMaxWait)) return;
-    const st = this.bestStick;
-    this.pickedStick = { x: st.x, y: st.y };
-    this.trickWait = 0; this.bestStick = null;
-    const z = this.trickZone(st.x, st.y);
-    if (z.none) this.flipArm = 0; // Up is not a board trick: consume the pending B-button attempt.
-    else this.startTrick(z.flip, z.shuv);
-  }
-
-  // Which trick a stick position means: { name, flip, shuv, deg } or null. `deg` is the stick's direction in degrees, 0 = straight down,
-  // positive to the right, after the stickTurn correction. Used by pickTrick and by the live readout (hold the flip button on the ground).
-  trickZone(x, y) {
-    const mag = Math.hypot(x, y);
-    // Turn the stick reading by stickTurn (positive = clockwise as you look at the stick) before reading its direction.
-    const c = Math.cos(T.stickTurn), sn = Math.sin(T.stickTurn);
-    const rx = x * c + y * sn, ry = -x * sn + y * c;
-    const deg = Math.atan2(rx, -ry) * 180 / Math.PI;
-    if (mag < T.trickStick) return { name: '-', flip: null, shuv: null, deg, none: true };
-    const fromDown = Math.atan2(Math.abs(rx), -ry);
-    const kick = rx < 0;
-    if (fromDown <= T.shuvCone) return { name: 'Pop Shove-it', flip: null, shuv: true, deg };
-    if (fromDown <= T.varialCone) return { name: kick ? 'Varial Kickflip' : 'Varial Heelflip', flip: kick, shuv: kick, deg };
-    if (fromDown < Math.PI - T.trickUpCone) return { name: kick ? 'Kickflip' : 'Heelflip', flip: kick, shuv: null, deg };
-    return { name: '(up: nothing)', flip: null, shuv: null, deg, none: true };
-  }
-
   makeFlip(kick) {
     // Which way the board rolls for each flip; goofy is the mirror image. This is the one place to change if it looks backwards
     // (the first version was backwards: stick left looked like a heelflip in the headset).
@@ -659,10 +608,9 @@ export class Skater {
     if (flipKick !== null) this.flip = this.makeFlip(flipKick);
     if (shuvBs !== null) this.shuv = this.makeShuv(shuvBs);
     if (this.flip && this.shuv) this.flip.varial = `${this.trickPrefix}Varial ${this.flip.kick ? 'Kickflip' : 'Heelflip'}`;
-    this.trickWait = 0;
-    this.flipArm = 0;
+    this.trickControls.reset();
     this.spinLock = true;
-    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name, stick: this.pickedStick });
+    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
   }
 
   // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
@@ -701,7 +649,7 @@ export class Skater {
     this.flipRoll = 0;
     this.shuv = null;
     this.shuvYaw = 0;
-    this.trickWait = 0;
+    this.trickControls.reset();
     this.spinLock = false;
   }
 
@@ -847,7 +795,7 @@ export class Skater {
       if (turns >= 1) credit = `${['', '', 'Double ', 'Triple '][Math.min(turns, 3)]}${back ? 'Backflip' : 'Frontflip'}`;
     }
     if (this.offTrick) { credit = credit ? `${credit} ${this.offTrick.name}` : this.offTrick.name; sketchy = sketchy || this.catchSketchy; this.offTrick = null; this.catchSketchy = false; }
-    this.trickWait = 0; this.bestStick = null; this.lastStickAng = null; // a pick still waiting must not carry into the next jump
+    this.trickControls.reset(); // a pending attempt must not carry into the next jump
     if (this.flip || this.shuv) {
       // Beginning a flip/shove just before touchdown is not a completed trick.
       // The old residual check treated a barely-started turn as already aligned and silently cancelled it.
@@ -1479,7 +1427,6 @@ export class Skater {
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
     this.endFlip();
-    this.flipArm = 0;
     this.onEvent('bail', { reason });
   }
 
