@@ -585,13 +585,12 @@ export class Skater {
   }
 
   // ----- flips and shove-its ---------------------------------------------------------------------------------
-  // The flip button in the air, then the direction the stick is pushed picks the trick, measured as an angle (like an 8-way pad), not
-  // as separate left/right and up/down amounts, so a lazy diagonal that only reaches half way still reads as a diagonal:
-  //   down (±22.5°) ............ pop shove-it (the board spins 180° flat, backside)
-  //   down-left / down-right . varial kickflip / varial heelflip (a kickflip with a backside shove-it / a heelflip with a frontside one)
-  //   left / right ........... kickflip / heelflip (the board rolls once about its length)
-  //   up-left / up-right ..... the same flips (up on its own does nothing: forward is the push, and it is held a lot)
-  // The stick gets a moment (trickSettle) to land on its direction once it leaves the middle, because a thumb takes a few frames to get there.
+  // The flip button in the air, then the direction of the left stick selects the trick:
+  //   down ..................... pop shove-it
+  //   down-left / down-right ... varial kickflip / varial heelflip
+  //   left / right ............. kickflip / heelflip (wide sectors, to avoid unintended varials)
+  //   mostly up ................ no trick (forward is already used to push)
+  // Let the thumb settle before classifying, so passing through a diagonal does not select a varial by accident.
   pickTrick(h) {
     const x = this.rawSteer, y = this.rawDrive, mag = Math.hypot(x, y);
     if (this.trickWait === 0) {
@@ -626,7 +625,7 @@ export class Skater {
     const kick = rx < 0;
     if (fromDown <= T.shuvCone) return { name: 'Pop Shove-it', flip: null, shuv: true, deg };
     if (fromDown <= T.varialCone) return { name: kick ? 'Varial Kickflip' : 'Varial Heelflip', flip: kick, shuv: kick, deg };
-    if (fromDown < Math.PI - T.shuvCone) return { name: kick ? 'Kickflip' : 'Heelflip', flip: kick, shuv: null, deg };
+    if (fromDown < Math.PI - T.trickUpCone) return { name: kick ? 'Kickflip' : 'Heelflip', flip: kick, shuv: null, deg };
     return { name: '(up: nothing)', flip: null, shuv: null, deg, none: true };
   }
 
