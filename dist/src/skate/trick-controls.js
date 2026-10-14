@@ -18,15 +18,17 @@ export const TRICKS = Object.freeze({
   'down-right': Object.freeze({ name: 'Varial Heelflip', flip: false, shuv: false }),
 });
 
-// Which way a stick position points. Measured as the angle away from straight down:
-//   0° – 22.5°  down        22.5° – 67.5°  down diagonal      67.5° – 117.5°  left / right      beyond: up (unassigned)
+// Which way a stick position points, as the angle away from straight down. Up and the upward diagonals do nothing, so the
+// diagonals get the room: only a push close to straight down is a shove-it.
+//   0° – 15°  down        15° – 65°  down diagonal      65° – 120°  left / right      beyond: up (unassigned)
+export const stickAngle = (x, y) => Math.atan2(Math.abs(x), y) * 180 / Math.PI;   // 0 = straight down, 180 = straight up
 export function stickDirection(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || Math.hypot(x, y) < T.trickStick) return 'center';
-  const fromDown = Math.atan2(Math.abs(x), y) * 180 / Math.PI;   // 0 = straight down, 180 = straight up
+  const fromDown = stickAngle(x, y);
   const side = x < 0 ? 'left' : 'right';
-  if (fromDown < 22.5) return 'down';
-  if (fromDown < 67.5) return `down-${side}`;
-  if (fromDown < 117.5) return side;
+  if (fromDown < 15) return 'down';
+  if (fromDown < 65) return `down-${side}`;
+  if (fromDown < 120) return side;
   if (fromDown < 157.5) return `up-${side}`;
   return 'up';
 }
@@ -83,7 +85,9 @@ export class TrickControls {
       // A push that has been held for a while (direction first, then B) reads where the stick is now; a fresh push
       // reads the furthest it reached on each axis.
       const long = !g.released && g.age > T.trickWindow;
-      const trick = TRICKS[long ? stickDirection(g.cx, g.cy) : stickDirection(g.x, g.y)];
+      const rx = long ? g.cx : g.x, ry = long ? g.cy : g.y;
+      const trick = TRICKS[stickDirection(rx, ry)];
+      this.read = { x: rx, y: ry };          // what the trick was read from (shown in the HUD)
       this.pressAge = Infinity;            // one press, one trick (an upward push uses the press up and does nothing)
       if (g.released) this.gesture = null; // a remembered flick is used up
       if (trick) { this.ready = trick; this.readyAge = 0; }
