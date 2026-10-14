@@ -51,16 +51,17 @@ export const TUNING = Object.freeze({
   flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
   flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
   flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
-  // Shove-its: the flip button with the stick down (pop shove-it) or down-left / down-right (varial kickflip / heelflip). The stick's
-  // direction is read as an angle once it leaves the middle, so a diagonal does not have to reach far on either axis.
+  // Shove-its: down is a pop shove-it; diagonal down-left/right is a varial. Wide left/right sectors
+  // favour basic flips, while inputs mostly pointing up do not trigger a trick.
   shuvTime: 0.32,            // seconds for the board to spin the half turn
   trickStick: 0.4,           // how far the stick has to leave the middle (of 1) to pick a trick
-  trickSettle: 0.04,         // seconds the thumb gets to land on its direction before the trick is picked
-  trickMaxWait: 0.08,        // ...unless the thumb is still moving, then up to this long
+  trickSettle: 0.075,        // allow the thumb to reach its intended direction before picking a trick
+  trickMaxWait: 0.12,        // ...a moving thumb can take a little longer
   trickStable: 0.12,         // a thumb counts as still moving if its direction changes more than this many radians in a frame
-  stickTurn: 0,              // radians: turns the whole stick pattern (positive = clockwise); left at 0, the 20° guess was wrong
-  shuvCone: Math.atan(0.2),  // near straight down (±11.3°) is a pop shove-it
-  varialCone: Math.PI / 2 - Math.atan(0.2), // broad, symmetric down-left/right varial sectors (11.3°–78.7° from down); pure left/right remains a flip
+  stickTurn: 0,              // radians: optional stick rotation (0 = unrotated controller axes)
+  shuvCone: THREE_DEG(22.5), // within 22.5° of down: pop shove-it
+  varialCone: THREE_DEG(60), // 22.5°–60° from down: varial; favour regular flips near left/right
+  trickUpCone: THREE_DEG(45), // within 45° of up: no trick (prevents accidental flips when pushing forward)
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean
   shuvBail: 1.05,            // further than this (~60°) from straight and you bail; in between is sketchy
 
