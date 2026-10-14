@@ -117,7 +117,7 @@ const feel = (type, data = {}) => {
     case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
     case 'push': haptics.pulse(0.3, 28); break;
     case 'flipStart': {
-      // The stick reading the trick came from: degrees from straight down and which side (shove-it < 15° < varial < 65° < flip).
+      // The stick reading the trick came from: degrees from straight down and which side (shove-it < 22.5° < varial < 67.5° < flip).
       const st = data.stick, deg = st ? Math.round(Math.atan2(Math.abs(st.x), st.y) * 180 / Math.PI) : null;
       haptics.pulse(0.3, 22);
       hud?.say(deg === null ? data.name : `${data.name}  (stick ${deg}° ${st.x < 0 ? 'L' : 'R'})`, 2.2);
