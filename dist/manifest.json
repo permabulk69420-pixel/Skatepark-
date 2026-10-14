@@ -1,5 +1,5 @@
 {
- "build": "773a16a",
+ "build": "412dcc6",
  "files": {
   "src/main.js": "caff49f9d8",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -55,6 +55,6 @@
   "models/hands/LeftHand.glb": "ff83a892ce",
   "models/hands/RightHand.glb": "cabf4c3365",
   "assets/levels/switchyard.glb": "284e2cb9fe",
-  "assets/levels/flightline.glb": "0ae5e96e1d"
+  "assets/levels/flightline.glb": "c078fc800b"
  }
 }
