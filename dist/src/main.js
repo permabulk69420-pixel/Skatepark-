@@ -297,6 +297,8 @@ function frame(dt) {
     const grips = hands.gripPositions();
     const relaxed = sim.mode === Mode.GROUND && !sim.manual && sim.groundedTime > 0.4 && Math.abs(sim.crouch) < 0.06 && !command.jump;
     command.lean = handBalance.update(dt, grips.left, grips.right, { balancing: !!sim.balance, learn: relaxed });
+    // On rails, reverse the hand tilt: raising the right hand corrects left, and vice versa.
+    if (sim.mode === Mode.GRIND) command.lean *= -1;
   }
   if (command.toggleStance && sim.mode === Mode.GROUND && sim.speed < 2) {
     sim.faceOffset = -sim.faceOffset;
