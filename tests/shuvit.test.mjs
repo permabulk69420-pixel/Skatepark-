@@ -242,8 +242,8 @@ test('Quest stick has distinct down, diagonal, side and near-up sectors', () => 
     const plain = side < 0 ? 'Kickflip' : 'Heelflip';
     const varial = side < 0 ? 'Varial Kickflip' : 'Varial Heelflip';
     for (const a of [0, 8, 14]) assert.equal(at(a, side), 'Pop Shove-it', `down at ${a}°`);
-    for (const a of [16, 20, 30, 45, 55, 64]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
-    for (const a of [66, 75, 90, 110, 119]) assert.equal(at(a, side), plain, `side at ${a}°`);
+    for (const a of [25, 30, 45, 55, 65]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
+    for (const a of [70, 75, 90, 110]) assert.equal(at(a, side), plain, `side at ${a}°`);
     for (const a of [125, 145, 165, 180]) assert.equal(at(a, side), undefined, `up at ${a}°`);
   }
 });

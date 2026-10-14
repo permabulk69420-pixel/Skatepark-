@@ -18,17 +18,16 @@ export const TRICKS = Object.freeze({
   'down-right': Object.freeze({ name: 'Varial Heelflip', flip: false, shuv: false }),
 });
 
-// Which way a stick position points, as the angle away from straight down. Up and the upward diagonals do nothing, so the
-// diagonals get the room: only a push close to straight down is a shove-it.
-//   0° – 15°  down        15° – 65°  down diagonal      65° – 120°  left / right      beyond: up (unassigned)
+// Which way a stick position points, as the angle away from straight down. Eight equal 45° directions:
+//   0° – 22.5°  down        22.5° – 67.5°  down diagonal      67.5° – 112.5°  left / right      beyond: up (unassigned)
 export const stickAngle = (x, y) => Math.atan2(Math.abs(x), y) * 180 / Math.PI;   // 0 = straight down, 180 = straight up
 export function stickDirection(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || Math.hypot(x, y) < T.trickStick) return 'center';
   const fromDown = stickAngle(x, y);
   const side = x < 0 ? 'left' : 'right';
-  if (fromDown < 15) return 'down';
-  if (fromDown < 65) return `down-${side}`;
-  if (fromDown < 120) return side;
+  if (fromDown < 22.5) return 'down';
+  if (fromDown < 67.5) return `down-${side}`;
+  if (fromDown < 112.5) return side;
   if (fromDown < 157.5) return `up-${side}`;
   return 'up';
 }
