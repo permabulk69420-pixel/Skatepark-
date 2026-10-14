@@ -1,7 +1,7 @@
 {
- "build": "412dcc6",
+ "build": "40342e8",
  "files": {
-  "src/main.js": "caff49f9d8",
+  "src/main.js": "f423bfb058",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "e07586d14b",
   "src/skate/board-off.js": "c4430cae9b",
@@ -13,7 +13,7 @@
   "src/skate/handle-hold.js": "e5e740d6b2",
   "src/skate/hands.js": "3df8d3a5bd",
   "src/skate/haptics.js": "031903dec1",
-  "src/skate/hud.js": "315e33c808",
+  "src/skate/hud.js": "847a9c44dd",
   "src/skate/input.js": "f34ca440e1",
   "src/skate/levels.js": "c03a2fa180",
   "src/skate/lod.js": "61451ed914",
@@ -22,7 +22,7 @@
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
   "src/skate/sfx.js": "8e31f7fa09",
-  "src/skate/sim.js": "646cbea9ae",
+  "src/skate/sim.js": "0227455bd0",
   "src/skate/trick-controls.js": "a189358852",
   "src/skate/world.js": "e63c7edae0",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",

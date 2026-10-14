@@ -14,15 +14,29 @@ function makeLabel() {
   mesh.renderOrder = 1002;
   mesh.userData.draw = (text, color = '#f4efe2') => {
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 512, 96);
+    ctx.font = '600 52px system-ui, sans-serif';
+    const lines = [];
+    let line = '';
+    for (const trick of text.split(' + ')) {
+      const next = line ? `${line} + ${trick}` : trick;
+      if (line && ctx.measureText(next).width > 480) { lines.push(line); line = trick; }
+      else line = next;
+    }
+    lines.push(line);
+    canvas.height = lines.length === 1 ? 96 : lines.length * 64 + 16;
+    mesh.scale.y = canvas.height / 96;
+    mesh.position.y = 0.105 + BAR_W * (canvas.height - 96) / 1024;
     ctx.font = '600 52px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 8;
     ctx.strokeStyle = 'rgba(8,20,22,0.85)';
-    ctx.strokeText(text, 256, 50);
-    ctx.fillStyle = color;
-    ctx.fillText(text, 256, 50);
+    for (let i = 0; i < lines.length; i++) {
+      const y = canvas.height / 2 + 2 + (i - (lines.length - 1) / 2) * 64;
+      ctx.strokeText(lines[i], 256, y, 480);
+      ctx.fillStyle = color;
+      ctx.fillText(lines[i], 256, y, 480);
+    }
     texture.needsUpdate = true;
   };
   return mesh;

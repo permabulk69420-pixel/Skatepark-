@@ -286,8 +286,7 @@ addEventListener('resize', () => {
 });
 
 function frame(dt) {
-  // Grabs (board-grab.js): in the air, once any board flip has finished. Holding both grips must not re-centre you while you are up there.
-  const airborne = sim.mode === Mode.AIR && (!sim.flip || sim.flip.progress >= 1);
+  // Holding both grips must not re-centre you while you are in the air.
   input.block.recenter = sim.mode === Mode.AIR || grab.holding();
   const command = input.poll(dt);
   command.bodyY = renderer.xr.isPresenting && rider.calibrated ? camera.position.y : undefined;
@@ -312,7 +311,8 @@ function frame(dt) {
   rider.update(dt);
   lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);
-  grab.update(dt, airborne);   // the board comes up to a squeezing hand (after the board is placed)...
+  const airborne = sim.mode === Mode.AIR && !sim.flip && !sim.shuv;
+  grab.update(dt, airborne);   // the board comes up to a squeezing hand once the current trick has finished...
   grab.hold(sim, dt);          // ...or, taken off your feet, is wherever your hand has it
   // Left trigger: squeeze it to take the board off your feet, let go to catch it (a miss leaves it in your hand: squeeze and let go again).
   if (command.detach && !detachWas && !grab.off) grab.toggleOff(sim, renderer.xr.isPresenting);

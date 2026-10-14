@@ -79,6 +79,7 @@ export class Skater {
     this.pushCool = 0; this.pushPending = 0; this.braking = false; this.edgeGrace = 0; this.rolledOff = false; this.launchE = 0; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.airFloor = { y: 0, nx: 0, ny: 1, nz: 0, found: false };
     this.spinVel = 0; this.exitAlign = 0;
     this.trickControls = new TrickControls();
+    this.completedTricks = [];                   // board tricks completed in this air, credited only on a landing or rail catch
     this.flip = null; this.flipRoll = 0; this.spinLock = false;
     this.shuv = null; this.shuvYaw = 0; this.rawSteer = 0; this.rawDrive = 0; this.trickPrefix = ''; this.switched = false;
     this.freezeT = 0; this._freezePos = new THREE.Vector3(); this.popTimer = 99; this.visPitch = 0; this.visRoll = 0; this.carve = 0;
@@ -138,8 +139,8 @@ export class Skater {
     this.clock += dt;
     const trick = this.trickControls.sample(
       !!input.flip, this.rawSteer, -this.rawDrive, dt,
-      (this.mode === Mode.GROUND || this.mode === Mode.AIR) && !this.flip && !this.shuv && !this.boardOff,
-      this.mode === Mode.AIR && this.airTime >= T.flipMinAir,
+      (this.mode === Mode.GROUND || this.mode === Mode.AIR) && !this.boardOff,
+      this.mode === Mode.AIR && this.airTime >= T.flipMinAir && !this.flip && !this.shuv,
     );
     if (trick) this.startTrick(trick.flip, trick.shuv);
     this.detectFlick();
@@ -446,6 +447,7 @@ export class Skater {
   leaveGround() {
     this.mode = Mode.AIR;
     this.airTime = 0;
+    this.completedTricks.length = 0;
     this.edgeGrace = T.edgeGrace;
     this.rolledOff = true;
     this.endManual('air');
@@ -554,6 +556,7 @@ export class Skater {
       this.shuvYaw = s.angle;
       if (s.progress >= 1) this.commitShuv();
     }
+    this.finishAirTrick();
     if (this.spinLock && (!this.flip || Math.abs(this.flip.angle) >= TAU) && (!this.shuv || this.shuv.done) && Math.abs(this.steer) < T.airSpinDeadzone) this.spinLock = false;
     const spinTarget = this.spinLock || this.trickControls.pending ? 0 : -spinInput * T.airSpinRate;
     this.spinVel = damp(this.spinVel, spinTarget, T.airSpinResponse, h);
@@ -579,7 +582,9 @@ export class Skater {
 
     // A board that is mid-flip cannot catch a rail; one that has come round (or is nearly there) can.
     // (and one that is in your hand, not under your feet, catches nothing)
-    if (!this.boardOff && (!this.flip || this.flipResidual() <= T.flipCleanRoll) && (!this.shuv || this.shuvResidual() <= T.shuvClean) && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
+    const flipReady = !this.flip || (Math.abs(this.flip.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll);
+    const shuvReady = !this.shuv || this.shuv.done || (Math.abs(this.shuv.angle) > Math.PI / 2 && this.shuvResidual() <= T.shuvClean);
+    if (!this.boardOff && flipReady && shuvReady && (this.tryGrind(_np, h) || this.tryCopingMagnet(_np))) return;
 
     if (this.sweepBoard(_np, h)) return;
     this.pos.copy(_np);
@@ -602,6 +607,7 @@ export class Skater {
 
   // flipKick: null for no flip, true for a kickflip, false for a heelflip. shuvBs: null for no shove-it, else true for backside.
   startTrick(flipKick, shuvBs) {
+    if (this.mode !== Mode.AIR || this.boardOff || this.flip || this.shuv || (flipKick === null && shuvBs === null)) return false;
     headingVec(this.heading, _H);
     const fakie = (this.vel.x * _H.x + this.vel.z * _H.z < -0.3) !== this.switched; // a board that a shove-it turned round is not "fakie"
     this.trickPrefix = fakie ? 'Fakie ' : '';
@@ -611,6 +617,18 @@ export class Skater {
     this.trickControls.reset();
     this.spinLock = true;
     this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
+    return true;
+  }
+
+  // Release a completed animation so the next press can start another trick in this air.
+  // Preserve the input buffer and spin lock; holding B is still one press, one trick.
+  finishAirTrick() {
+    if ((!this.flip && !this.shuv) || (this.flip && this.flip.progress < 1) || (this.shuv && !this.shuv.done)) return;
+    this.completedTricks.push(this.flip?.varial || this.flip?.name || this.shuv.name);
+    this.flip = null;
+    this.flipRoll = 0;
+    this.shuv = null;
+    this.shuvYaw = 0;
   }
 
   // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
@@ -649,6 +667,7 @@ export class Skater {
     this.flipRoll = 0;
     this.shuv = null;
     this.shuvYaw = 0;
+    this.completedTricks.length = 0;
     this.trickControls.reset();
     this.spinLock = false;
   }
@@ -658,10 +677,8 @@ export class Skater {
     const f = this.flip, s = this.shuv;
     const flipOk = f && Math.abs(f.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll;
     const shuvOk = s && (s.done || (Math.abs(s.angle) > Math.PI / 2 && this.shuvResidual() <= T.shuvClean));
-    if (flipOk && shuvOk) return f.varial || f.name;
-    if (flipOk) return f.name;
-    if (shuvOk) return s.name;
-    return null;
+    const current = flipOk && shuvOk ? f.varial || f.name : flipOk ? f.name : shuvOk ? s.name : null;
+    return [...this.completedTricks, current].filter(Boolean).join(' + ') || null;
   }
 
   // What is below the airborne board, so its tilt can ease towards that surface's before it lands.
@@ -796,6 +813,7 @@ export class Skater {
     }
     if (this.offTrick) { credit = credit ? `${credit} ${this.offTrick.name}` : this.offTrick.name; sketchy = sketchy || this.catchSketchy; this.offTrick = null; this.catchSketchy = false; }
     this.trickControls.reset(); // a pending attempt must not carry into the next jump
+    const boardCredit = this.trickCredit();
     if (this.flip || this.shuv) {
       // Beginning a flip/shove just before touchdown is not a completed trick.
       // The old residual check treated a barely-started turn as already aligned and silently cancelled it.
@@ -803,10 +821,10 @@ export class Skater {
       const incompleteShuv = this.shuv && !this.shuv.done && Math.abs(this.shuv.angle) < Math.PI / 2;
       if (incompleteFlip || incompleteShuv || (this.flip && this.flipResidual() > T.flipBailRoll) || (this.shuv && this.shuvResidual() > T.shuvBail)) { this.bail('flip'); return; }
       sketchy = sketchy || (this.flip && this.flipResidual() > T.flipCleanRoll) || (this.shuv && this.shuvResidual() > T.shuvClean);
-      credit = this.trickCredit() || credit;
       if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv(); // landed it round: you are riding the other way
-      this.endFlip();
     }
+    credit = [boardCredit, credit].filter(Boolean).join(' + ') || null;
+    this.endFlip();
     if (w.hasNormal) this.groundNormal.copy(w.normal); else this.groundNormal.set(0, 1, 0);
     const n = this.groundNormal;
     const impact = Math.max(0, -this.vel.dot(n));
@@ -1127,7 +1145,7 @@ export class Skater {
     this.mode = Mode.GRIND;
     this.grind = g;
     this.grindArm = 0;
-    if (this.flip || this.shuv) {
+    if (this.flip || this.shuv || this.completedTricks.length) {
       const credit = this.trickCredit();
       if (this.shuv && Math.abs(this.shuv.angle) > Math.PI / 2) this.commitShuv();
       this.endFlip();
