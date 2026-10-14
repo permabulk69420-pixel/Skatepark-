@@ -4,6 +4,21 @@
 // and the intro text. `look` (optional) overrides the lighting: toneMapping ('aces' | 'agx' | 'neutral'), exposure, sun (intensity),
 // sunColor, sunDirection ([x, y, z] towards the sun), hemisphere (fill intensity), environment (sky reflections), fog (colour).
 export const LEVELS = {
+  flightline: {
+    name: 'Flightline',
+    file: 'assets/levels/flightline.glb',
+    blurb: '1 km downhill Big Air circuit · Ten linked gaps from 8 to 23 m, a shorter-gap route, four gap-spanning rails and a 10.5 m vert finish · RIFT board',
+    bounds: { x: 86, z: 566.37, cx: 4, cz: -496.37 },
+    center: { x: 4, z: -496.37 },
+    skyCenter: { x: 4, z: -496.37 },
+    cameraFar: 1500,
+    shadowHalf: 580,
+    shadowDistance: 850,
+    shadowFar: 1700,
+    noShadow: /ENV_apron_|ENV_terrain_|ENV_joint_|ENV_marking_/,
+    decals: /Paint/,
+    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de', fogNear: 320, fogFar: 1300 }
+  },
   switchyard: {
     name: 'Switchyard',
     file: 'assets/levels/switchyard.glb',
