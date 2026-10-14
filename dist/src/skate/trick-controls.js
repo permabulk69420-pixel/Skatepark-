@@ -1,8 +1,15 @@
 import { TUNING as T } from './config.js';
 
-// Controller coordinates throughout this module: left = -x, right = +x,
-// up = -y, down = +y. Each of the eight directions has the same width.
-const DIAGONAL_RATIO = Math.SQRT2 - 1; // tan(22.5 degrees)
+// Tony Hawk style flip tricks: press B and push the stick. Either order works, as long as the two come within
+// trickWindow of each other. The direction you pushed is the trick:
+//
+//              (up: nothing)
+//     Kickflip  ←   ·   →  Heelflip
+//   Varial Kickflip ↙ ↓ ↘ Varial Heelflip
+//               Pop Shove-it
+//
+// Stick coordinates are the raw controller axes: left = -x, right = +x, up = -y, down = +y.
+
 export const TRICKS = Object.freeze({
   left: Object.freeze({ name: 'Kickflip', flip: true, shuv: null }),
   right: Object.freeze({ name: 'Heelflip', flip: false, shuv: null }),
@@ -11,76 +18,108 @@ export const TRICKS = Object.freeze({
   'down-right': Object.freeze({ name: 'Varial Heelflip', flip: false, shuv: false }),
 });
 
+// Which way a stick position points. Measured as the angle away from straight down:
+//   0° – 22.5°  down        22.5° – 67.5°  down diagonal      67.5° – 117.5°  left / right      beyond: up (unassigned)
 export function stickDirection(x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || Math.hypot(x, y) < T.trickStick) return 'center';
-  const ax = Math.abs(x), ay = Math.abs(y);
-  if (ay <= ax * DIAGONAL_RATIO) return x < 0 ? 'left' : 'right';
-  if (ax <= ay * DIAGONAL_RATIO) return y < 0 ? 'up' : 'down';
-  return `${y < 0 ? 'up' : 'down'}-${x < 0 ? 'left' : 'right'}`;
+  const fromDown = Math.atan2(Math.abs(x), y) * 180 / Math.PI;   // 0 = straight down, 180 = straight up
+  const side = x < 0 ? 'left' : 'right';
+  if (fromDown < 22.5) return 'down';
+  if (fromDown < 67.5) return `down-${side}`;
+  if (fromDown < 117.5) return side;
+  if (fromDown < 157.5) return `up-${side}`;
+  return 'up';
 }
 
-// One sample per input frame, independent of physics substeps. A B press arms
-// one attempt. Collect the thumb movement, then latch one explicit direction.
-// Holding B cannot repeat a trick; up consumes the attempt without a trick.
+// One call per input frame. Three things are tracked, nothing else:
+//   pressAge  how long ago B was pressed (Infinity when there is no live press)
+//   gesture   the current push of the stick away from centre: how long it has been out, whether the thumb has stopped
+//             moving, and the furthest it has reached on each axis. The furthest point on each axis is what makes diagonals reliable: a thumb that goes down
+//             first and then rolls left has reached both, so it reads as down-left, not as whichever it passed first.
+//   ready     a trick that has been picked and is waiting to start (you pressed B on the ground just before the ollie)
 export class TrickControls {
   constructor() {
     this.held = false;
-    this.reset();
+    this.pressAge = Infinity;
+    this.gesture = null;
+    this.ready = null;
+    this.readyAge = 0;
   }
 
+  // Forget any press and any picked trick (landing, bailing, taking the board off). The stick gesture is kept, so
+  // a direction you are already holding still counts with the next press.
   reset() {
-    this.phase = 'idle';
-    this.window = 0;
-    this.elapsed = 0;
-    this.quiet = 0;
-    this.direction = 'center';
-    this.anchorX = 0;
-    this.anchorY = 0;
+    this.pressAge = Infinity;
+    this.ready = null;
+    this.readyAge = 0;
   }
 
-  get pending() { return this.phase !== 'idle'; }
+  // True while a press is waiting for its direction, or a trick is waiting to start. The stick belongs to the trick
+  // meanwhile: no air spin, no manual, no backflip.
+  get pending() { return this.live() || this.ready !== null; }
+
+  // The press is still waiting for its direction: inside the window, or a push that started inside it is still settling.
+  live() {
+    if (this.pressAge === Infinity) return false;
+    if (this.pressAge <= T.trickWindow) return true;
+    const g = this.gesture;
+    return !!g && this.pressAge - g.age <= T.trickWindow && this.pressAge <= T.trickWindow + T.trickSettleMax + 0.05;
+  }
 
   sample(button, x, y, dt, enabled, canStart) {
     const pressed = button && !this.held;
     this.held = button;
+    this.track(x, y, dt);
     if (!enabled) { this.reset(); return null; }
-    if (pressed) {
-      this.reset();
-      this.phase = 'armed';
-      this.window = T.trickButtonWindow;
-    }
-    if (!this.pending) return null;
-    if (!pressed) this.window -= dt;
-    if (this.phase !== 'selecting' && this.window < 0) { this.reset(); return null; }
 
-    const direction = stickDirection(x, y);
-    if (this.phase === 'armed' && direction !== 'center') {
-      this.phase = 'selecting';
-      this.direction = direction;
-      this.anchorX = x;
-      this.anchorY = y;
-      return null; // this sample starts the gesture; the preceding frame was not a hold
+    if (pressed) { this.pressAge = 0; this.ready = null; }
+    else if (this.pressAge !== Infinity) this.pressAge += dt;
+    if (this.ready) this.readyAge += dt;
+
+    // Pick the trick: B is live and the stick has been out long enough to have reached its direction (or has
+    // already come back to centre, a quick flick).
+    if (!this.ready && this.live() && this.gesture?.settled) {
+      const g = this.gesture;
+      // A push that has been held for a while (direction first, then B) reads where the stick is now; a fresh push
+      // reads the furthest it reached on each axis.
+      const long = !g.released && g.age > T.trickWindow;
+      const trick = TRICKS[long ? stickDirection(g.cx, g.cy) : stickDirection(g.x, g.y)];
+      this.pressAge = Infinity;            // one press, one trick (an upward push uses the press up and does nothing)
+      if (g.released) this.gesture = null; // a remembered flick is used up
+      if (trick) { this.ready = trick; this.readyAge = 0; }
     }
-    if (this.phase === 'selecting') {
-      this.elapsed += dt;
-      if (direction !== 'center') {
-        if (direction !== this.direction || Math.abs(x - this.anchorX) > T.trickMoveTolerance || Math.abs(y - this.anchorY) > T.trickMoveTolerance) {
-          this.quiet = 0;
-          this.anchorX = x;
-          this.anchorY = y;
-        } else this.quiet += dt;
-        this.direction = direction;
-      }
-      // Returning to centre ends a flick. Keep its last direction, not the
-      // centre reading. A moving thumb gets a bounded window to finish.
-      if (this.elapsed >= T.trickChooseDelay && (direction === 'center' || this.quiet >= T.trickHoldTime || this.elapsed >= T.trickChooseLimit)) {
-        if (!TRICKS[this.direction]) { this.reset(); return null; }
-        this.phase = 'ready';
-      }
-    }
-    if (this.phase !== 'ready' || !canStart) return null;
-    const trick = TRICKS[this.direction];
+    if (!this.live()) this.pressAge = Infinity;
+
+    if (!this.ready) return null;
+    if (this.readyAge > T.trickWindow) { this.ready = null; return null; }   // never got off the ground in time
+    if (!canStart) return null;
+    const trick = this.ready;
     this.reset();
     return trick;
+  }
+
+  track(x, y, dt) {
+    const ok = Number.isFinite(x) && Number.isFinite(y);
+    const r = ok ? Math.hypot(x, y) : 0;
+    let g = this.gesture;
+    if (r < T.trickRelease) {
+      // Back at centre. The push is remembered for a moment (as a flick), so B just after a flick still counts.
+      if (g && !g.released) { g.released = true; g.settled = true; g.since = 0; }
+      if (g) { g.since += dt; if (g.since > T.trickWindow) this.gesture = null; }
+      return;
+    }
+    if (!g || g.released) {
+      if (r < T.trickStick) { this.gesture = null; return; }   // not out far enough to start a push
+      g = this.gesture = { age: 0, x: 0, y: 0, cx: 0, cy: 0, ax: x, ay: y, still: 0, settled: false, released: false, since: 0 };
+    } else g.age += dt;
+    if (r >= T.trickStick) {
+      if (Math.abs(x) > Math.abs(g.x)) g.x = x;
+      if (Math.abs(y) > Math.abs(g.y)) g.y = y;
+      g.cx = x; g.cy = y;
+    }
+    // Still moving (rolling into a diagonal)? Then keep reading. Picked once the thumb has stopped, or after trickSettleMax.
+    if (Math.abs(x - g.ax) > T.trickStillMove || Math.abs(y - g.ay) > T.trickStillMove) { g.ax = x; g.ay = y; g.still = 0; }
+    else g.still += dt;
+    if ((g.age >= T.trickSettle && g.still >= T.trickStill) || g.age >= T.trickSettleMax) g.settled = true;
   }
 }
