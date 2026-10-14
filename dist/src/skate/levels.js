@@ -7,8 +7,8 @@ export const LEVELS = {
   switchyard: {
     name: 'Switchyard',
     file: 'assets/levels/switchyard.glb',
-    blurb: '184 × 172 metres · 30-foot vert halfpipe, 20-foot transitions, 15-foot spine, deep flow bowl, 24 stairs and a sweeping boardslide rail · RIFT board',
-    bounds: { x: 91.75, z: 85.75, cz: 6 },
+    blurb: '194 × 172 metres · 30-foot vert halfpipe, 20-foot transitions, 15-foot spine, deep flow bowl, 24 stairs and a sweeping boardslide rail · RIFT board',
+    bounds: { x: 96.75, z: 85.75, cx: 5, cz: 6 },
     shadowHalf: 115,
     noShadow: /ENV_slab_|ENV_apron_|ENV_joints_|ENV_marking_|ENV_blue_/,
     decals: /Construction|Paint/,
