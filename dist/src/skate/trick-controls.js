@@ -35,7 +35,6 @@ export class TrickControls {
     this.last = null;         // the last stick direction pushed: { x, y, age since the stick came back to centre }
     this.ready = null;        // a trick picked on the ground, waiting for the board to leave it
     this.readyAge = 0;
-    this.read = null;         // the stick reading the last trick came from (shown in the HUD)
   }
 
   reset() {
@@ -61,7 +60,6 @@ export class TrickControls {
 
     // B is live and there is a direction: now if the stick is pushed, or the push you just let go of.
     if (!this.ready && this.pressAge !== Infinity && this.last) {
-      this.read = { x: this.last.x, y: this.last.y };
       const trick = TRICKS[stickDirection(this.last.x, this.last.y)];
       this.pressAge = Infinity;   // one press, one trick (an upward direction uses it up and does nothing)
       this.last = null;

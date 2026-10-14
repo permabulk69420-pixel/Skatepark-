@@ -116,13 +116,7 @@ const feel = (type, data = {}) => {
     case 'crouch': haptics.pulse(0.22, 18); break;
     case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
     case 'push': haptics.pulse(0.3, 28); break;
-    case 'flipStart': {
-      // The stick reading the trick came from: degrees from straight down and which side (shove-it < 22.5° < varial < 67.5° < flip).
-      const st = data.stick, deg = st ? Math.round(Math.atan2(Math.abs(st.x), st.y) * 180 / Math.PI) : null;
-      haptics.pulse(0.3, 22);
-      hud?.say(deg === null ? data.name : `${data.name}  (stick ${deg}° ${st.x < 0 ? 'L' : 'R'})`, 2.2);
-      break;
-    }
+    case 'flipStart': haptics.pulse(0.3, 22); hud?.say(data.name, 1.6); break;
     case 'flip': haptics.pulse(0.6, 45); hud?.say(data.name, 1.1); break;
     case 'sketchy': haptics.pulse(0.55, 80); hud?.say('Sketchy', 0.9); break;
     case 'pump': haptics.pulse(THREE.MathUtils.clamp(0.25 + data.gain * 0.6, 0.25, 0.7), 40); break;
