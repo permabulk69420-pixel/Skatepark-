@@ -241,18 +241,18 @@ test('Quest stick has distinct down, diagonal, side and near-up sectors', () => 
   for (const side of [-1, 1]) {
     const plain = side < 0 ? 'Kickflip' : 'Heelflip';
     const varial = side < 0 ? 'Varial Kickflip' : 'Varial Heelflip';
-    for (const a of [0, 15, 20]) assert.equal(at(a, side), 'Pop Shove-it', `down at ${a}°`);
-    for (const a of [30, 45, 55, 65]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
-    for (const a of [75, 90, 110]) assert.equal(at(a, side), plain, `side at ${a}°`);
+    for (const a of [0, 8, 14]) assert.equal(at(a, side), 'Pop Shove-it', `down at ${a}°`);
+    for (const a of [16, 20, 30, 45, 55, 64]) assert.equal(at(a, side), varial, `diagonal at ${a}°`);
+    for (const a of [66, 75, 90, 110, 119]) assert.equal(at(a, side), plain, `side at ${a}°`);
     for (const a of [125, 145, 165, 180]) assert.equal(at(a, side), undefined, `up at ${a}°`);
   }
 });
 
 test('slightly off-axis down is a shove-it and slightly downward left/right stays a basic flip', () => {
   for (const [steer, drive, name] of [
-    [-0.3, -0.95, 'Pop Shove-it'],
+    [-0.2, -0.95, 'Pop Shove-it'],
     [-0.95, -0.3, 'Kickflip'],
-    [0.3, -0.95, 'Pop Shove-it'],
+    [0.2, -0.95, 'Pop Shove-it'],
     [0.95, -0.3, 'Heelflip'],
   ]) {
     const events = [];

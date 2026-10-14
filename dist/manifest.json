@@ -1,7 +1,7 @@
 {
- "build": "3e9366f",
+ "build": "18211bc",
  "files": {
-  "src/main.js": "918244b82b",
+  "src/main.js": "127ac01732",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "e07586d14b",
   "src/skate/board-off.js": "c4430cae9b",
@@ -22,8 +22,8 @@
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
   "src/skate/sfx.js": "8e31f7fa09",
-  "src/skate/sim.js": "646cbea9ae",
-  "src/skate/trick-controls.js": "222b644b52",
+  "src/skate/sim.js": "d3dced7755",
+  "src/skate/trick-controls.js": "afe1a5cfcc",
   "src/skate/world.js": "e63c7edae0",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
   "vendor/addons/math/ConvexHull.js": "04452fd4ef",
