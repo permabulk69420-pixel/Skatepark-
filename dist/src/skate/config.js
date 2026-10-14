@@ -49,15 +49,10 @@ export const TUNING = Object.freeze({
   flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
   flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing
   flipSketchySpeed: 0.7,     // share of your speed kept on a sketchy landing
-  // Board-trick controls (trick-controls.js), Tony Hawk style: press B and push the stick, in either order.
+  // Board-trick controls (trick-controls.js): press B and push the stick, either order; fires the instant both are there.
   shuvTime: 0.32,            // seconds for the board to spin the half turn
   trickStick: 0.4,           // how far the stick must be pushed (raw radius) to count as a direction
-  trickRelease: 0.25,        // below this it is back at centre (a gap between the two so a wobble is not two pushes)
   trickWindow: 0.4,          // B and the push can be this far apart, either way round; also how long a pick waits to leave the ground
-  trickSettle: 0.07,         // a fresh push is read for at least this long before the trick is picked (time to reach a diagonal)…
-  trickStill: 0.04,          // …and until the thumb has stopped moving for this long…
-  trickStillMove: 0.08,      // (moving = more than this on either axis)
-  trickSettleMax: 0.18,      // …but never longer than this
   shuvClean: 0.6,            // landing within this many radians of straight (or straight round) is clean
   shuvBail: 1.05,            // further than this (~60°) from straight and you bail; in between is sketchy
 
