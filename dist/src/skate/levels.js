@@ -7,7 +7,7 @@ export const LEVELS = {
   flightline: {
     name: 'Flightline',
     file: 'assets/levels/flightline.glb',
-    blurb: '1 km downhill Big Air circuit · Ten linked gaps from 8 to 23 m, a shorter-gap route, four gap-spanning rails and a 10.5 m vert finish · RIFT board',
+    blurb: '1 km downhill Big Air circuit · Ten linked gaps from 8 to 32 m, a shorter-gap route, four gap-spanning rails and a 10.5 m vert finish · RIFT board',
     bounds: { x: 86, z: 566.37, cx: 4, cz: -496.37 },
     center: { x: 4, z: -496.37 },
     skyCenter: { x: 4, z: -496.37 },
