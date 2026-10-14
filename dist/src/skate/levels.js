@@ -4,6 +4,16 @@
 // and the intro text. `look` (optional) overrides the lighting: toneMapping ('aces' | 'agx' | 'neutral'), exposure, sun (intensity),
 // sunColor, sunDirection ([x, y, z] towards the sun), hemisphere (fill intensity), environment (sky reflections), fog (colour).
 export const LEVELS = {
+  switchyard: {
+    name: 'Switchyard',
+    file: 'assets/levels/switchyard.glb',
+    blurb: '112 × 88 metres · Asymmetric flow bowl, spine transfer lane, ten-stair gallery, Euro gap, A-frame and banked hip · RIFT board',
+    bounds: { x: 55.75, z: 43.75 },
+    shadowHalf: 74,
+    noShadow: /ENV_slab_|ENV_apron_|ENV_joints_|ENV_marking_/,
+    decals: /Construction|Paint/,
+    look: { toneMapping: 'neutral', exposure: 0.78, sun: 3.1, sunColor: '#fff0d9', sunDirection: [-0.5, 0.65, -0.58], hemisphere: 0.32, environment: 0.5, fog: '#c4d1d4' }
+  },
   breakwater: {
     name: 'Breakwater',
     file: 'assets/skatepark.glb',
