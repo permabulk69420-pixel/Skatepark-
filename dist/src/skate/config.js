@@ -44,7 +44,7 @@ export const TUNING = Object.freeze({
   popUpBias: 2,              // pop direction leans from the surface normal towards straight up as the surface steepens (n.y^this)
 
   // Flips: the flip button in the air plus the stick left (kickflip) or right (heelflip), one full turn of the board.
-  flipTime: 0.34,            // seconds for the board to turn all the way round (short enough to finish inside a normal ollie)
+  flipTime: 0.46,            // seconds for the board to turn all the way round
   flipMinAir: 0.05,          // seconds in the air before a flip can start
   flipCleanRoll: 0.7,        // landing within this many radians (~40°) of flat is a clean landing
   flipBailRoll: 1.9,         // further than this (~110°) from flat and you bail; in between is a sketchy landing

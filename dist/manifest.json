@@ -1,12 +1,12 @@
 {
- "build": "0c68c17",
+ "build": "7d56398",
  "files": {
   "src/main.js": "705b6628fd",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "e07586d14b",
   "src/skate/board-off.js": "c4430cae9b",
   "src/skate/board-view.js": "77fa836db5",
-  "src/skate/config.js": "e7d1e55dfc",
+  "src/skate/config.js": "540e90b511",
   "src/skate/grip-contact.js": "b88f95d5d7",
   "src/skate/grip-poses.js": "9b84251e00",
   "src/skate/hand-balance.js": "569e4a15e9",
@@ -22,7 +22,7 @@
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
   "src/skate/sfx.js": "8e31f7fa09",
-  "src/skate/sim.js": "b87fe0728c",
+  "src/skate/sim.js": "d3dced7755",
   "src/skate/trick-controls.js": "1c88e3084a",
   "src/skate/world.js": "e63c7edae0",
   "vendor/addons/loaders/GLTFLoader.js": "0bebb80b4d",
