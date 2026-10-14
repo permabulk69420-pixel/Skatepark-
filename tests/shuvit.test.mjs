@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { Mode } from '../dist/src/skate/sim.js';
 import { TUNING as T } from '../dist/src/skate/config.js';
+import { radialDeadzone } from '../dist/src/skate/input.js';
 import { makeSkater, rail, run } from './helpers.mjs';
 
 function ollied(events = [], opts = {}) {
@@ -281,4 +282,29 @@ test('a finished shove preserves board orientation through the 180° heading tra
     assert.equal(s.shuvYaw, 0);
     assert.equal(s.shuv.done, true);
   }
+});
+
+test('radial deadzone preserves diagonal angles that per-axis deadzones changed into shoves', () => {
+  const s = makeSkater();
+  const p = radialDeadzone(-0.42, 0.85);
+  assert.equal(s.trickZone(p.x, -p.y).name, 'Varial Kickflip');
+  assert.equal(s.trickZone(-p.x, -p.y).name, 'Varial Heelflip');
+});
+
+test('down-to-left thumb movement stays pending until the varial direction settles', () => {
+  const events = [], s = ollied(events);
+  run(s, { flip: true, drive: -1 }, 0.028);
+  for (let i = 1; i <= 9; i++) run(s, { flip: true, steer: -0.8 * i / 9, drive: -1 + 0.2 * i / 9 }, 1 / 72);
+  run(s, { flip: true, steer: -0.8, drive: -0.8 }, 0.15);
+  assert.deepEqual(names(events, 'flipStart'), ['Varial Kickflip']);
+});
+
+test('a brief leftward reading while moving to up is not mistaken for a kickflip', () => {
+  const events = [], s = ollied(events);
+  run(s, { flip: true, steer: -0.65, drive: 0.12 }, 0.028);
+  run(s, { flip: true, steer: -0.45, drive: 0.75 }, 0.028);
+  run(s, { flip: true, steer: -0.05, drive: 1 }, 0.21);
+  assert.deepEqual(names(events, 'flipStart'), []);
+  run(s, { flip: true, steer: -1 }, 0.15);
+  assert.deepEqual(names(events, 'flipStart'), [], 'up must consume the armed attempt');
 });

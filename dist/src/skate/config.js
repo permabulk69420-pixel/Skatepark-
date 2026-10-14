@@ -55,9 +55,11 @@ export const TUNING = Object.freeze({
   // favour basic flips, while inputs mostly pointing up do not trigger a trick.
   shuvTime: 0.32,            // seconds for the board to spin the half turn
   trickStick: 0.4,           // how far the stick has to leave the middle (of 1) to pick a trick
-  trickSettle: 0.075,        // allow the thumb to reach its intended direction before picking a trick
-  trickMaxWait: 0.12,        // ...a moving thumb can take a little longer
-  trickStable: 0.12,         // a thumb counts as still moving if its direction changes more than this many radians in a frame
+  trickSettle: 0.09,         // minimum time to reach the intended direction
+  trickMaxWait: 0.20,        // choose the latest input if the thumb keeps moving
+  trickStable: 0.08,         // accumulated direction change since the last stable reading (radians)
+  trickRadialStable: 0.055,  // meaningful magnitude change also resets settling
+  trickStillTime: 0.035,     // must remain settled this long; repeated physics substeps do not count as movement
   stickTurn: 0,              // radians: optional stick rotation (0 = unrotated controller axes)
   shuvCone: THREE_DEG(22.5), // within 22.5° of down: pop shove-it
   varialCone: THREE_DEG(60), // 22.5°–60° from down: varial; favour regular flips near left/right

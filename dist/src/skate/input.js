@@ -8,13 +8,20 @@
 //   either grip, in the air = grab the board (board-grab.js)
 const DEADZONE = 0.15;
 const deadzone = (v) => (Math.abs(v) > DEADZONE ? (Math.abs(v) - DEADZONE) / (1 - DEADZONE) * Math.sign(v) : 0);
+// The trick stick uses a radial deadzone: independent axis deadzones skew diagonal angles.
+export const radialDeadzone = (x, y) => {
+  const mag = Math.hypot(x, y);
+  if (mag <= DEADZONE) return { x: 0, y: 0 };
+  const scale = Math.min(1, (mag - DEADZONE) / (1 - DEADZONE)) / mag;
+  return { x: x * scale, y: y * scale };
+};
 const BUTTON = { trigger: 0, squeeze: 1, stick: 3, a: 4, b: 5 };
 
 export function createInput(renderer) {
   const keys = new Set();
   const held = { recenter: 0, spawn: 0 };
   const edge = { stance: false, keyStance: false };
-  const out = { steer: 0, drive: 0, lean: 0, jump: false, grind: false, flip: false, detach: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
+  const out = { steer: 0, drive: 0, trickSteer: 0, trickDrive: 0, lean: 0, jump: false, grind: false, flip: false, detach: false, recenter: false, toSpawn: false, toggleStance: false, grips: { left: null, right: null } };
   const override = {};
   // Set by the game: while true, holding both grips does not re-centre (in the air, or while grabbing the board with both hands).
   const block = { recenter: false };
@@ -33,6 +40,7 @@ export function createInput(renderer) {
     jump = keys.has('Space');
     flip = keys.has('KeyF');
     grind = keys.has('KeyG') || keys.has('ShiftLeft') || keys.has('ShiftRight');
+    let trickSteer = steer, trickDrive = drive;
     const keyStance = keys.has('KeyZ');
     if (keyStance && !edge.keyStance) toggleStance = true;
     edge.keyStance = keyStance;
@@ -46,8 +54,12 @@ export function createInput(renderer) {
         const { axes, buttons } = pad;
         const a = axes.length >= 4 ? 2 : 0;
         if (source.handedness === 'left') {
-          steer += deadzone(axes[a] || 0);
-          drive -= deadzone(axes[a + 1] || 0);
+          const x = axes[a] || 0, y = axes[a + 1] || 0;
+          steer += deadzone(x);
+          drive -= deadzone(y);
+          const trick = radialDeadzone(x, y);
+          trickSteer += trick.x;
+          trickDrive -= trick.y;
           leftSqueeze = !!buttons[BUTTON.squeeze]?.pressed;
           leftX = !!buttons[BUTTON.a]?.pressed;
           leftY = !!buttons[BUTTON.b]?.pressed;
@@ -70,6 +82,8 @@ export function createInput(renderer) {
 
     out.steer = Math.max(-1, Math.min(1, steer));
     out.drive = Math.max(-1, Math.min(1, drive));
+    out.trickSteer = Math.max(-1, Math.min(1, trickSteer));
+    out.trickDrive = Math.max(-1, Math.min(1, trickDrive));
     // Balance comes from the hands in VR (main.js sets it); on a flat screen A/D balance so it stays playable for testing.
     out.lean = session ? 0 : out.steer;
     out.jump = jump;
