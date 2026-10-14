@@ -141,7 +141,7 @@ export class Skater {
       (this.mode === Mode.GROUND || this.mode === Mode.AIR) && !this.flip && !this.shuv && !this.boardOff,
       this.mode === Mode.AIR && this.airTime >= T.flipMinAir,
     );
-    if (trick) this.startTrick(trick.flip, trick.shuv, this.trickControls.read);
+    if (trick) this.startTrick(trick.flip, trick.shuv);
     this.detectFlick();
 
     const jump = !!input.jump;
@@ -601,7 +601,7 @@ export class Skater {
   }
 
   // flipKick: null for no flip, true for a kickflip, false for a heelflip. shuvBs: null for no shove-it, else true for backside.
-  startTrick(flipKick, shuvBs, stick = null) {
+  startTrick(flipKick, shuvBs) {
     headingVec(this.heading, _H);
     const fakie = (this.vel.x * _H.x + this.vel.z * _H.z < -0.3) !== this.switched; // a board that a shove-it turned round is not "fakie"
     this.trickPrefix = fakie ? 'Fakie ' : '';
@@ -610,7 +610,7 @@ export class Skater {
     if (this.flip && this.shuv) this.flip.varial = `${this.trickPrefix}Varial ${this.flip.kick ? 'Kickflip' : 'Heelflip'}`;
     this.trickControls.reset();
     this.spinLock = true;
-    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name, stick });
+    this.onEvent('flipStart', { name: this.flip?.varial || this.flip?.name || this.shuv.name });
   }
 
   // The board has come round 180°: it is now travelling tail first. Turn the heading and the rider's stance with it, so the rider
