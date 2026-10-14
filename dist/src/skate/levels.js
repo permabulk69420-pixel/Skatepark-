@@ -7,12 +7,12 @@ export const LEVELS = {
   switchyard: {
     name: 'Switchyard',
     file: 'assets/levels/switchyard.glb',
-    blurb: '112 × 88 metres · Asymmetric flow bowl, spine transfer lane, ten-stair gallery, Euro gap, A-frame and banked hip · RIFT board',
-    bounds: { x: 55.75, z: 43.75 },
-    shadowHalf: 74,
-    noShadow: /ENV_slab_|ENV_apron_|ENV_joints_|ENV_marking_/,
+    blurb: '184 × 172 metres · 30-foot vert halfpipe, 20-foot transitions, 15-foot spine, deep flow bowl, 24 stairs and a sweeping boardslide rail · RIFT board',
+    bounds: { x: 91.75, z: 85.75, cz: 6 },
+    shadowHalf: 115,
+    noShadow: /ENV_slab_|ENV_apron_|ENV_joints_|ENV_marking_|ENV_blue_/,
     decals: /Construction|Paint/,
-    look: { toneMapping: 'neutral', exposure: 0.78, sun: 3.1, sunColor: '#fff0d9', sunDirection: [-0.5, 0.65, -0.58], hemisphere: 0.32, environment: 0.5, fog: '#c4d1d4' }
+    look: { toneMapping: 'neutral', exposure: 0.76, sun: 3.3, sunColor: '#ffead3', sunDirection: [-0.5, 0.62, -0.6], hemisphere: 0.28, environment: 0.65, fog: '#c4d1d4', fogNear: 210, fogFar: 500 }
   },
   breakwater: {
     name: 'Breakwater',

@@ -37,7 +37,7 @@ const lighting = {
   environment: 0.25, fog: '#b8c6c5', ...level.look
 };
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(lighting.fog), 130, 290);
+scene.fog = new THREE.Fog(new THREE.Color(lighting.fog), lighting.fogNear ?? 130, lighting.fogFar ?? 290);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);

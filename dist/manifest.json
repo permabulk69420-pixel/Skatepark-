@@ -1,7 +1,7 @@
 {
- "build": "61a8d11",
+ "build": "9baab40",
  "files": {
-  "src/main.js": "918244b82b",
+  "src/main.js": "05f4d165ee",
   "src/skate/adaptive-grip.js": "0202905f40",
   "src/skate/board-grab.js": "e07586d14b",
   "src/skate/board-off.js": "c4430cae9b",
@@ -15,7 +15,7 @@
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "315e33c808",
   "src/skate/input.js": "f34ca440e1",
-  "src/skate/levels.js": "aaa26dd623",
+  "src/skate/levels.js": "c94821357f",
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",
   "src/skate/music.js": "dd250e57a9",
@@ -54,6 +54,6 @@
   "assets/skatepark.glb": "88c8d75fdc",
   "models/hands/LeftHand.glb": "ff83a892ce",
   "models/hands/RightHand.glb": "cabf4c3365",
-  "assets/levels/switchyard.glb": "a285109c3a"
+  "assets/levels/switchyard.glb": "82299e4138"
  }
 }
