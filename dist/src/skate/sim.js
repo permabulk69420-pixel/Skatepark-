@@ -110,6 +110,7 @@ export class Skater {
     this.up.set(0, 1, 0); this.groundNormal.set(0, 1, 0);
     this.spinVel = 0; this.exitAlign = 0; this.visPitch = 0; this.visRoll = 0;
     this.pushCool = 0; this.pushPending = 0; this.crouch = 0; this.popRequest = null; this.holdFwd = 0; this.passIntent = false; this.lipExit = false; this.manual = null; this.manualQueue = null; this.manualLift = 0;
+    this.stickExtreme = 0; this.stickExtremeT = this.clock; this.stickExtremeSpeed = 0;
     this.endFlip();
     this.boardOff = false; this.offTrick = null; this.catchSketchy = false; this.boardOffPose = null;
     this.grabbing = false; this.bodyRoll = 0; this.bodyRollVel = 0; this.bodyFlipHold = 0; this.bodyFlipping = false;   // backflips / frontflips (bodyFlipStep)
@@ -189,8 +190,10 @@ export class Skater {
 
   // Forward then back (or back then forward) on the stick, quickly, starts a manual.
   detectFlick() {
-    // On a rail the stick up and down picks nosegrind / 5-0; it must not read as a manual flick.
-    if (this.mode === Mode.GRIND) { this.stickExtreme = 0; this.stickExtremeT = this.clock; return; }
+    // Trick selection, grind variants and grabbed body flips own the stick. Neither half of those inputs is a manual gesture.
+    const blocked = (this.mode !== Mode.GROUND && this.mode !== Mode.AIR) || this.trickControls.held || this.trickControls.pending ||
+      (this.mode === Mode.AIR && (this.grabbing || this.bodyFlipping));
+    if (blocked) { this.stickExtreme = 0; this.stickExtremeT = this.clock; this.stickExtremeSpeed = 0; return; }
     const d = this.drive;
     const sign = d > T.flickThreshold ? 1 : d < -T.flickThreshold ? -1 : 0;
     if (sign !== 0 && sign !== this.stickExtreme) {
@@ -209,7 +212,7 @@ export class Skater {
   requestManual(kind) {
     if (this.manual) return;
     // A board-trick attempt owns the stick until it is consumed or expires.
-    if (this.mode === Mode.AIR && (this.trickControls.held || this.trickControls.pending || this.flip || this.shuv)) return;
+    if (this.mode === Mode.AIR && (this.trickControls.held || this.trickControls.pending)) return;
     // …and while grabbing, back or forward on the stick is a backflip or frontflip.
     if (this.mode === Mode.AIR && (this.grabbing || this.bodyFlipping)) return;
     if (this.mode === Mode.GROUND) this.tryManual(kind);
@@ -217,15 +220,16 @@ export class Skater {
   }
 
   // kind +1: tail manual (nose up), −1: nose manual (tail up).
-  tryManual(kind, queued = false) {
+  tryManual(kind, queued = false, entryTrick = null) {
     if (this.mode !== Mode.GROUND || this.manual || (this.jumpHeld && !queued)) return;
     if (this.groundNormal.y < 0.97 || this.speed < T.manualMinSpeed) return;
     // A manual lifts the end that leads: the nose going forward, the tail rolling fakie (and the nose manual the other way).
     headingVec(this.heading, _H);
     const fakie = this.vel.x * _H.x + this.vel.z * _H.z < -0.3;
+    const name = `${fakie ? 'Fakie ' : ''}${kind > 0 ? 'Manual' : 'Nose Manual'}`;
     this.manual = {
       kind, pitchSign: fakie ? -kind : kind, bal: 0, balVel: 0, time: 0, p1: this.random() * TAU, p2: this.random() * TAU,
-      name: `${fakie ? 'Fakie ' : ''}${kind > 0 ? 'Manual' : 'Nose Manual'}`
+      name: entryTrick ? `${entryTrick} + ${name}` : name
     };
     this.pushPending = 0;
     this.stickExtreme = 0;
@@ -861,7 +865,7 @@ export class Skater {
     if (credit) this.onEvent('flip', { name: credit });
     const q = this.manualQueue;
     this.manualQueue = null;
-    if (q && this.clock - q.t <= T.manualQueueWindow) this.tryManual(q.kind, true);
+    if (q && this.clock - q.t <= T.manualQueueWindow) this.tryManual(q.kind, true, credit);
   }
 
   // ----- walls -----------------------------------------------------------------------------------------------
