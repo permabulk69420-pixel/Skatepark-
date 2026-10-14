@@ -116,7 +116,7 @@ const feel = (type, data = {}) => {
     case 'crouch': haptics.pulse(0.22, 18); break;
     case 'pop': haptics.pulse(0.5 + 0.35 * data.charge, 34); break;
     case 'push': haptics.pulse(0.3, 28); break;
-    case 'flipStart': haptics.pulse(0.3, 22); hud?.say(data.stick ? `${data.name}   stick ${data.stick.x.toFixed(2)}, ${data.stick.y.toFixed(2)}` : data.name, 1.6); break; // the stick readout is for tuning the diagonals
+    case 'flipStart': haptics.pulse(0.3, 22); hud?.say(data.name, 1.6); break;
     case 'flip': haptics.pulse(0.6, 45); hud?.say(data.name, 1.1); break;
     case 'sketchy': haptics.pulse(0.55, 80); hud?.say('Sketchy', 0.9); break;
     case 'pump': haptics.pulse(THREE.MathUtils.clamp(0.25 + data.gain * 0.6, 0.25, 0.7), 40); break;
@@ -306,12 +306,6 @@ function frame(dt) {
   if (command.recenter) { rider.requestCalibration(); haptics.pulse(0.4, 40); hud.say('Recentred', 1.0); }
   if (command.toSpawn) sim.respawn(sim.spawn);
   sim.update(command, dt);
-  // Live stick readout for tuning the trick zones: hold the flip button on the ground and move the left stick.
-  if (command.flip && sim.mode === Mode.GROUND) {
-    const x = command.trickSteer, y = command.trickDrive;
-    const z = sim.trickZone(x, y);
-    hud.say(z.none && z.name === '-' ? 'stick: middle' : `${z.name}   ${Math.round(z.deg)}°   (${x.toFixed(2)}, ${y.toFixed(2)})`, 0.15);
-  }
   rider.update(dt);
   lods.update(camera.getWorldPosition(lodEye));
   boardView.update(sim, dt);
