@@ -93,7 +93,7 @@ test('the stick that picks the flip does not also spin the board', () => {
 test('starting too late bails: you cannot land mid-flip', () => {
   const events = [];
   const s = ollied(events);
-  run(s, {}, 0.4);                       // near the top of a tap ollie's air
+  run(s, {}, 0.55);                      // late in a tap ollie's air
   run(s, { flip: true, steer: -1 }, 0.05);
   run(s, {}, 1);
   const bail = events.find((e) => e.type === 'bail');
@@ -102,7 +102,7 @@ test('starting too late bails: you cannot land mid-flip', () => {
   assert.ok(!names(events, 'flip').length, 'a bailed flip was credited');
 });
 
-test('coming down a little off flat is a sketchy landing: a stumble, not a bail, and not a trick', () => {
+test('coming down a little off flat is a sketchy landing: a stumble, not a bail, and the trick still counts', () => {
   const events = [];
   const s = makeSkater({ events });
   run(s, {}, 0.6);
@@ -114,7 +114,7 @@ test('coming down a little off flat is a sketchy landing: a stumble, not a bail,
   s.land({ hasNormal: true, normal: new THREE.Vector3(0, 1, 0) });
   assert.equal(s.mode, Mode.GROUND);
   assert.ok(events.some((e) => e.type === 'sketchy'));
-  assert.ok(!names(events, 'flip').length);
+  assert.deepEqual(names(events, 'flip'), ['Kickflip']);
   assert.ok(s.speed < before * 0.8, 'a sketchy landing kept all its speed');
 });
 

@@ -653,14 +653,14 @@ export class Skater {
     this.spinLock = false;
   }
 
-  // The name to credit when the board is back under you, or null if nothing really happened.
+  // The name to credit when the board is back under you: the trick you did. Landing already bailed you if the board was too far
+  // round to ride away, so anything that gets here was landed (clean or sketchy) and counts as the full trick. (This used to credit
+  // only the halves that had finished: a varial kickflip whose flip was still going round when you landed came out as a Pop Shove-it.)
   trickCredit() {
     const f = this.flip, s = this.shuv;
-    const flipOk = f && Math.abs(f.angle) > Math.PI && this.flipResidual() <= T.flipCleanRoll;
-    const shuvOk = s && (s.done || (Math.abs(s.angle) > Math.PI / 2 && this.shuvResidual() <= T.shuvClean));
-    if (flipOk && shuvOk) return f.varial || f.name;
-    if (flipOk) return f.name;
-    if (shuvOk) return s.name;
+    if (f && s) return f.varial || f.name;
+    if (f) return f.name;
+    if (s) return s.name;
     return null;
   }
 
