@@ -113,7 +113,7 @@ export const LEVELS = {
     look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.25, sunColor: '#9db8ff', sunDirection: [-0.45, 0.53, -0.71], hemisphere: 0.12, environment: 0.02, fog: '#03060d', fogNear: 18, fogFar: 85 },
     night: {
       // the moon is up and ahead, to the right of where the rider starts (the faint moonlight on the board comes from it too)
-      sky: { moon: [-0.45, 0.53, -0.71] },
+      sky: { moon: [-0.45, 0.53, -0.71], skyline: true, glow: '#5a4830' },
       ambient: '#0b1426',
       key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 1.1, centre: [0, 0], radius: 20 },
       lamps: [
