@@ -1,6 +1,7 @@
 // Turns a photogrammetry scan (a Sketchfab GLB) into a raw level file that tools/optimise-level.mjs can take:
 //   * places the scan: either a small yaw + scale (frame.yawDegrees / frame.scale / frame.centre / frame.groundHeight, for a scan that
 //     is already roughly level) or a full 4x4 `frame.matrix` (glTF, column-major) for one that has to be levelled and scaled
+//   * `dropMaterials` removes meshes using those materials (an untextured base block, say); no `slab` means no slab or ground plane
 //   * names its materials and textures the way the optimiser and levels.js expect (`Scan | alpha`, `<name>_base`)
 //   * optionally crops it to an outline (`crop`: [x, z] metres, in the placed level); `cropEdge` { band, minLuma } also drops the dark
 //     triangles (vegetation, by vertex colour) within `band` metres of the outline, and `maxHeight` drops anything higher than that above y = 0; `dropVertexColors` removes the colours afterwards
@@ -28,6 +29,13 @@ const doc = await io.read(path.join(repo, config.scan));
 const root = doc.getRoot();
 const scene = root.listScenes()[0];
 const buffer = root.listBuffers()[0];
+
+// --- drop meshes that use the named materials (e.g. a scan's untextured base block)
+for (const name of config.dropMaterials ?? []) {
+  for (const node of root.listNodes().filter((x) => x.getMesh()?.listPrimitives().some((p) => p.getMaterial()?.getName() === name))) {
+    const mesh = node.getMesh(); node.dispose(); mesh.dispose();
+  }
+}
 
 // --- place the scan
 const scanRoot = doc.createNode('ScanRoot');
@@ -155,73 +163,75 @@ for (const node of meshNodes) {
   node.getParentNode().addChild(copy);
 }
 
-// --- slab: a visual plane just under the scan's ground, and the flat ground it is ridden on. The slab goes right up to the edge of the
-// hole, under the scan's margin, so anything the scan lost near its edge is filled by the slab (2 cm under the scan's ground).
-const half = config.slab.half;
-const tile = config.slab.tileMetres;
-const set = path.basename(config.slab.textures);
-const loadBuffer = (suffix) => fs.readFileSync(path.join(repo, `${config.slab.textures}_${suffix}_2k.jpg`));
-const texture = (name, bytes) => doc.createTexture(name).setImage(new Uint8Array(bytes)).setMimeType('image/jpeg');
-let diffuse = loadBuffer('diff');
-if (config.slab.matchColor) {
-  // Scale the colour so the slab's average matches the scan's apron.
-  const mean = (await sharp(diffuse).stats()).channels.map((c) => c.mean);
-  diffuse = await sharp(diffuse).linear(config.slab.matchColor.map((t, i) => t / mean[i]), [0, 0, 0]).jpeg({ quality: 92 }).toBuffer();
-}
-const orm = texture(`${set}_orm`, loadBuffer('arm'));
-const slabMaterial = doc.createMaterial('Concrete | ground').setBaseColorFactor(config.slab.tint ?? [1, 1, 1, 1])
-  .setBaseColorTexture(texture(`${set}_base`, diffuse))
-  .setNormalTexture(texture(`${set}_normal`, loadBuffer('nor_gl')))
-  .setMetallicRoughnessTexture(orm).setOcclusionTexture(orm);
-// Ground at height y: one square, or with a `slab.hole` (star-shaped about its centre) the ring between the square and the hole, cut into quads along rays
-// from the hole's centre (through every hole corner and every square corner, so each quad has one straight edge on each side).
-// (a ray can cross a star-shaped hole only once, which is what the cutting relies on)
-const ring = (hole) => {
-  const centre = config.slab.holeCentre ?? [hole.reduce((s, p) => s + p[0], 0) / hole.length, hole.reduce((s, p) => s + p[1], 0) / hole.length];
-  const corners = [[-half, -half], [-half, half], [half, half], [half, -half]];
-  const angle = ([x, z]) => Math.atan2(z - centre[1], x - centre[0]);
-  const angles = [...hole, ...corners].map(angle).sort((p, q) => p - q);
-  const hit = (a, poly, closedSquare) => {   // first boundary crossing of the ray from the centre at angle a
-    const d = [Math.cos(a), Math.sin(a)];
-    let best = Infinity;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const [ax, az] = poly[j], [bx, bz] = poly[i];
-      const ex = bx - ax, ez = bz - az, det = d[0] * -ez - d[1] * -ex;
-      if (Math.abs(det) < 1e-12) continue;
-      const t = ((ax - centre[0]) * -ez - (az - centre[1]) * -ex) / det;
-      const u = (d[0] * (az - centre[1]) - d[1] * (ax - centre[0])) / det;
-      if (t > 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
-    }
-    return [centre[0] + d[0] * best, centre[1] + d[1] * best];
+if (config.slab) {
+  // --- slab: a visual plane just under the scan's ground, and the flat ground it is ridden on. The slab goes right up to the edge of the
+  // hole, under the scan's margin, so anything the scan lost near its edge is filled by the slab (2 cm under the scan's ground).
+  const half = config.slab.half;
+  const tile = config.slab.tileMetres;
+  const set = path.basename(config.slab.textures);
+  const loadBuffer = (suffix) => fs.readFileSync(path.join(repo, `${config.slab.textures}_${suffix}_2k.jpg`));
+  const texture = (name, bytes) => doc.createTexture(name).setImage(new Uint8Array(bytes)).setMimeType('image/jpeg');
+  let diffuse = loadBuffer('diff');
+  if (config.slab.matchColor) {
+    // Scale the colour so the slab's average matches the scan's apron.
+    const mean = (await sharp(diffuse).stats()).channels.map((c) => c.mean);
+    diffuse = await sharp(diffuse).linear(config.slab.matchColor.map((t, i) => t / mean[i]), [0, 0, 0]).jpeg({ quality: 92 }).toBuffer();
+  }
+  const orm = texture(`${set}_orm`, loadBuffer('arm'));
+  const slabMaterial = doc.createMaterial('Concrete | ground').setBaseColorFactor(config.slab.tint ?? [1, 1, 1, 1])
+    .setBaseColorTexture(texture(`${set}_base`, diffuse))
+    .setNormalTexture(texture(`${set}_normal`, loadBuffer('nor_gl')))
+    .setMetallicRoughnessTexture(orm).setOcclusionTexture(orm);
+  // Ground at height y: one square, or with a `slab.hole` (star-shaped about its centre) the ring between the square and the hole, cut into quads along rays
+  // from the hole's centre (through every hole corner and every square corner, so each quad has one straight edge on each side).
+  // (a ray can cross a star-shaped hole only once, which is what the cutting relies on)
+  const ring = (hole) => {
+    const centre = config.slab.holeCentre ?? [hole.reduce((s, p) => s + p[0], 0) / hole.length, hole.reduce((s, p) => s + p[1], 0) / hole.length];
+    const corners = [[-half, -half], [-half, half], [half, half], [half, -half]];
+    const angle = ([x, z]) => Math.atan2(z - centre[1], x - centre[0]);
+    const angles = [...hole, ...corners].map(angle).sort((p, q) => p - q);
+    const hit = (a, poly, closedSquare) => {   // first boundary crossing of the ray from the centre at angle a
+      const d = [Math.cos(a), Math.sin(a)];
+      let best = Infinity;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [ax, az] = poly[j], [bx, bz] = poly[i];
+        const ex = bx - ax, ez = bz - az, det = d[0] * -ez - d[1] * -ex;
+        if (Math.abs(det) < 1e-12) continue;
+        const t = ((ax - centre[0]) * -ez - (az - centre[1]) * -ex) / det;
+        const u = (d[0] * (az - centre[1]) - d[1] * (ax - centre[0])) / det;
+        if (t > 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
+      }
+      return [centre[0] + d[0] * best, centre[1] + d[1] * best];
+    };
+    const inner = angles.map((a) => hit(a, hole)), outer = angles.map((a) => hit(a, corners));
+    const quads = [];
+    for (let i = 0; i < angles.length; i++) { const k = (i + 1) % angles.length; quads.push([inner[i], outer[i], outer[k], inner[k]]); }
+    return quads;
   };
-  const inner = angles.map((a) => hit(a, hole)), outer = angles.map((a) => hit(a, corners));
-  const quads = [];
-  for (let i = 0; i < angles.length; i++) { const k = (i + 1) % angles.length; quads.push([inner[i], outer[i], outer[k], inner[k]]); }
-  return quads;
-};
-const slabPrimitive = (y, withUv) => {
-  const position = [], uv = [], index = [];
-  const quads = config.slab.hole ? ring(config.slab.hole) : [[[-half, -half], [-half, half], [half, half], [half, -half]]];
-  for (const quad of quads) {
-    const base = position.length / 3;
-    for (const [x, z] of quad) { position.push(x, y, z); uv.push(x / tile, z / tile); }
-    for (const tri of [[0, 1, 2], [0, 2, 3]]) {
-      const [p, q, r] = tri.map((k) => [position[(base + k) * 3], position[(base + k) * 3 + 2]]);
-      const up = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);   // the sign of the face normal's Y for (x, z) winding
-      index.push(...(up < 0 ? tri.map((k) => base + k) : [base + tri[0], base + tri[2], base + tri[1]]));
+  const slabPrimitive = (y, withUv) => {
+    const position = [], uv = [], index = [];
+    const quads = config.slab.hole ? ring(config.slab.hole) : [[[-half, -half], [-half, half], [half, half], [half, -half]]];
+    for (const quad of quads) {
+      const base = position.length / 3;
+      for (const [x, z] of quad) { position.push(x, y, z); uv.push(x / tile, z / tile); }
+      for (const tri of [[0, 1, 2], [0, 2, 3]]) {
+        const [p, q, r] = tri.map((k) => [position[(base + k) * 3], position[(base + k) * 3 + 2]]);
+        const up = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);   // the sign of the face normal's Y for (x, z) winding
+        index.push(...(up < 0 ? tri.map((k) => base + k) : [base + tri[0], base + tri[2], base + tri[1]]));
+      }
     }
-  }
-  const accessor = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
-  const prim = doc.createPrimitive().setAttribute('POSITION', accessor('VEC3', new Float32Array(position)))
-    .setIndices(accessor('SCALAR', new Uint32Array(index)));
-  if (withUv) {
-    prim.setAttribute('NORMAL', accessor('VEC3', new Float32Array(position.map((_, i) => (i % 3 === 1 ? 1 : 0)))));
-    prim.setAttribute('TEXCOORD_0', accessor('VEC2', new Float32Array(uv)));
-  }
-  return prim;
-};
-scene.addChild(doc.createNode('Slab').setMesh(doc.createMesh('Slab').addPrimitive(slabPrimitive(-0.02, true).setMaterial(slabMaterial))));
-scene.addChild(doc.createNode('COL_Ground').setMesh(doc.createMesh('COL_Ground').addPrimitive(slabPrimitive(0, false).setMaterial(slabMaterial))).setExtras({ role: 'collision' }));
+    const accessor = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+    const prim = doc.createPrimitive().setAttribute('POSITION', accessor('VEC3', new Float32Array(position)))
+      .setIndices(accessor('SCALAR', new Uint32Array(index)));
+    if (withUv) {
+      prim.setAttribute('NORMAL', accessor('VEC3', new Float32Array(position.map((_, i) => (i % 3 === 1 ? 1 : 0)))));
+      prim.setAttribute('TEXCOORD_0', accessor('VEC2', new Float32Array(uv)));
+    }
+    return prim;
+  };
+  scene.addChild(doc.createNode('Slab').setMesh(doc.createMesh('Slab').addPrimitive(slabPrimitive(-0.02, true).setMaterial(slabMaterial))));
+  scene.addChild(doc.createNode('COL_Ground').setMesh(doc.createMesh('COL_Ground').addPrimitive(slabPrimitive(0, false).setMaterial(slabMaterial))).setExtras({ role: 'collision' }));
+}
 
 // --- grind lines and spawn
 for (const ledge of config.ledges ?? []) {
