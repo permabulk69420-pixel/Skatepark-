@@ -77,8 +77,8 @@ export const LEVELS = {
     file: 'assets/levels/gravesend.glb',
     blurb: 'A photogrammetry scan of the real Gravesend skatepark · 8K textures, banks, ledges, rail, a quarter and stairs · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/gravesend-skatepark/level.json), then tools/optimise-level.mjs.
-    bounds: { x: 14, z: 11, cx: 0, cz: 0 },
-    shadowHalf: 26,
+    bounds: { x: 29, z: 22.5, cx: 0, cz: 0 },
+    shadowHalf: 52,
     noShadow: /^$/,
     look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
@@ -87,8 +87,8 @@ export const LEVELS = {
     file: 'assets/levels/gravesend-4k.glb',
     blurb: 'The same Gravesend scan with 4K textures, for comparing against the 8K one · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/gravesend-skatepark/level.json), then tools/optimise-level.mjs.
-    bounds: { x: 14, z: 11, cx: 0, cz: 0 },
-    shadowHalf: 26,
+    bounds: { x: 29, z: 22.5, cx: 0, cz: 0 },
+    shadowHalf: 52,
     noShadow: /^$/,
     look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
