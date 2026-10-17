@@ -4,8 +4,7 @@ import * as THREE from 'three';
 // thin cloud lit by the moon, and the moon itself, from a real NASA map (assets/sky/moon.jpg: Lunar Reconnaissance Orbiter data,
 // NASA Scientific Visualization Studio) with a phase. It is one shader on one sphere that follows the camera, so it costs almost nothing
 // next to the level, and it is drawn at the far plane so every object in the level sits in front of it.
-// All options are optional: moon (direction towards the moon), phaseDegrees (0 = full), moonSize (radians), stars, galaxy, clouds, glow,
-// skyline (a distant treeline and rooftops on the horizon: true, or { height, buildings, colour, windows }).
+// All options are optional: moon (direction towards the moon), phaseDegrees (0 = full), moonSize (radians), stars, galaxy, clouds, glow.
 
 const vertexShader = /* glsl */`
   varying vec3 vDir;
@@ -21,8 +20,6 @@ const fragmentShader = /* glsl */`
   uniform sampler2D uMoon;
   uniform vec3 uMoonDir, uPhase, uZenith, uHorizon, uGlow, uGalaxyNormal;
   uniform float uMoonSize, uStars, uGalaxy, uClouds, uTime;
-  uniform float uSkyline, uSkylineHeight, uBuildings;
-  uniform vec3 uSilhouette, uWindowColour;
 
   float hash13(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
   vec3 hash33(vec3 p) {
@@ -34,7 +31,6 @@ const fragmentShader = /* glsl */`
     return mix(mix(mix(hash13(i), hash13(i + vec3(1,0,0)), f.x), mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
                mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x), mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z);
   }
-  float circleNoise(float a, float freq, float seed) { return vnoise(vec3(cos(a) * freq, sin(a) * freq, seed * 7.31)); }
   float fbm(vec3 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { s += a * vnoise(p); p *= 2.03; a *= 0.5; } return s; }
 
   // One layer of stars: a random point in each cell of a 3D grid laid over the sky. A star smaller than a pixel is dimmed rather than lost.
@@ -99,45 +95,6 @@ const fragmentShader = /* glsl */`
     col += moonLight * halo * 1.1 * (cosA > 0.0 ? 1.0 : 0.0);
     col = mix(col, col + vec3(0.02, 0.026, 0.04) + moonLight * halo * 0.9, cloud * 0.8);
 
-    // a distant skyline: a treeline all the way round, with stretches of rooftops and a few lit windows, in front of the town glow
-    if (uSkyline > 0.0 && dir.y < 0.45) {
-      float a = atan(dir.z, dir.x) + 3.1415927;
-      // trees: a round crown per cell, overlapping its neighbours, on a canopy line that rises and falls slowly
-      float tw = 6.2831853 / 170.0;
-      float tc = floor(a / tw);
-      float trees = 0.0;
-      for (int j = -1; j <= 1; j++) {
-        float c = tc + float(j);
-        vec3 th = hash33(vec3(c, 2.0, 9.0));
-        float ca = (c + 0.25 + 0.5 * th.x) * tw;
-        float r = tw * (0.5 + 1.1 * th.y * th.y);
-        float x = (a - ca) / r;
-        float base = uSkylineHeight * (0.45 + 0.45 * circleNoise(ca, 3.0, 1.0)) + tw * 0.9 * (th.z - 0.4);
-        if (abs(x) < 1.0) trees = max(trees, base + r * 0.75 * sqrt(1.0 - x * x));
-      }
-      // rooftops in a few stretches: mostly low houses and flats, the odd taller block
-      float cellF = a / 6.2831853 * 240.0;
-      float cell = floor(cellF);
-      vec3 hc = hash33(vec3(cell, 7.0, 3.0));
-      float town = smoothstep(0.5, 0.62, circleNoise((cell + 0.5) / 240.0 * 6.2831853, 2.2, 5.0)) * uBuildings;   // per building, so roofs stay flat
-      float tall = step(0.93, hash13(vec3(cell, 11.0, 5.0)));
-      float roof = uSkylineHeight * (0.4 + 0.45 * hc.x + 0.55 * tall) * town;
-      float top = max(trees, roof);
-      float edge = fwidth(dir.y) * 1.2 + 0.0002;
-      float s = 1.0 - smoothstep(top - edge, top + edge, dir.y);
-      if (s > 0.0) {
-        vec3 sil = uSilhouette;
-        if (roof > trees && dir.y < roof - 0.01 && dir.y > 0.004 && hc.y < 0.8) {
-          vec2 w = vec2(fract(cellF) * 4.0, dir.y / 0.012);
-          vec2 wid = floor(w), wf = fract(w);
-          float on = step(0.78, hash13(vec3(cell, wid)));
-          float rect = step(0.3, wf.x) * step(wf.x, 0.7) * step(0.28, wf.y) * step(wf.y, 0.72);
-          sil += uWindowColour * on * rect * (0.4 + hash13(vec3(wid, cell + 3.0)));
-        }
-        col = mix(col, sil, s);
-      }
-    }
-
     // a little noise so the dark gradient does not band
     col += (hash13(vec3(gl_FragCoord.xy, 1.0)) - 0.5) / 160.0;
     gl_FragColor = vec4(max(col, 0.0), 1.0);
@@ -168,11 +125,6 @@ export function createNightSky({ scene, sky = {}, key, horizon, moonUrl }) {
       uStars: { value: sky.stars ?? 1 },
       uGalaxy: { value: sky.galaxy ?? 0.8 },
       uClouds: { value: sky.clouds ?? 0.6 },
-      uSkyline: { value: sky.skyline ? 1 : 0 },
-      uSkylineHeight: { value: sky.skyline?.height ?? 0.16 },
-      uBuildings: { value: sky.skyline?.buildings ?? 1 },
-      uSilhouette: { value: new THREE.Color(sky.skyline?.colour ?? '#04060b') },
-      uWindowColour: { value: new THREE.Color(sky.skyline?.windows ?? '#ffb15a').multiplyScalar(0.18) },
       uTime: { value: 0 }
     },
     side: THREE.BackSide, depthWrite: false, fog: false
