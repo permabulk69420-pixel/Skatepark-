@@ -100,9 +100,11 @@ export const LEVELS = {
     bounds: { x: 29, z: 22.5, cx: 0, cz: 0 },
     shadowHalf: 52,
     noShadow: /^$/,
-    // sunDirection is where the sun was when the scan was photographed (found from the baked shadows), used as a faint moon.
-    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.25, sunColor: '#9db8ff', sunDirection: [0.31, 0.42, 0.85], hemisphere: 0.12, environment: 0.02, fog: '#03060d', fogNear: 18, fogFar: 85 },
+    // sunDirection is the moon: up and ahead of the spawn (the floodlight below still comes from where the sun was when the scan was photographed).
+    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.25, sunColor: '#9db8ff', sunDirection: [-0.45, 0.53, -0.71], hemisphere: 0.12, environment: 0.02, fog: '#03060d', fogNear: 18, fogFar: 85 },
     night: {
+      // the moon is up and ahead, to the right of where the rider starts (the faint moonlight on the board comes from it too)
+      sky: { moon: [-0.45, 0.53, -0.71] },
       ambient: '#0b1426',
       key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 1.1, centre: [0, 0], radius: 20 },
       lamps: [

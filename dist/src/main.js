@@ -20,6 +20,7 @@ import { createHud } from './skate/hud.js';
 import { HandBalance } from './skate/hand-balance.js';
 import { LodSet } from './skate/lod.js';
 import { createNight } from './skate/night.js';
+import { createNightSky } from './skate/nightsky.js';
 import { LEVELS, pickLevel } from './skate/levels.js';
 
 const levelId = pickLevel(location.search);
@@ -205,7 +206,10 @@ try {
       }
     }
   });
-  if (level.night) createNight({ scene, meshes: renderMeshes, night: level.night });
+  if (level.night) {
+    createNight({ scene, meshes: renderMeshes, night: level.night });
+    if (level.night.sky !== false) createNightSky({ scene, sky: level.night.sky, key: level.night.key?.direction, horizon: lighting.fog, moonUrl: assetUrl('assets/sky/moon.jpg') });
+  }
   const spawnNode = park.getObjectByName('Spawn_Entrance');
   if (spawnNode) spawnNode.getWorldPosition(spawn);
   const spawnHeading = spawnNode?.userData.heading_radians ?? 0;
