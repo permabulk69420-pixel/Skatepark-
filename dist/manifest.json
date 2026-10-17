@@ -1,5 +1,5 @@
 {
- "build": "9dbe647",
+ "build": "bdc6667",
  "files": {
   "src/main.js": "7823039693",
   "src/menu.js": "6c63b47a26",
@@ -53,6 +53,7 @@
   "assets/menu/gravesend.jpg": "3415a7e0a9",
   "assets/menu/gravesend4k.jpg": "f1abaadc8c",
   "assets/menu/gravesendnight.jpg": "c7f74ea49c",
+  "assets/menu/switchyard.jpg": "133168748b",
   "assets/menu/undercroft15.jpg": "989e8f555b",
   "assets/menu/undercroft2.jpg": "120456af16",
   "assets/sfx/bailBoard.ogg": "5ef19b4954",
