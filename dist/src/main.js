@@ -73,7 +73,7 @@ skyUniforms.mieDirectionalG.value = 0.77;
 const sunDirection = new THREE.Vector3(...lighting.sunDirection).normalize();
 skyUniforms.sunPosition.value.copy(sunDirection);
 scene.add(sky);
-if (level.night) { sky.visible = false; scene.background = new THREE.Color(lighting.fog); }   // night: no daytime sky
+if (level.night || level.noSky) { sky.visible = false; scene.background = new THREE.Color(lighting.fog); }   // night or indoors: no daytime sky
 const pmrem = new THREE.PMREMGenerator(renderer);
 const skyScene = new THREE.Scene();
 skyScene.add(sky.clone());

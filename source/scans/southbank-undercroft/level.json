@@ -1,0 +1,48 @@
+{
+ "scan": "source/scans/southbank-undercroft/skatepark.glb",
+ "name": "Southbank Undercroft",
+ "author": "artfletch (https://sketchfab.com/artfletch), CC-BY-4.0",
+ "frame": {
+  "matrix": [
+   0.999988753,
+   0.004742798,
+   7.432e-06,
+   0.0,
+   -0.004742798,
+   0.999983842,
+   0.003133999,
+   0.0,
+   7.432e-06,
+   -0.003133999,
+   0.999995089,
+   0.0,
+   5.018754788,
+   -3.932265533,
+   -6.512392997,
+   1.0
+  ],
+  "pointsInMetres": true
+ },
+ "collisionName": "Undercroft",
+ "materials": [
+  {
+   "from": "SouthbankSkatePark02_SouthbankSkatePark02_u1_v1",
+   "name": "Scan | southbank",
+   "texture": "southbank_base",
+   "unlit": true
+  }
+ ],
+ "ledges": [],
+ "spawn": {
+  "x": 2.0,
+  "y": 0.03,
+  "z": 3.0,
+  "heading": -1.571
+ },
+ "extents": [
+  -40.70544190860723,
+  43.46361301249812,
+  -28.49051961354714,
+  11.554416613869586
+ ]
+}

@@ -50,6 +50,8 @@ doc.createExtension(KHRMeshQuantization).setRequired(true);
 const tweaks = tweaksPath ? JSON.parse(fs.readFileSync(tweaksPath, 'utf8')) : {};
 // …which can also change the texture sizes: { "textureSizes": { "base": 2048, "normal": 2048, "orm": 1024 } }.
 for (const t of TEXTURES) if (tweaks.textureSizes?.[t.kind]) t.size = tweaks.textureSizes[t.kind];
+// ...and `lodDistanceScale` (default 1) multiplies the distances the LODs switch in at: 0.5 drops detail twice as soon, for dense scenes.
+if (tweaks.lodDistanceScale) for (const klass of Object.values(CLASSES)) for (const lod of klass.lods) lod.from *= tweaks.lodDistanceScale;
 if (tweaksPath) {
   const texture = (name) => root.listTextures().find((t) => t.getName() === name);
   for (const rule of tweaks.materials ?? []) {
