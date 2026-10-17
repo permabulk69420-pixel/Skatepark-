@@ -1,5 +1,5 @@
 {
- "build": "9129bc8",
+ "build": "e848018",
  "files": {
   "src/main.js": "f423bfb058",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -39,8 +39,8 @@
   "assets/levels/foundry.glb": "96521b9bb3",
   "assets/levels/france25.glb": "f47eb171f6",
   "assets/levels/funbox.glb": "c26eadc5fa",
-  "assets/levels/gravesend-4k.glb": "ef2aa16cd9",
-  "assets/levels/gravesend.glb": "6fd88d6c89",
+  "assets/levels/gravesend-4k.glb": "71e27e64d6",
+  "assets/levels/gravesend.glb": "548904d74e",
   "assets/levels/megaramp.glb": "ad9dbe17b7",
   "assets/levels/switchyard.glb": "284e2cb9fe",
   "assets/sfx/bailBoard.ogg": "5ef19b4954",
