@@ -115,7 +115,7 @@ export const LEVELS = {
       // the moon is up and ahead, to the right of where the rider starts (the faint moonlight on the board comes from it too)
       sky: { moon: [-0.45, 0.53, -0.71] },
       ambient: '#0b1426',
-      key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 1.1, centre: [0, 0], radius: 20 },
+      key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 0.9, centre: [0, 0], radius: 14 },
       lamps: [
         { base: [-24, 1.99, -17], height: 9, colour: '#d6e6ff', power: 1.5, radius: 15, glow: 9 },
         { base: [23, 1.93, 2], height: 9, colour: '#d6e6ff', power: 1.5, radius: 15, glow: 9 },
