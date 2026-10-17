@@ -9,6 +9,8 @@
 //     flush with the slab instead of hanging over it), and near-vertical triangles out there (flaps) are dropped
 //   * adds a tiled concrete slab around it (with a hole, `slab.hole`, where the scan is: star-shaped about `slab.holeCentre`) and collision: the scan's own surface
 //     (simplified later by the optimiser) plus a flat ground; grind lines and a spawn
+//   * `erase`: path to a Glblender "Export erase list" file. Its brush dabs are replayed, in order, on the original scan before it is placed,
+//     so triangles painted away in VR stay gone (and Restore dabs bring them back); a triangle is hit when its centre is inside a dab sphere
 //   node tools/build-scan-level.mjs <level.json> <out.glb> [scale]
 // With a `frame.matrix`, the optional [scale] multiplies the whole placement (and the spawn position), so one config builds several sizes.
 // Grind-line points in level.json are in the scan's levelled frame as Blender shows it (X right, Y forward, Z up), multiplied by
@@ -36,6 +38,51 @@ for (const name of config.dropMaterials ?? []) {
   for (const node of root.listNodes().filter((x) => x.getMesh()?.listPrimitives().some((p) => p.getMaterial()?.getName() === name))) {
     const mesh = node.getMesh(); node.dispose(); mesh.dispose();
   }
+}
+
+// --- replay a Glblender erase list (dabs are in the scan file's own space: each mesh node's world matrix, before any placement)
+if (config.erase) {
+  const list = JSON.parse(fs.readFileSync(path.resolve(repo, config.erase), 'utf8'));
+  if (list.format !== 'glblender-erase') throw new Error(`${config.erase} is not a Glblender erase list`);
+  if (list.movedParts) console.warn(`warning: ${list.movedParts} part(s) were moved in Glblender after erasing; the erase may land in the wrong place`);
+  let removed = 0, total = 0;
+  for (const node of root.listNodes().filter((x) => x.getMesh())) {
+    const m = node.getWorldMatrix();
+    for (const prim of node.getMesh().listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      let indices = prim.getIndices();
+      if (!indices) { indices = doc.createAccessor().setType('SCALAR').setArray(Uint32Array.from({ length: pos.getCount() }, (_, i) => i)).setBuffer(buffer); prim.setIndices(indices); }
+      const idx = indices.getArray(), triangles = idx.length / 3, centre = new Float64Array(triangles * 3), p3 = [0, 0, 0];
+      for (let t = 0; t < triangles; t++) {
+        let x = 0, y = 0, z = 0;
+        for (let k = 0; k < 3; k++) { pos.getElement(idx[t * 3 + k], p3); x += p3[0]; y += p3[1]; z += p3[2]; }
+        x /= 3; y /= 3; z /= 3;
+        centre[t * 3] = m[0] * x + m[4] * y + m[8] * z + m[12];
+        centre[t * 3 + 1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+        centre[t * 3 + 2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+      }
+      // one spatial hash per primitive, so a few thousand dabs over millions of triangles stay fast
+      const cell = Math.max(...list.ops.map((o) => o[3]), 0.01) * 2, cells = new Map(), key = (i, j, k) => `${i},${j},${k}`;
+      for (let t = 0; t < triangles; t++) {
+        const id = key(Math.floor(centre[t * 3] / cell), Math.floor(centre[t * 3 + 1] / cell), Math.floor(centre[t * 3 + 2] / cell));
+        const bucket = cells.get(id); if (bucket) bucket.push(t); else cells.set(id, [t]);
+      }
+      const erased = new Uint8Array(triangles);
+      for (const [x, y, z, r, restore] of list.ops) {
+        const r2 = r * r;
+        for (let i = Math.floor((x - r) / cell); i <= Math.floor((x + r) / cell); i++) for (let j = Math.floor((y - r) / cell); j <= Math.floor((y + r) / cell); j++) for (let k = Math.floor((z - r) / cell); k <= Math.floor((z + r) / cell); k++) {
+          for (const t of cells.get(key(i, j, k)) ?? []) {
+            const dx = centre[t * 3] - x, dy = centre[t * 3 + 1] - y, dz = centre[t * 3 + 2] - z;
+            if (dx * dx + dy * dy + dz * dz <= r2) erased[t] = restore ? 0 : 1;
+          }
+        }
+      }
+      const kept = []; for (let t = 0; t < triangles; t++) if (!erased[t]) kept.push(idx[t * 3], idx[t * 3 + 1], idx[t * 3 + 2]);
+      removed += triangles - kept.length / 3; total += triangles;
+      indices.setArray(idx.constructor.from(kept));
+    }
+  }
+  console.log(`erase list: removed ${removed} of ${total} triangles`);
 }
 
 // --- place the scan
