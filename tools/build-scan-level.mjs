@@ -4,7 +4,7 @@
 //   * names its materials and textures the way the optimiser and levels.js expect (`Scan | alpha`, `<name>_base`)
 //   * optionally crops it to an outline (`crop`: [x, z] metres, in the placed level); `cropEdge` { band, minLuma } also drops the dark
 //     triangles (vegetation, by vertex colour) within `band` metres of the outline, and `maxHeight` drops anything higher than that above y = 0; `dropVertexColors` removes the colours afterwards
-//   * adds a tiled concrete slab around it (with a hole where the crop is) and collision: the scan's own surface
+//   * adds a tiled concrete slab around it (with a convex hole, `slab.hole`, where the scan is) and collision: the scan's own surface
 //     (simplified later by the optimiser) plus a flat ground; grind lines and a spawn
 //   node tools/build-scan-level.mjs <level.json> <out.glb>
 // Grind-line points in level.json are in the scan's levelled frame as Blender shows it (X right, Y forward, Z up), multiplied by
@@ -68,43 +68,48 @@ const inside = (x, z, poly) => {
   }
   return hit;
 };
-const edgeDistance = (x, z, poly) => {
-  let best = Infinity;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [ax, az] = poly[j], [bx, bz] = poly[i];
-    const dx = bx - ax, dz = bz - az;
-    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
-    best = Math.min(best, Math.hypot(x - (ax + t * dx), z - (az + t * dz)));
-  }
-  return best;
+const textures = new Map();
+const pixels = async (texture) => {
+  if (!textures.has(texture)) textures.set(texture, await sharp(Buffer.from(texture.getImage())).removeAlpha().raw().toBuffer({ resolveWithObject: true }));
+  return textures.get(texture);
 };
 let dropped = 0;
 const meshNodes = root.listNodes().filter((x) => x.getMesh() && x !== scanRoot);
 for (const node of meshNodes) {
   const m = node.getWorldMatrix();
   for (const prim of node.getMesh().listPrimitives()) {
-    const colour = prim.getAttribute('COLOR_0');
-    const luma = (i) => { const [r, g, b] = colour.getElement(i, [0, 0, 0, 0]); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
     if (!config.crop) { if (config.dropVertexColors) prim.setAttribute('COLOR_0', null); continue; }
     const pos = prim.getAttribute('POSITION');
+    const uv = prim.getAttribute('TEXCOORD_0');
     const idx = prim.getIndices().getArray();
+    const edge = config.cropEdge;
+    const image = edge && prim.getMaterial().getBaseColorTexture() ? await pixels(prim.getMaterial().getBaseColorTexture()) : null;
     const world = (i) => { const [x, y, z] = pos.getElement(i, [0, 0, 0]); return [m[0] * x + m[4] * y + m[8] * z + m[12], m[2] * x + m[6] * y + m[10] * z + m[14], m[1] * x + m[5] * y + m[9] * z + m[13]]; };
+    const texel = (i) => {
+      const [u, v] = uv.getElement(i, [0, 0]);
+      const px = Math.min(image.info.width - 1, Math.max(0, Math.floor(u * image.info.width)));
+      const py = Math.min(image.info.height - 1, Math.max(0, Math.floor(v * image.info.height)));
+      const o = (py * image.info.width + px) * image.info.channels;
+      return [image.data[o], image.data[o + 1], image.data[o + 2]];
+    };
     const kept = [];
     for (let t = 0; t < idx.length; t += 3) {
       const a = world(idx[t]), b = world(idx[t + 1]), c = world(idx[t + 2]);
       const cx = (a[0] + b[0] + c[0]) / 3, cz = (a[1] + b[1] + c[1]) / 3;
       if (!inside(cx, cz, config.crop)) continue;
       if (config.maxHeight !== undefined && (a[2] + b[2] + c[2]) / 3 > config.maxHeight) { dropped++; continue; }
-      if (config.cropEdge && colour && (luma(idx[t]) + luma(idx[t + 1]) + luma(idx[t + 2])) / 3 < config.cropEdge.minLuma
-        && edgeDistance(cx, cz, config.crop) < config.cropEdge.band) { dropped++; continue; }
+      if (image && !inside(cx, cz, edge.keep)) {
+        const tx = [texel(idx[t]), texel(idx[t + 1]), texel(idx[t + 2])];
+        const r = (tx[0][0] + tx[1][0] + tx[2][0]) / 3, g = (tx[0][1] + tx[1][1] + tx[2][1]) / 3, bl = (tx[0][2] + tx[1][2] + tx[2][2]) / 3;
+        if (0.2126 * r + 0.7152 * g + 0.0722 * bl < edge.darkLuma || r - bl > edge.maxWarm) { dropped++; continue; }
+      }
       kept.push(idx[t], idx[t + 1], idx[t + 2]);
     }
     if (config.dropVertexColors) prim.setAttribute('COLOR_0', null);
     prim.setIndices(doc.createAccessor().setType('SCALAR').setArray(Uint32Array.from(kept)).setBuffer(buffer));
   }
 }
-
-if (config.cropEdge || config.maxHeight !== undefined) console.log(`dropped ${dropped} triangles at the crop edge (vegetation)`);
+if (config.cropEdge || config.maxHeight !== undefined) console.log(`dropped ${dropped} triangles at the crop edge (plants, dirt)`);
 
 // --- collision: the scan's own surface (same mesh, same transform chain), simplified by the optimiser
 const collisionName = config.collisionName ?? 'Scan';
@@ -114,12 +119,9 @@ for (const node of meshNodes) {
   node.getParentNode().addChild(copy);
 }
 
-// --- slab: a visual plane just under the scan's ground, and the flat ground it is ridden on. With a crop outline the slab is a
-// grid of 0.5 m cells with the ones entirely inside the hole (`slab.hole`, default the crop outline) left out: the scan covers them, and
-// anything the scan lost near its edge is filled by the slab, which sits 2 cm under the scan's ground.
+// --- slab: a visual plane just under the scan's ground, and the flat ground it is ridden on. The slab goes right up to the edge of the
+// hole, under the scan's margin, so anything the scan lost near its edge is filled by the slab (2 cm under the scan's ground).
 const half = config.slab.half;
-const hole = config.slab.hole ?? config.crop;
-const cellSize = hole ? 0.5 : half * 2;
 const tile = config.slab.tileMetres;
 const set = path.basename(config.slab.textures);
 const loadBuffer = (suffix) => fs.readFileSync(path.join(repo, `${config.slab.textures}_${suffix}_2k.jpg`));
@@ -135,15 +137,42 @@ const slabMaterial = doc.createMaterial('Concrete | ground').setBaseColorFactor(
   .setBaseColorTexture(texture(`${set}_base`, diffuse))
   .setNormalTexture(texture(`${set}_normal`, loadBuffer('nor_gl')))
   .setMetallicRoughnessTexture(orm).setOcclusionTexture(orm);
+// Ground at height y: one square, or with a convex `slab.hole` the ring between the square and the hole, cut into quads along rays
+// from the hole's centre (through every hole corner and every square corner, so each quad has one straight edge on each side).
+const ring = (hole) => {
+  const centre = [hole.reduce((s, p) => s + p[0], 0) / hole.length, hole.reduce((s, p) => s + p[1], 0) / hole.length];
+  const corners = [[-half, -half], [-half, half], [half, half], [half, -half]];
+  const angle = ([x, z]) => Math.atan2(z - centre[1], x - centre[0]);
+  const angles = [...hole, ...corners].map(angle).sort((p, q) => p - q);
+  const hit = (a, poly, closedSquare) => {   // first boundary crossing of the ray from the centre at angle a
+    const d = [Math.cos(a), Math.sin(a)];
+    let best = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [ax, az] = poly[j], [bx, bz] = poly[i];
+      const ex = bx - ax, ez = bz - az, det = d[0] * -ez - d[1] * -ex;
+      if (Math.abs(det) < 1e-12) continue;
+      const t = ((ax - centre[0]) * -ez - (az - centre[1]) * -ex) / det;
+      const u = (d[0] * (az - centre[1]) - d[1] * (ax - centre[0])) / det;
+      if (t > 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
+    }
+    return [centre[0] + d[0] * best, centre[1] + d[1] * best];
+  };
+  const inner = angles.map((a) => hit(a, hole)), outer = angles.map((a) => hit(a, corners));
+  const quads = [];
+  for (let i = 0; i < angles.length; i++) { const k = (i + 1) % angles.length; quads.push([inner[i], outer[i], outer[k], inner[k]]); }
+  return quads;
+};
 const slabPrimitive = (y, withUv) => {
   const position = [], uv = [], index = [];
-  const cells = Math.round(half * 2 / cellSize);
-  for (let i = 0; i < cells; i++) for (let k = 0; k < cells; k++) {
-    const x0 = -half + i * cellSize, z0 = -half + k * cellSize, x1 = x0 + cellSize, z1 = z0 + cellSize;
-    if (hole && [[x0, z0], [x0, z1], [x1, z1], [x1, z0], [(x0 + x1) / 2, (z0 + z1) / 2]].every(([x, z]) => inside(x, z, hole))) continue;
+  const quads = config.slab.hole ? ring(config.slab.hole) : [[[-half, -half], [-half, half], [half, half], [half, -half]]];
+  for (const quad of quads) {
     const base = position.length / 3;
-    for (const [x, z] of [[x0, z0], [x0, z1], [x1, z1], [x1, z0]]) { position.push(x, y, z); uv.push(x / tile, z / tile); }
-    index.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    for (const [x, z] of quad) { position.push(x, y, z); uv.push(x / tile, z / tile); }
+    for (const tri of [[0, 1, 2], [0, 2, 3]]) {
+      const [p, q, r] = tri.map((k) => [position[(base + k) * 3], position[(base + k) * 3 + 2]]);
+      const up = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);   // the sign of the face normal's Y for (x, z) winding
+      index.push(...(up < 0 ? tri.map((k) => base + k) : [base + tri[0], base + tri[2], base + tri[1]]));
+    }
   }
   const accessor = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
   const prim = doc.createPrimitive().setAttribute('POSITION', accessor('VEC3', new Float32Array(position)))
