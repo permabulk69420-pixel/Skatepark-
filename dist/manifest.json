@@ -1,5 +1,5 @@
 {
- "build": "37dbd9d",
+ "build": "15e3ef0",
  "files": {
   "src/main.js": "7823039693",
   "src/menu.js": "6c63b47a26",
@@ -48,6 +48,10 @@
   "assets/levels/switchyard.glb": "284e2cb9fe",
   "assets/levels/undercroft-1-5x.glb": "186dd67200",
   "assets/levels/undercroft-2x.glb": "c23e6448f6",
+  "assets/menu/funbox.jpg": "0d620f093c",
+  "assets/menu/gravesend.jpg": "3415a7e0a9",
+  "assets/menu/gravesendnight.jpg": "c7f74ea49c",
+  "assets/menu/undercroft15.jpg": "989e8f555b",
   "assets/sfx/bailBoard.ogg": "5ef19b4954",
   "assets/sfx/bailBody.ogg": "54625204a8",
   "assets/sfx/grindConcrete.ogg": "8bba5d74e5",
