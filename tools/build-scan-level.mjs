@@ -9,7 +9,8 @@
 //     flush with the slab instead of hanging over it), and near-vertical triangles out there (flaps) are dropped
 //   * adds a tiled concrete slab around it (with a hole, `slab.hole`, where the scan is: star-shaped about `slab.holeCentre`) and collision: the scan's own surface
 //     (simplified later by the optimiser) plus a flat ground; grind lines and a spawn
-//   node tools/build-scan-level.mjs <level.json> <out.glb>
+//   node tools/build-scan-level.mjs <level.json> <out.glb> [scale]
+// With a `frame.matrix`, the optional [scale] multiplies the whole placement (and the spawn position), so one config builds several sizes.
 // Grind-line points in level.json are in the scan's levelled frame as Blender shows it (X right, Y forward, Z up), multiplied by
 // frame.scale (frame.pointsInMetres: true means they are plain glTF [x, y, z] metres in the placed level instead).
 // The spawn is a plain glTF position (Y up, the rider faces -Z at heading 0).
@@ -19,7 +20,7 @@ import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const [configPath, output] = process.argv.slice(2);
+const [configPath, output, scaleArg] = process.argv.slice(2);
 if (!configPath || !output) { console.error('usage: node tools/build-scan-level.mjs <level.json> <out.glb>'); process.exit(1); }
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -41,7 +42,10 @@ for (const name of config.dropMaterials ?? []) {
 const scanRoot = doc.createNode('ScanRoot');
 let scale = 1;
 if (config.frame.matrix) {
-  scanRoot.setMatrix(config.frame.matrix);
+  const factor = Number(scaleArg) || 1;
+  const scaled = config.frame.matrix.map((v, i) => ([0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14].includes(i) ? v * factor : v));
+  scanRoot.setMatrix(scaled);
+  config.spawn.x *= factor; config.spawn.z *= factor;
 } else {
   // rotate about Y by the yaw around the scan's centre, centre it on the origin, drop it onto y = 0, scale it
   // (Blender's X, Y, Z are glTF's X, -Z, Y)

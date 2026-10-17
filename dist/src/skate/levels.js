@@ -112,17 +112,29 @@ export const LEVELS = {
       ]
     }
   },
-  undercroft: {
-    name: 'Southbank Undercroft',
-    file: 'assets/levels/undercroft.glb',
-    blurb: 'A photogrammetry scan of the real Southbank Undercroft in London · 8K texture, pillars, graffiti walls, ledges and banks · scan by artfletch (CC-BY 4.0) · RIFT board',
-    // Built from a scan by tools/build-scan-level.mjs (source/scans/southbank-undercroft/level.json), then tools/optimise-level.mjs.
+  undercroft15: {
+    name: 'Undercroft 1.5x',
+    file: 'assets/levels/undercroft-1-5x.glb',
+    blurb: 'The real Southbank Undercroft in London, scanned, at 1.5 times real size · 8K texture · scan by artfletch (CC-BY 4.0) · RIFT board',
+    // Built from a scan by tools/build-scan-level.mjs (source/scans/southbank-undercroft/level.json, scale 1.5), then tools/optimise-level.mjs.
     // The scan has holes and open sides, so the play area is only its best covered floor and the rest fades into the dark.
-    bounds: { x: 22, z: 11, cx: 0, cz: 0 },
+    bounds: { x: 33, z: 16.5, cx: 0, cz: 0 },
     noSky: true,
-    shadowHalf: 30,
+    shadowHalf: 45,
     noShadow: /^$/,
-    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.2, sunColor: '#bcd0ff', hemisphere: 0.15, environment: 0.05, fog: '#07080b', fogNear: 30, fogFar: 95 }
+    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.2, sunColor: '#bcd0ff', hemisphere: 0.15, environment: 0.05, fog: '#07080b', fogNear: 45, fogFar: 142 }
+  },
+  undercroft2: {
+    name: 'Undercroft 2x',
+    file: 'assets/levels/undercroft-2x.glb',
+    blurb: 'The real Southbank Undercroft in London, scanned, at twice real size · 8K texture · scan by artfletch (CC-BY 4.0) · RIFT board',
+    // Built from a scan by tools/build-scan-level.mjs (source/scans/southbank-undercroft/level.json, scale 2), then tools/optimise-level.mjs.
+    // The scan has holes and open sides, so the play area is only its best covered floor and the rest fades into the dark.
+    bounds: { x: 44, z: 22, cx: 0, cz: 0 },
+    noSky: true,
+    shadowHalf: 60,
+    noShadow: /^$/,
+    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.2, sunColor: '#bcd0ff', hemisphere: 0.15, environment: 0.05, fog: '#07080b', fogNear: 60, fogFar: 190 }
   },
   foundry: {
     name: 'Foundry',
