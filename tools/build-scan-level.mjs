@@ -22,21 +22,23 @@ const root = doc.getRoot();
 const scene = root.listScenes()[0];
 const buffer = root.listBuffers()[0];
 
-// --- level the scan: rotate about Y by the yaw around the scan's centre, centre it on the origin, drop it onto y = 0
+// --- level the scan: rotate about Y by the yaw around the scan's centre, centre it on the origin, drop it onto y = 0, scale it
 // (Blender's X, Y, Z are glTF's X, -Z, Y)
 const yaw = config.frame.yawDegrees * Math.PI / 180;
 const [cx, cy] = config.frame.centre;
 const centre = [cx, 0, -cy];
 const [sin, cos] = [Math.sin(yaw), Math.cos(yaw)];
 const rotate = ([x, y, z]) => [x * cos + z * sin, y, -x * sin + z * cos];
+const scale = config.frame.scale ?? 1;
 const rotated = rotate(centre);
 const scanRoot = doc.createNode('ScanRoot')
   .setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)])
-  .setTranslation([-rotated[0], -config.frame.groundHeight, -rotated[2]]);
+  .setScale([scale, scale, scale])
+  .setTranslation([-rotated[0] * scale, -config.frame.groundHeight * scale, -rotated[2] * scale]);
 for (const child of scene.listChildren()) { scene.removeChild(child); scanRoot.addChild(child); }
 scene.addChild(scanRoot);
-// The same transform for points given in the levelled Blender frame, as glTF positions.
-const place = ([x, y, z]) => [x, z, -y];
+// Points given in the scan's levelled, unscaled Blender frame, as glTF positions.
+const place = ([x, y, z]) => [x * scale, z * scale, -y * scale];
 
 // --- materials and textures
 for (const rule of config.materials) {

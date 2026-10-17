@@ -1,5 +1,5 @@
 {
- "build": "1b842d8",
+ "build": "ea6196e",
  "files": {
   "src/main.js": "f423bfb058",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -15,7 +15,7 @@
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "847a9c44dd",
   "src/skate/input.js": "f34ca440e1",
-  "src/skate/levels.js": "03e87f1bc6",
+  "src/skate/levels.js": "e49d07bef2",
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",
   "src/skate/music.js": "dd250e57a9",
@@ -38,7 +38,8 @@
   "assets/levels/flightline.glb": "c078fc800b",
   "assets/levels/foundry.glb": "96521b9bb3",
   "assets/levels/france25.glb": "f47eb171f6",
-  "assets/levels/funbox.glb": "7b5fa82048",
+  "assets/levels/funbox-2k.glb": "c26eadc5fa",
+  "assets/levels/funbox.glb": "35032ec29c",
   "assets/levels/megaramp.glb": "ad9dbe17b7",
   "assets/levels/switchyard.glb": "284e2cb9fe",
   "assets/sfx/bailBoard.ogg": "5ef19b4954",
