@@ -72,16 +72,6 @@ export const LEVELS = {
     noShadow: /ENV_Concrete_ground/,
     look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
-  pool: {
-    name: 'Arpex Pool',
-    file: 'assets/levels/pool.glb',
-    blurb: 'A photogrammetry scan of two real pool bowls, 8 m and 6 m wide, 2.6 m and 1.3 m deep · scan by tojek_vfx (CC-BY 4.0) · RIFT board',
-    // Built from a scan by tools/build-scan-level.mjs (source/scans/tojek-vfx-skate-pool-arpex/level.json), then tools/optimise-level.mjs.
-    bounds: { x: 8, z: 8, cx: 0, cz: 0 },
-    shadowHalf: 30,
-    noShadow: /ENV_Concrete_ground/,
-    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
-  },
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',
