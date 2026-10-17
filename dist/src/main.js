@@ -19,6 +19,7 @@ import { Rider } from './skate/rider.js';
 import { createHud } from './skate/hud.js';
 import { HandBalance } from './skate/hand-balance.js';
 import { LodSet } from './skate/lod.js';
+import { createNight } from './skate/night.js';
 import { LEVELS, pickLevel } from './skate/levels.js';
 
 const levelId = pickLevel(location.search);
@@ -72,6 +73,7 @@ skyUniforms.mieDirectionalG.value = 0.77;
 const sunDirection = new THREE.Vector3(...lighting.sunDirection).normalize();
 skyUniforms.sunPosition.value.copy(sunDirection);
 scene.add(sky);
+if (level.night) { sky.visible = false; scene.background = new THREE.Color(lighting.fog); }   // night: no daytime sky
 const pmrem = new THREE.PMREMGenerator(renderer);
 const skyScene = new THREE.Scene();
 skyScene.add(sky.clone());
@@ -203,6 +205,7 @@ try {
       }
     }
   });
+  if (level.night) createNight({ scene, meshes: renderMeshes, night: level.night });
   const spawnNode = park.getObjectByName('Spawn_Entrance');
   if (spawnNode) spawnNode.getWorldPosition(spawn);
   const spawnHeading = spawnNode?.userData.heading_radians ?? 0;

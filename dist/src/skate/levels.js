@@ -92,6 +92,26 @@ export const LEVELS = {
     noShadow: /^$/,
     look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
   },
+  gravesendnight: {
+    name: 'Gravesend Night',
+    file: 'assets/levels/gravesend-4k.glb',
+    blurb: 'The Gravesend scan after dark · floodlit, with a pool of light from where the sun was and three lamps · scan by artfletch (CC-BY 4.0) · RIFT board',
+    // The same file as Gravesend 4K. The scan's lighting is baked in, so the night is made in its material (src/skate/night.js).
+    bounds: { x: 29, z: 22.5, cx: 0, cz: 0 },
+    shadowHalf: 52,
+    noShadow: /^$/,
+    // sunDirection is where the sun was when the scan was photographed (found from the baked shadows), used as a faint moon.
+    look: { toneMapping: 'neutral', exposure: 1.0, sun: 0.25, sunColor: '#9db8ff', sunDirection: [0.31, 0.42, 0.85], hemisphere: 0.12, environment: 0.02, fog: '#03060d', fogNear: 18, fogFar: 85 },
+    night: {
+      ambient: '#0b1426',
+      key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 1.1, centre: [0, 0], radius: 20 },
+      lamps: [
+        { base: [-24, 1.99, -17], height: 9, colour: '#ffa050', power: 1.5, radius: 15, glow: 9 },
+        { base: [23, 1.93, 2], height: 9, colour: '#8fc4ff', power: 1.5, radius: 15, glow: 9 },
+        { base: [-4, 2.16, 16], height: 9, colour: '#ffa050', power: 1.5, radius: 15, glow: 9 }
+      ]
+    }
+  },
   foundry: {
     name: 'Foundry',
     file: 'assets/levels/foundry.glb',
