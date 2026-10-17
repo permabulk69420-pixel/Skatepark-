@@ -1,5 +1,5 @@
 {
- "build": "bdc6667",
+ "build": "57fd90d",
  "files": {
   "src/main.js": "7823039693",
   "src/menu.js": "6c63b47a26",
@@ -49,6 +49,7 @@
   "assets/levels/undercroft-1-5x.glb": "186dd67200",
   "assets/levels/undercroft-2x.glb": "c23e6448f6",
   "assets/menu/foundry.jpg": "1f2a61972e",
+  "assets/menu/france25.jpg": "0330bd9026",
   "assets/menu/funbox.jpg": "0d620f093c",
   "assets/menu/gravesend.jpg": "3415a7e0a9",
   "assets/menu/gravesend4k.jpg": "f1abaadc8c",
