@@ -95,7 +95,7 @@ export const LEVELS = {
   gravesendnight: {
     name: 'Gravesend Night',
     file: 'assets/levels/gravesend-4k.glb',
-    blurb: 'The Gravesend scan after dark · floodlit, with a pool of light from where the sun was and three lamps · scan by artfletch (CC-BY 4.0) · RIFT board',
+    blurb: 'The Gravesend scan after dark · lit by cool white LED floods, with a big pool of light from where the sun was and three lamps · scan by artfletch (CC-BY 4.0) · RIFT board',
     // The same file as Gravesend 4K. The scan's lighting is baked in, so the night is made in its material (src/skate/night.js).
     bounds: { x: 29, z: 22.5, cx: 0, cz: 0 },
     shadowHalf: 52,
@@ -106,9 +106,9 @@ export const LEVELS = {
       ambient: '#0b1426',
       key: { direction: [0.31, 0.42, 0.85], colour: '#bcd6ff', strength: 1.1, centre: [0, 0], radius: 20 },
       lamps: [
-        { base: [-24, 1.99, -17], height: 9, colour: '#ffa050', power: 1.5, radius: 15, glow: 9 },
-        { base: [23, 1.93, 2], height: 9, colour: '#8fc4ff', power: 1.5, radius: 15, glow: 9 },
-        { base: [-4, 2.16, 16], height: 9, colour: '#ffa050', power: 1.5, radius: 15, glow: 9 }
+        { base: [-24, 1.99, -17], height: 9, colour: '#d6e6ff', power: 1.5, radius: 15, glow: 9 },
+        { base: [23, 1.93, 2], height: 9, colour: '#d6e6ff', power: 1.5, radius: 15, glow: 9 },
+        { base: [-4, 2.16, 16], height: 9, colour: '#d6e6ff', power: 1.5, radius: 15, glow: 9 }
       ]
     }
   },
