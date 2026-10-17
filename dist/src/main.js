@@ -22,6 +22,7 @@ import { LodSet } from './skate/lod.js';
 import { createNight } from './skate/night.js';
 import { createNightSky } from './skate/nightsky.js';
 import { LEVELS, pickLevel } from './skate/levels.js';
+import { rememberLevel } from './menu.js';
 
 const levelId = pickLevel(location.search);
 const level = LEVELS[levelId];
@@ -30,9 +31,9 @@ const progress = document.querySelector('#progress');
 document.querySelector('#blurb').textContent = level.blurb;
 document.querySelector('#level-name').textContent = level.name;
 document.title = `Skate Park — ${level.name}`;
-document.querySelector('#levels').innerHTML = Object.entries(LEVELS)
-  .map(([id, entry]) => (id === levelId ? `<b>${entry.name}</b>` : `<a href="?level=${id}" style="color:#d9a779">${entry.name}</a>`))
-  .join(' &nbsp;·&nbsp; ');
+rememberLevel(levelId);
+document.querySelector('#levels').innerHTML = '<button id="levels-button" type="button" style="padding:9px 14px;background:#ffffff18;border:1px solid #fff3;color:#f8f4e8;border-radius:6px">Choose a park</button>';
+document.querySelector('#levels-button').addEventListener('click', () => import('./menu.js').then((menu) => menu.showMenu({ currentId: levelId, canClose: true })));
 // Lighting: these defaults, unless the level sets its own (`look` in levels.js).
 const lighting = {
   toneMapping: 'aces', exposure: 0.85, sun: 2.1, sunColor: '#ffe6c4', sunDirection: [-0.40, 0.73, -0.56], hemisphere: 0.48,

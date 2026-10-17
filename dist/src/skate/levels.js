@@ -6,6 +6,7 @@
 export const LEVELS = {
   flightline: {
     name: 'Flightline',
+    menu: { group: 'Built parks', short: '1 km downhill big-air run: ten gaps, rails and a vert finish' },
     file: 'assets/levels/flightline.glb',
     blurb: '1 km downhill Big Air circuit · Ten linked gaps from 8 to 32 m, a shorter-gap route, four gap-spanning rails and a 10.5 m vert finish · RIFT board',
     bounds: { x: 86, z: 566.37, cx: 4, cz: -496.37 },
@@ -21,6 +22,7 @@ export const LEVELS = {
   },
   switchyard: {
     name: 'Switchyard',
+    menu: { group: 'Built parks', short: 'Huge park: 30 ft vert halfpipe, spine, flow bowl, 24 stairs' },
     file: 'assets/levels/switchyard.glb',
     blurb: '194 × 172 metres · 30-foot vert halfpipe, 20-foot transitions, 15-foot spine, deep flow bowl, 24 stairs and a sweeping boardslide rail · RIFT board',
     bounds: { x: 96.75, z: 85.75, cx: 5, cz: 6 },
@@ -31,6 +33,7 @@ export const LEVELS = {
   },
   breakwater: {
     name: 'Breakwater',
+    menu: { group: 'Built parks', short: 'Street, bowl and transition. The original park' },
     file: 'assets/skatepark.glb',
     blurb: '104 × 88 metres · Street, bowl and transition · RIFT board',
     // Play area the skater is kept inside (half-extents around an optional centre); a level's collision decides it.
@@ -40,6 +43,7 @@ export const LEVELS = {
   },
   megaramp: {
     name: 'Mega Ramp',
+    menu: { group: 'Built parks', short: 'Competition mega ramp with a big gap and a vert quarter' },
     file: 'assets/levels/megaramp.glb',
     blurb: 'Competition mega ramp · 25 m roll-in, the big gap and a practice gap, a vert quarter pipe · RIFT board',
     // Built in Blender (source/levels/megaramp/megaramp.blend), exported raw by tools/export-blend.py (not optimised).
@@ -51,6 +55,7 @@ export const LEVELS = {
   },
   france25: {
     name: 'France 25 stair',
+    menu: { group: 'Built parks', short: 'A 25-stair with banks, rails and a plaza' },
     file: 'assets/levels/france25.glb',
     blurb: 'A 25-stair, its banks, rails and the plaza round it · RIFT board',
     // Built from code after photos of the real one (tools/france25/park.mjs, node tools/build-level.mjs france25).
@@ -64,6 +69,7 @@ export const LEVELS = {
   },
   funbox: {
     name: 'Funbox',
+    menu: { group: 'Scanned parks', short: 'A real funbox, scanned: bank and an up-flat-down ledge' },
     file: 'assets/levels/funbox.glb',
     blurb: 'A photogrammetry scan of a real funbox · 2K textures, bank, up-flat-down ledge · scan by matousekfoto (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/matousekfoto-skatepark/level.json), then tools/optimise-level.mjs.
@@ -74,6 +80,7 @@ export const LEVELS = {
   },
   gravesend: {
     name: 'Gravesend 8K',
+    menu: { group: 'Scanned parks', short: 'The real Gravesend park: banks, ledges, a rail, quarter and stairs. 8K textures' },
     file: 'assets/levels/gravesend.glb',
     blurb: 'A photogrammetry scan of the real Gravesend skatepark · 8K textures, banks, ledges, rail, a quarter and stairs · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/gravesend-skatepark/level.json), then tools/optimise-level.mjs.
@@ -84,6 +91,7 @@ export const LEVELS = {
   },
   gravesend4k: {
     name: 'Gravesend 4K',
+    menu: { group: 'Scanned parks', short: 'Gravesend with lighter 4K textures, for comparing' },
     file: 'assets/levels/gravesend-4k.glb',
     blurb: 'The same Gravesend scan with 4K textures, for comparing against the 8K one · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/gravesend-skatepark/level.json), then tools/optimise-level.mjs.
@@ -94,6 +102,7 @@ export const LEVELS = {
   },
   gravesendnight: {
     name: 'Gravesend Night',
+    menu: { group: 'Scanned parks', short: 'Gravesend after dark: LED floods, lamps, moon and stars' },
     file: 'assets/levels/gravesend-4k.glb',
     blurb: 'The Gravesend scan after dark · lit by cool white LED floods, with a big pool of light from where the sun was and three lamps · scan by artfletch (CC-BY 4.0) · RIFT board',
     // The same file as Gravesend 4K. The scan's lighting is baked in, so the night is made in its material (src/skate/night.js).
@@ -116,6 +125,7 @@ export const LEVELS = {
   },
   undercroft15: {
     name: 'Undercroft 1.5x',
+    menu: { group: 'Scanned parks', short: 'The Southbank Undercroft in London at 1.5x size' },
     file: 'assets/levels/undercroft-1-5x.glb',
     blurb: 'The real Southbank Undercroft in London, scanned, at 1.5 times real size · 8K texture · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/southbank-undercroft/level.json, scale 1.5), then tools/optimise-level.mjs.
@@ -128,6 +138,7 @@ export const LEVELS = {
   },
   undercroft2: {
     name: 'Undercroft 2x',
+    menu: { group: 'Scanned parks', short: 'The Southbank Undercroft in London at 2x size' },
     file: 'assets/levels/undercroft-2x.glb',
     blurb: 'The real Southbank Undercroft in London, scanned, at twice real size · 8K texture · scan by artfletch (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/southbank-undercroft/level.json, scale 2), then tools/optimise-level.mjs.
@@ -140,6 +151,7 @@ export const LEVELS = {
   },
   foundry: {
     name: 'Foundry',
+    menu: { group: 'Built parks', short: 'Start tower with a loop, stair sets, rails, hubbas, bowl and mini ramp' },
     file: 'assets/levels/foundry.glb',
     blurb: '80 × 72 metres · A 6.5 m start tower with a loop-the-loop, 7-, 5- and 3-stair sets, rails, hubbas, ledges, a funbox, a bowl and a mini ramp · RIFT board',
     bounds: { x: 39.55, z: 35.55, cx: 0, cz: 0 },
@@ -154,6 +166,10 @@ export const LEVELS = {
 };
 
 export const DEFAULT_LEVEL = 'breakwater';
+
+// The order the start menu lists them in, by group (levels not listed here are added at the end of their group).
+export const MENU_GROUPS = ['Scanned parks', 'Built parks'];
+export const MENU_ORDER = ['gravesend', 'gravesendnight', 'undercroft15', 'undercroft2', 'funbox', 'gravesend4k', 'foundry', 'breakwater', 'switchyard', 'france25', 'megaramp', 'flightline'];
 
 export function pickLevel(search) {
   const id = new URLSearchParams(search).get('level');
