@@ -1,0 +1,16 @@
+{
+  "scan": "source/scans/matousekfoto-skatepark/skatepark.glb",
+  "name": "Funbox",
+  "author": "matousekfoto (https://sketchfab.com/matousekfoto), CC-BY-4.0",
+  "frame": { "centre": [-0.1818, 0.6071], "yawDegrees": 0.59, "groundHeight": 0.053 },
+  "materials": [
+    { "from": "skatepark_u1_v1", "name": "Scan | alpha", "texture": "funbox_alpha_base" },
+    { "from": "skatepark_u2_v1", "name": "Scan | beta", "texture": "funbox_beta_base" }
+  ],
+  "slab": { "half": 20, "tileMetres": 3, "tint": [1, 1, 1, 1], "textures": "source/textures/brushed_concrete" },
+  "ledges": [
+    { "name": "Ledge_Front", "points": [[-3.01, -0.96, 0.419], [-1.08, -0.96, 0.82], [1.02, -0.96, 0.82], [2.99, -0.96, 0.445]] },
+    { "name": "Ledge_Back", "points": [[-3.01, -0.64, 0.419], [-1.08, -0.64, 0.82], [1.02, -0.64, 0.82], [2.99, -0.64, 0.445]] }
+  ],
+  "spawn": { "x": 0, "z": -8, "y": 0.03, "heading": 3.14159265 }
+}

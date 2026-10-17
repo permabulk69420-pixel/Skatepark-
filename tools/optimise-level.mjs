@@ -10,7 +10,7 @@
 // "texturesFrom": "concrete", "baseColorFactor": [0.4, 0.4, 0.42, 1] } ] } points every material whose name matches at another
 // texture set (<name>_base / _normal / _orm) and tints it.
 import { Document, NodeIO } from '@gltf-transform/core';
-import { EXTMeshoptCompression, EXTTextureWebP, KHRMeshQuantization } from '@gltf-transform/extensions';
+import { EXTMeshoptCompression, EXTTextureWebP, KHRMaterialsUnlit, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { prune, reorder, textureCompress } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
@@ -38,7 +38,7 @@ const TEXTURES = [
 ];
 
 const io = new NodeIO()
-  .registerExtensions([EXTMeshoptCompression, EXTTextureWebP, KHRMeshQuantization])
+  .registerExtensions([EXTMeshoptCompression, EXTTextureWebP, KHRMaterialsUnlit, KHRMeshQuantization])
   .registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.read(input);
 const root = doc.getRoot();
