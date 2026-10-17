@@ -1,5 +1,5 @@
 {
- "build": "82b01e5",
+ "build": "df592a5",
  "files": {
   "src/main.js": "89502f6581",
   "src/skate/adaptive-grip.js": "0202905f40",
@@ -11,7 +11,7 @@
   "src/skate/grip-poses.js": "9b84251e00",
   "src/skate/hand-balance.js": "569e4a15e9",
   "src/skate/handle-hold.js": "e5e740d6b2",
-  "src/skate/hands.js": "3df8d3a5bd",
+  "src/skate/hands.js": "c592cf04d4",
   "src/skate/haptics.js": "031903dec1",
   "src/skate/hud.js": "847a9c44dd",
   "src/skate/input.js": "f34ca440e1",
@@ -19,7 +19,7 @@
   "src/skate/lod.js": "61451ed914",
   "src/skate/loop.js": "cf49b419eb",
   "src/skate/music.js": "dd250e57a9",
-  "src/skate/night.js": "12f2fb6650",
+  "src/skate/night.js": "eaab55d476",
   "src/skate/rails.js": "f66ce4faf1",
   "src/skate/rider.js": "c00891c542",
   "src/skate/sfx.js": "8e31f7fa09",
@@ -61,6 +61,8 @@
   "assets/skateboard.glb": "24c7390171",
   "assets/skatepark.glb": "88c8d75fdc",
   "models/hands/LeftHand.glb": "ff83a892ce",
-  "models/hands/RightHand.glb": "cabf4c3365"
+  "models/hands/RightHand.glb": "cabf4c3365",
+  "models/hands/skin-colour.jpg": "c5bbd4dfad",
+  "models/hands/skin-normal.jpg": "f83ba90b4e"
  }
 }

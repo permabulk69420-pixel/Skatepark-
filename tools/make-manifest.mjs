@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOTS = ['src', 'vendor', 'assets', 'models'];
-const WANTED = /\.(js|mjs|glb|ogg)$/;
+const WANTED = /\.(js|mjs|glb|ogg|jpg)$/;
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

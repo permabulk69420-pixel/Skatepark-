@@ -11,8 +11,37 @@ const assetUrl = window.__skateparkUrl || ((file) => `./${file}?t=${Date.now()}`
 const ASSETS = Object.freeze({ left: assetUrl('models/hands/LeftHand.glb'), right: assetUrl('models/hands/RightHand.glb') });
 // The meshes are authored with fingers along -Z and palms along -Y; these are the mirrored grip-space offsets.
 const GRIP_ROTATION = Object.freeze({ left: Math.PI / 2, right: -Math.PI / 2 });
+const SKIN = Object.freeze({ colour: assetUrl('models/hands/skin-colour.jpg'), normal: assetUrl('models/hands/skin-normal.jpg') });
 const loader = new GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
 const gripMatrix = new THREE.Matrix4();
+
+// The hand models are one flat colour; this lays tiling pores, creases and a little blotchy redness over it (tools/make-hand-skin.mjs).
+// If the textures fail to load the hands simply stay plain.
+function addSkinDetail(gltf, textures) {
+  const seen = new Set();
+  gltf.scene.traverse((child) => {
+    if (!child.isMesh || seen.has(child.material)) return;
+    const material = child.material;
+    seen.add(material);
+    material.map = textures.colour;
+    material.normalMap = textures.normal;
+    material.normalScale.set(0.7, 0.7);
+    material.roughness = 0.62;
+    material.needsUpdate = true;
+  });
+}
+
+function loadSkinTextures() {
+  const load = (url, colour) => textureLoader.loadAsync(url).then((texture) => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(3, 3);
+    texture.anisotropy = 4;
+    texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    return texture;
+  });
+  return Promise.all([load(SKIN.colour, true), load(SKIN.normal, false)]).then(([colour, normal]) => ({ colour, normal }));
+}
 
 function createActions(root, clips) {
   const mixer = new THREE.AnimationMixer(root);
@@ -131,9 +160,10 @@ export function createVRHands({ renderer, parent, onError = console.warn }) {
     });
   }
 
-  Promise.allSettled([loader.loadAsync(ASSETS.left), loader.loadAsync(ASSETS.right)]).then(([left, right]) => {
+  Promise.allSettled([loader.loadAsync(ASSETS.left), loader.loadAsync(ASSETS.right), loadSkinTextures()]).then(([left, right, skin]) => {
     if (left.status === 'fulfilled') models.left = left.value; else onError(`Left hand failed to load: ${left.reason?.message || left.reason}`);
     if (right.status === 'fulfilled') models.right = right.value; else onError(`Right hand failed to load: ${right.reason?.message || right.reason}`);
+    if (skin.status === 'fulfilled') { for (const model of [models.left, models.right]) if (model) addSkinDetail(model, skin.value); } else onError(`Hand skin detail failed to load: ${skin.reason?.message || skin.reason}`);
     for (const state of states) attach(state);
   });
 

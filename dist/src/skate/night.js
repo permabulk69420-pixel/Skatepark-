@@ -59,7 +59,7 @@ export function createNight({ scene, meshes, night }) {
     sprite.scale.setScalar(lamp.glow ?? 9);
     sprite.position.copy(head);
     // a real light for the things that are lit (board, hands, rider)
-    const light = new THREE.PointLight(lamp.colour, lamp.power * 900, lamp.radius * 2.5, 2);
+    const light = new THREE.PointLight(lamp.colour, lamp.power * 90, lamp.radius * 2.5, 2);
     light.position.copy(head);
     scene.add(pole, bar, sprite, light);
   });
