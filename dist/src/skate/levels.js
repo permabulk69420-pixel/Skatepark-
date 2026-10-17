@@ -65,16 +65,6 @@ export const LEVELS = {
   funbox: {
     name: 'Funbox',
     file: 'assets/levels/funbox.glb',
-    blurb: 'A photogrammetry scan of a real funbox · 4K textures, bank, up-flat-down ledge · scan by matousekfoto (CC-BY 4.0) · RIFT board',
-    // Built from a scan by tools/build-scan-level.mjs (source/scans/matousekfoto-skatepark/level.json), then tools/optimise-level.mjs.
-    bounds: { x: 19, z: 19, cx: 0, cz: 0 },
-    shadowHalf: 30,
-    noShadow: /ENV_Concrete_ground/,
-    look: { toneMapping: 'neutral', exposure: 0.74, sun: 3.4, sunColor: '#ffdcb4', sunDirection: [-0.62, 0.5, -0.6], hemisphere: 0.25, environment: 0.5, fog: '#c4d4de' }
-  },
-  funbox2k: {
-    name: 'Funbox 2K',
-    file: 'assets/levels/funbox-2k.glb',
     blurb: 'A photogrammetry scan of a real funbox · 2K textures, bank, up-flat-down ledge · scan by matousekfoto (CC-BY 4.0) · RIFT board',
     // Built from a scan by tools/build-scan-level.mjs (source/scans/matousekfoto-skatepark/level.json), then tools/optimise-level.mjs.
     bounds: { x: 19, z: 19, cx: 0, cz: 0 },
